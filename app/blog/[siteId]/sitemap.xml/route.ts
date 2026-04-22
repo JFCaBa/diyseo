@@ -1,4 +1,5 @@
 import { getPublicSite, getPublishedArticles } from "@/lib/articles";
+import { getPublicUrls } from "@/lib/public-urls";
 import { SitemapRouteParamsSchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
@@ -6,11 +7,6 @@ export const dynamic = "force-dynamic";
 type RouteContext = {
   params: Promise<{ siteId: string }>;
 };
-
-function getAppUrl() {
-  const value = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  return value ? value.replace(/\/$/, "") : null;
-}
 
 function escapeXml(value: string) {
   return value
@@ -46,23 +42,17 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   const articles = await getPublishedArticles(parsed.data.siteId);
-  const appUrl = getAppUrl();
-  const blogUrl = appUrl ? `${appUrl}/blog/${site.id}` : `/blog/${site.id}`;
+  const urls = await getPublicUrls(site.id);
 
-  const urls = [
-    buildUrlEntry(blogUrl),
-    ...articles.map((article) =>
-      buildUrlEntry(
-        appUrl ? `${appUrl}/blog/${site.id}/${article.slug}` : `/blog/${site.id}/${article.slug}`,
-        article.publishedAt
-      )
-    )
+  const entries = [
+    buildUrlEntry(urls.indexUrl),
+    ...articles.map((article) => buildUrlEntry(urls.articleUrl(article.slug), article.publishedAt))
   ].join("");
 
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-    urls,
+    entries,
     "</urlset>"
   ].join("");
 

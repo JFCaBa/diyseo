@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { PublicBlogMetaLinks } from "@/components/public-blog-meta-links";
 import { getPublicSite, getPublishedArticles } from "@/lib/articles";
+import { getPublicUrls } from "@/lib/public-urls";
 import { PublicBlogIndexRouteParamsSchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
@@ -11,11 +12,6 @@ export const dynamic = "force-dynamic";
 type PublicBlogIndexPageProps = {
   params: Promise<{ siteId: string }>;
 };
-
-function getAppUrl() {
-  const value = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  return value ? value.replace(/\/$/, "") : null;
-}
 
 async function getIndexData(params: PublicBlogIndexPageProps["params"]) {
   const parsed = PublicBlogIndexRouteParamsSchema.safeParse(await params);
@@ -47,25 +43,22 @@ export async function generateMetadata({ params }: PublicBlogIndexPageProps): Pr
 
   const title = `${data.site.name} Blog`;
   const description = `Read the latest articles and updates from ${data.site.name}.`;
-  const appUrl = getAppUrl();
-  const url = appUrl ? `${appUrl}/blog/${data.site.id}` : undefined;
-  const rssUrl = appUrl ? `${appUrl}/blog/${data.site.id}/rss.xml` : `/blog/${data.site.id}/rss.xml`;
-  const atomUrl = appUrl ? `${appUrl}/blog/${data.site.id}/atom.xml` : `/blog/${data.site.id}/atom.xml`;
+  const urls = await getPublicUrls(data.site.id);
 
   return {
     title,
     description,
     alternates: {
-      canonical: url,
+      canonical: urls.indexUrl,
       types: {
-        "application/rss+xml": rssUrl,
-        "application/atom+xml": atomUrl
+        "application/rss+xml": urls.rssUrl,
+        "application/atom+xml": urls.atomUrl
       }
     },
     openGraph: {
       title,
       description,
-      url,
+      url: urls.indexUrl,
       type: "website",
       siteName: data.site.name
     },
@@ -83,6 +76,8 @@ export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPag
   if (!data) {
     notFound();
   }
+
+  const urls = await getPublicUrls(data.site.id);
 
   return (
     <main className="min-h-screen bg-sand/40 px-4 py-10 sm:px-6 sm:py-12">
@@ -119,7 +114,7 @@ export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPag
                   <div className="space-y-4">
                     <div className="space-y-3">
                       <Link
-                        href={`/blog/${data.site.id}/${article.slug}`}
+                        href={urls.articlePath(article.slug)}
                         className="block text-2xl font-semibold tracking-tight text-slate-900 decoration-transparent underline-offset-4 transition hover:text-accent hover:decoration-accent hover:underline"
                       >
                         {article.title}

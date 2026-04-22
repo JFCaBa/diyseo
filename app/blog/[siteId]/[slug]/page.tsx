@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { PublicBlogMetaLinks } from "@/components/public-blog-meta-links";
 import { getAdjacentPublishedArticles, getPublishedArticleBySlug } from "@/lib/articles";
+import { getPublicUrls } from "@/lib/public-urls";
 import { PublicArticleRouteParamsSchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
@@ -11,11 +12,6 @@ export const dynamic = "force-dynamic";
 type PublicArticlePageProps = {
   params: Promise<{ siteId: string; slug: string }>;
 };
-
-function getAppUrl() {
-  const value = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  return value ? value.replace(/\/$/, "") : null;
-}
 
 async function getArticleFromParams(params: PublicArticlePageProps["params"]) {
   const parsed = PublicArticleRouteParamsSchema.safeParse(await params);
@@ -42,17 +38,15 @@ export async function generateMetadata({ params }: PublicArticlePageProps): Prom
 
   const title = article.seoTitle || article.title;
   const description = article.seoDescription || article.excerpt || undefined;
-  const appUrl = getAppUrl();
-  const url = appUrl ? `${appUrl}/blog/${parsed.data.siteId}/${parsed.data.slug}` : undefined;
+  const urls = await getPublicUrls(parsed.data.siteId);
+  const url = urls.articleUrl(parsed.data.slug);
 
   return {
     title,
     description,
-    alternates: url
-      ? {
-          canonical: url
-        }
-      : undefined,
+    alternates: {
+      canonical: url
+    },
     openGraph: {
       title,
       description,
@@ -76,6 +70,8 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
     notFound();
   }
 
+  const urls = await getPublicUrls(article.siteProjectId);
+
   const { previousArticle, nextArticle } = await getAdjacentPublishedArticles(article.siteProjectId, {
     publishedAt: article.publishedAt ? new Date(article.publishedAt) : null,
     createdAt: new Date(article.createdAt)
@@ -94,7 +90,7 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
       <article className="mx-auto max-w-3xl rounded-[2rem] border border-line bg-white px-5 py-7 shadow-panel sm:px-8 md:px-10 md:py-10">
         <div className="space-y-5 border-b border-line pb-7">
           <Link
-            href={`/blog/${article.siteProjectId}`}
+            href={urls.indexPath}
             className="inline-flex text-sm font-semibold text-accent underline-offset-4 transition hover:text-teal-700 hover:underline"
           >
             ← Back to Blog
@@ -119,7 +115,7 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
             <div className="sm:max-w-[32%]">
               {previousArticle ? (
                 <Link
-                  href={`/blog/${article.siteProjectId}/${previousArticle.slug}`}
+                  href={urls.articlePath(previousArticle.slug)}
                   className="block text-sm text-slate-500 transition hover:text-slate-900"
                 >
                   <span className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Previous</span>
@@ -132,7 +128,7 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
 
             <div className="sm:text-center">
               <Link
-                href={`/blog/${article.siteProjectId}`}
+                href={urls.indexPath}
                 className="inline-flex text-sm font-semibold text-accent underline-offset-4 transition hover:text-teal-700 hover:underline"
               >
                 Back to Blog Index
@@ -142,7 +138,7 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
             <div className="sm:max-w-[32%] sm:text-right">
               {nextArticle ? (
                 <Link
-                  href={`/blog/${article.siteProjectId}/${nextArticle.slug}`}
+                  href={urls.articlePath(nextArticle.slug)}
                   className="block text-sm text-slate-500 transition hover:text-slate-900"
                 >
                   <span className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">Next</span>

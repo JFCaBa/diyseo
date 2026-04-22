@@ -1,17 +1,22 @@
 import Link from "next/link";
 
+import { getPublicUrls } from "@/lib/public-urls";
+
 type PublicBlogMetaLinksProps = {
   siteId?: string;
 };
 
-export function PublicBlogMetaLinks({ siteId }: PublicBlogMetaLinksProps) {
+export async function PublicBlogMetaLinks({ siteId }: PublicBlogMetaLinksProps) {
   const links = siteId
-    ? [
-        { href: `/blog/${siteId}/rss.xml`, label: "RSS" },
-        { href: `/blog/${siteId}/atom.xml`, label: "Atom" },
-        { href: `/blog/${siteId}/sitemap.xml`, label: "Sitemap" },
-        { href: "/blog/robots.txt", label: "robots.txt" }
-      ]
+    ? await (async () => {
+        const urls = await getPublicUrls(siteId);
+        return [
+          { href: urls.rssPath, label: "RSS" },
+          { href: urls.atomPath, label: "Atom" },
+          { href: urls.sitemapPath, label: "Sitemap" },
+          { href: urls.robotsPath, label: "robots.txt" }
+        ];
+      })()
     : [{ href: "/blog/robots.txt", label: "robots.txt" }];
 
   return (

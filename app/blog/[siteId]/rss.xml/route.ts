@@ -1,4 +1,5 @@
 import { getPublicSite, getPublishedArticles } from "@/lib/articles";
+import { getPublicUrls } from "@/lib/public-urls";
 import { RSSRouteParamsSchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
@@ -6,11 +7,6 @@ export const dynamic = "force-dynamic";
 type RouteContext = {
   params: Promise<{ siteId: string }>;
 };
-
-function getAppUrl() {
-  const value = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  return value ? value.replace(/\/$/, "") : null;
-}
 
 function escapeXml(value: string) {
   return value
@@ -39,13 +35,12 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   const articles = await getPublishedArticles(parsed.data.siteId);
-  const appUrl = getAppUrl();
-  const blogUrl = appUrl ? `${appUrl}/blog/${site.id}` : `/blog/${site.id}`;
+  const urls = await getPublicUrls(site.id);
   const description = `Latest articles from ${site.name}`;
 
   const items = articles
     .map((article) => {
-      const link = appUrl ? `${appUrl}/blog/${site.id}/${article.slug}` : `/blog/${site.id}/${article.slug}`;
+      const link = urls.articleUrl(article.slug);
       const title = wrapCdata(article.title);
       const excerpt = wrapCdata(article.excerpt || "");
       const pubDate = article.publishedAt ? `<pubDate>${new Date(article.publishedAt).toUTCString()}</pubDate>` : "";
@@ -69,7 +64,7 @@ export async function GET(_request: Request, context: RouteContext) {
     '<rss version="2.0">',
     "<channel>",
     `<title>${wrapCdata(`${site.name} Blog`)}</title>`,
-    `<link>${escapeXml(blogUrl)}</link>`,
+    `<link>${escapeXml(urls.indexUrl)}</link>`,
     `<description>${wrapCdata(description)}</description>`,
     items,
     "</channel>",

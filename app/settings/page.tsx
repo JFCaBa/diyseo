@@ -1,0 +1,78 @@
+import Link from "next/link";
+
+import { CreateSiteForm } from "@/components/create-site-form";
+import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@/components/page-header";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+
+export default async function SettingsPage() {
+  const workspace = await prisma.workspace.findFirst({
+    orderBy: { createdAt: "asc" },
+    include: {
+      sites: {
+        orderBy: { createdAt: "asc" }
+      }
+    }
+  });
+
+  const sites = workspace?.sites ?? [];
+
+  return (
+    <main className="mx-auto min-h-screen max-w-6xl px-6 py-10">
+      <PageHeader
+        title="Settings"
+        description="Manage your workspace and the websites inside it. Each site gets its own Brand DNA, content workflow, analytics, and public blog."
+        action={
+          <Link
+            href="/new-site"
+            className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
+          >
+            Add Website
+          </Link>
+        }
+      />
+
+      <div className="mt-8 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+        <section className="space-y-4 rounded-3xl border border-line bg-white/85 p-6 shadow-panel">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Workspace</p>
+            <h2 className="mt-2 text-2xl font-semibold text-ink">{workspace?.name ?? "My Workspace"}</h2>
+          </div>
+
+          {sites.length === 0 ? (
+            <EmptyState
+              title="No sites yet"
+              description="Create your first site to unlock onboarding, Brand DNA, article workflows, analytics, and the public blog."
+            />
+          ) : (
+            <div className="grid gap-3">
+              {sites.map((site) => (
+                <Link
+                  key={site.id}
+                  href={`/${site.id}`}
+                  className="flex items-center justify-between rounded-2xl border border-line px-4 py-4 transition hover:border-accent hover:bg-mist"
+                >
+                  <div>
+                    <h3 className="font-semibold text-ink">{site.name}</h3>
+                    <p className="text-sm text-slate-600">{site.domain}</p>
+                  </div>
+                  <span className="text-sm font-medium text-accent">Open site</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Create Site</p>
+            <h2 className="mt-2 text-2xl font-semibold text-ink">Add a Website</h2>
+          </div>
+          <CreateSiteForm />
+        </section>
+      </div>
+    </main>
+  );
+}

@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Workspace {
+  id        String        @id @default(cuid())
+  name      String        @default("My Workspace")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  sites     SiteProject[]
+}
+
+model SiteProject {
+  id           String       @id @default(cuid())
+  workspaceId  String
+  name         String
+  domain       String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  brandProfile BrandProfile?
+  articles     Article[]
+  keywords     Keyword[]
+}
+
+model BrandProfile {
+  id                      String      @id @default(cuid())
+  siteProjectId           String      @unique
+  contentLanguage         String?
+  businessType            String?
+  brandVoiceTone          String?
+  targetAudience          String?
+  serviceArea             String?
+  topicsToAvoid           String?
+  keyThemes               String?
+  customImageInstructions String?
+  imageStyle              String?
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+
+  siteProject             SiteProject @relation(fields: [siteProjectId], references: [id], onDelete: Cascade)
+}
+
+model Article {
+  id            String        @id @default(cuid())
+  title         String
+  slug          String
+  excerpt       String?
+  contentHtml   String
+  seoTitle      String?
+  seoDescription String?
+  status        ArticleStatus @default(DRAFT)
+  publishedAt   DateTime?
+  siteProjectId String
+  keywordId     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  siteProject   SiteProject   @relation(fields: [siteProjectId], references: [id], onDelete: Cascade)
+  keyword       Keyword?      @relation(fields: [keywordId], references: [id], onDelete: SetNull)
+
+  @@unique([siteProjectId, slug])
+  @@index([siteProjectId, status, publishedAt])
+}
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Keyword {
+  id            String        @id @default(cuid())
+  siteProjectId String
+  term          String
+  status        KeywordStatus @default(NEW)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  siteProject   SiteProject   @relation(fields: [siteProjectId], references: [id], onDelete: Cascade)
+  articles      Article[]
+
+  @@unique([siteProjectId, term])
+}
+
+enum KeywordStatus {
+  NEW
+  USED
+}

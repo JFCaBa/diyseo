@@ -40,6 +40,10 @@ CREATE TABLE "Session" (
     CONSTRAINT "Session_pkey" PRIMARY KEY ("id")
 );
 
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+CREATE UNIQUE INDEX "Account_provider_providerAccountId_key" ON "Account"("provider", "providerAccountId");
+CREATE UNIQUE INDEX "Session_sessionToken_key" ON "Session"("sessionToken");
+
 ALTER TABLE "Workspace" ADD COLUMN "ownerId" TEXT;
 
 INSERT INTO "User" ("id", "name", "email", "createdAt", "updatedAt")
@@ -52,9 +56,6 @@ WHERE "ownerId" IS NULL;
 
 ALTER TABLE "Workspace" ALTER COLUMN "ownerId" SET NOT NULL;
 
-CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
-CREATE UNIQUE INDEX "Account_provider_providerAccountId_key" ON "Account"("provider", "providerAccountId");
-CREATE UNIQUE INDEX "Session_sessionToken_key" ON "Session"("sessionToken");
 CREATE UNIQUE INDEX "Workspace_ownerId_key" ON "Workspace"("ownerId");
 
 ALTER TABLE "Workspace" ADD CONSTRAINT "Workspace_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

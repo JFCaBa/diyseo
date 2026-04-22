@@ -19,6 +19,7 @@ export type BrandDNAGenerationContext = {
   site: {
     name: string;
     domain: string;
+    contentLanguage?: string | null;
   };
   businessDescription?: string;
 };

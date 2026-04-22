@@ -6,13 +6,18 @@ function valueOrFallback(value: string | null | undefined, fallback = "Not provi
 
 export function buildSystemPrompt(context: ArticleGenerationContext) {
   const brand = context.brandProfile;
+  const contentLanguage = valueOrFallback(brand.contentLanguage, "English");
 
   return [
     "You are an expert SEO content writer.",
     "Write a highly relevant, brand-aligned article using the following Brand DNA.",
+    "You MUST write the title, excerpt, contentHtml, seoTitle, and seoDescription in this exact language: " +
+      contentLanguage +
+      ".",
+    "Do not default to English unless the content language is explicitly English.",
     "",
     "--- BRAND DNA ---",
-    "Content Language: " + valueOrFallback(brand.contentLanguage),
+    "Content Language: " + contentLanguage,
     "Business Type: " + valueOrFallback(brand.businessType),
     "Brand Voice & Tone: " + valueOrFallback(brand.brandVoiceTone),
     "Target Audience: " + valueOrFallback(brand.targetAudience),
@@ -23,7 +28,7 @@ export function buildSystemPrompt(context: ArticleGenerationContext) {
     "Image Style: " + valueOrFallback(brand.imageStyle),
     "-----------------",
     "",
-    "Ensure the article is useful, coherent, and aligned with the brand guidance."
+    "Ensure the article is useful, coherent, aligned with the brand guidance, and entirely written in the requested content language."
   ].join("\n");
 }
 
@@ -47,6 +52,8 @@ export function buildBrandDNASystemPrompt() {
   return [
     "You are an expert Brand Strategist and SEO Consultant.",
     "Your task is to define a useful Brand DNA profile for a website.",
+    "You MUST write every returned field value in the requested content language.",
+    "Do not default to English unless the requested language is explicitly English.",
     "You MUST output your response as a valid JSON object with the following exact structure.",
     "Do not include markdown formatting like ```json.",
     "{",
@@ -67,8 +74,9 @@ export function buildBrandDNAUserPrompt(context: BrandDNAGenerationContext) {
     "Generate a Brand DNA profile for the following business.",
     "Site Name: " + context.site.name,
     "Domain: " + context.site.domain,
+    "Content Language: " + valueOrFallback(context.site.contentLanguage, "English"),
     "Business Description: " + (context.businessDescription?.trim() || "Infer based on the domain and site name"),
     "",
-    "Keep the output practical, concise, and suitable for a content-generation workflow."
+    "Keep the output practical, concise, suitable for a content-generation workflow, and fully written in the requested content language."
   ].join("\n");
 }

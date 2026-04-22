@@ -24,7 +24,8 @@ export async function generateBrandDNAForSite(siteId: string, input: unknown) {
       domain: true,
       brandProfile: {
         select: {
-          id: true
+          id: true,
+          contentLanguage: true
         }
       }
     }
@@ -38,7 +39,8 @@ export async function generateBrandDNAForSite(siteId: string, input: unknown) {
   const generated = await generator.generateBrandDNA({
     site: {
       name: site.name,
-      domain: site.domain
+      domain: site.domain,
+      contentLanguage: site.brandProfile?.contentLanguage
     },
     businessDescription: request.businessDescription
   });

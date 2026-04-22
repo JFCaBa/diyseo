@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   AssignKeywordSchema,
@@ -123,8 +124,14 @@ function toUtcIsoFromDateInput(value: FormDataEntryValue | null) {
 }
 
 async function getWorkspaceId() {
-  const existingWorkspace = await prisma.workspace.findFirst({
-    orderBy: { createdAt: "asc" }
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const existingWorkspace = await prisma.workspace.findUnique({
+    where: { ownerId: session.user.id }
   });
 
   if (existingWorkspace) {
@@ -132,10 +139,43 @@ async function getWorkspaceId() {
   }
 
   const workspace = await prisma.workspace.create({
-    data: { name: "My Workspace" }
+    data: {
+      ownerId: session.user.id,
+      name: session.user.name?.trim() ? `${session.user.name.trim()}'s Workspace` : "My Workspace"
+    }
   });
 
   return workspace.id;
+}
+
+async function getCurrentUserId() {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  return session.user.id;
+}
+
+async function requireOwnedSite(siteId: string) {
+  const userId = await getCurrentUserId();
+
+  const site = await prisma.siteProject.findFirst({
+    where: {
+      id: siteId,
+      workspace: {
+        ownerId: userId
+      }
+    },
+    select: { id: true, brandProfile: { select: { id: true } } }
+  });
+
+  if (!site) {
+    throw new Error("Unauthorized");
+  }
+
+  return site;
 }
 
 export async function createSite(
@@ -200,12 +240,10 @@ export async function updateBrandDNA(
     return { error: parsed.error.issues[0]?.message ?? "Invalid Brand DNA data." };
   }
 
-  const site = await prisma.siteProject.findUnique({
-    where: { id: siteId },
-    select: { id: true, brandProfile: { select: { id: true } } }
-  });
-
-  if (!site) {
+  let site;
+  try {
+    site = await requireOwnedSite(siteId);
+  } catch {
     return { error: "Site not found." };
   }
 
@@ -243,12 +281,20 @@ export async function toggleArticleStatus(
     return { error: parsed.error.issues[0]?.message ?? "Invalid article status update." };
   }
 
-  const article = await prisma.article.findUnique({
-    where: { id: parsed.data.articleId },
+  const article = await prisma.article.findFirst({
+    where: {
+      id: parsed.data.articleId,
+      siteProjectId: siteId,
+      siteProject: {
+        workspace: {
+          ownerId: await getCurrentUserId()
+        }
+      }
+    },
     select: { id: true, slug: true, siteProjectId: true }
   });
 
-  if (!article || article.siteProjectId !== siteId) {
+  if (!article) {
     return { error: "Article not found." };
   }
 
@@ -290,12 +336,9 @@ export async function createKeyword(
     return { error: parsed.error.issues[0]?.message ?? "Invalid keyword term." };
   }
 
-  const site = await prisma.siteProject.findUnique({
-    where: { id: siteId },
-    select: { id: true }
-  });
-
-  if (!site) {
+  try {
+    await requireOwnedSite(siteId);
+  } catch {
     return { error: "Site not found." };
   }
 
@@ -330,22 +373,39 @@ export async function assignKeywordToArticle(
     return { error: parsed.error.issues[0]?.message ?? "Invalid keyword assignment." };
   }
 
-  const article = await prisma.article.findUnique({
-    where: { id: parsed.data.articleId },
+  const userId = await getCurrentUserId();
+  const article = await prisma.article.findFirst({
+    where: {
+      id: parsed.data.articleId,
+      siteProjectId: siteId,
+      siteProject: {
+        workspace: {
+          ownerId: userId
+        }
+      }
+    },
     select: { id: true, siteProjectId: true, keywordId: true }
   });
 
-  if (!article || article.siteProjectId !== siteId) {
+  if (!article) {
     return { error: "Article not found." };
   }
 
   if (parsed.data.keywordId) {
-    const keyword = await prisma.keyword.findUnique({
-      where: { id: parsed.data.keywordId },
+    const keyword = await prisma.keyword.findFirst({
+      where: {
+        id: parsed.data.keywordId,
+        siteProjectId: siteId,
+        siteProject: {
+          workspace: {
+            ownerId: userId
+          }
+        }
+      },
       select: { id: true, siteProjectId: true }
     });
 
-    if (!keyword || keyword.siteProjectId !== siteId) {
+    if (!keyword) {
       return { error: "Keyword not found." };
     }
   }
@@ -391,12 +451,9 @@ export async function createArticle(
     return { error: parsed.error.issues[0]?.message ?? "Invalid article data." };
   }
 
-  const site = await prisma.siteProject.findUnique({
-    where: { id: siteId },
-    select: { id: true }
-  });
-
-  if (!site) {
+  try {
+    await requireOwnedSite(siteId);
+  } catch {
     return { error: "Site not found." };
   }
 
@@ -440,12 +497,20 @@ export async function updateArticle(
     return { error: parsed.error.issues[0]?.message ?? "Invalid article update." };
   }
 
-  const article = await prisma.article.findUnique({
-    where: { id: articleId },
+  const article = await prisma.article.findFirst({
+    where: {
+      id: articleId,
+      siteProjectId: siteId,
+      siteProject: {
+        workspace: {
+          ownerId: await getCurrentUserId()
+        }
+      }
+    },
     select: { id: true, siteProjectId: true }
   });
 
-  if (!article || article.siteProjectId !== siteId) {
+  if (!article) {
     return { error: "Article not found." };
   }
 
@@ -474,12 +539,20 @@ export async function updateArticleDate(siteId: string, formData: FormData) {
     redirect(fallbackReturnTo);
   }
 
-  const article = await prisma.article.findUnique({
-    where: { id: parsed.data.articleId },
+  const article = await prisma.article.findFirst({
+    where: {
+      id: parsed.data.articleId,
+      siteProjectId: siteId,
+      siteProject: {
+        workspace: {
+          ownerId: await getCurrentUserId()
+        }
+      }
+    },
     select: { id: true, siteProjectId: true, slug: true }
   });
 
-  if (!article || article.siteProjectId !== siteId) {
+  if (!article) {
     redirect(parsed.data.returnTo || fallbackReturnTo);
   }
 

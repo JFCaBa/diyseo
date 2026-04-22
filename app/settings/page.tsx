@@ -1,15 +1,24 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
+import { SignOutButton } from "@/components/auth-buttons";
 import { CreateSiteForm } from "@/components/create-site-form";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const workspace = await prisma.workspace.findFirst({
-    orderBy: { createdAt: "asc" },
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect("/");
+  }
+
+  const workspace = await prisma.workspace.findUnique({
+    where: { ownerId: session.user.id },
     include: {
       sites: {
         orderBy: { createdAt: "asc" }
@@ -25,12 +34,15 @@ export default async function SettingsPage() {
         title="Settings"
         description="Manage your workspace and the websites inside it. Each site gets its own Brand DNA, content workflow, analytics, and public blog."
         action={
-          <Link
-            href="/new-site"
-            className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
-          >
-            Add Website
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/new-site"
+              className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
+            >
+              Add Website
+            </Link>
+            <SignOutButton />
+          </div>
         }
       />
 

@@ -3,17 +3,34 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  let workspace = await prisma.workspace.findFirst({
-    orderBy: { createdAt: "asc" }
+  let user = await prisma.user.findUnique({
+    where: { email: "demo@diyseo.local" }
+  });
+
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        email: "demo@diyseo.local",
+        name: "Demo User"
+      }
+    });
+  }
+
+  let workspace = await prisma.workspace.findUnique({
+    where: { ownerId: user.id }
   });
 
   if (!workspace) {
     workspace = await prisma.workspace.create({
-      data: { name: "Default Workspace" }
+      data: {
+        ownerId: user.id,
+        name: "Default Workspace"
+      }
     });
   }
 
   let site = await prisma.siteProject.findFirst({
+    where: { workspaceId: workspace.id },
     orderBy: { createdAt: "asc" }
   });
 

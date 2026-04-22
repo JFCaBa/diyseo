@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { type ReactNode } from "react";
 
+import { SignOutButton } from "@/components/auth-buttons";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { SiteSelector } from "@/components/site-selector";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -15,13 +17,28 @@ type SiteLayoutProps = {
 
 export default async function SiteLayout({ children, params }: SiteLayoutProps) {
   const { siteId } = await params;
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect("/");
+  }
 
   const [currentSite, sites] = await Promise.all([
-    prisma.siteProject.findUnique({
-      where: { id: siteId },
+    prisma.siteProject.findFirst({
+      where: {
+        id: siteId,
+        workspace: {
+          ownerId: session.user.id
+        }
+      },
       select: { id: true, name: true, domain: true }
     }),
     prisma.siteProject.findMany({
+      where: {
+        workspace: {
+          ownerId: session.user.id
+        }
+      },
       orderBy: { createdAt: "asc" },
       select: { id: true, name: true }
     })
@@ -63,6 +80,7 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
                 >
                   New Article
                 </Link>
+                <SignOutButton />
               </div>
               <SiteSelector currentSiteId={siteId} sites={sites} />
             </div>

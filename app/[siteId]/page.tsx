@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/page-header";
+import { WidgetInstallCard } from "@/components/widget-install-card";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -98,6 +99,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         : keywordCounts.total === 0
           ? "Add keywords"
           : "Review the calendar";
+  const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://localhost:3000";
 
   return (
     <section className="space-y-8">
@@ -222,6 +224,8 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
           )}
         </section>
       </div>
+
+      <WidgetInstallCard baseUrl={appBaseUrl.replace(/\/$/, "")} siteId={siteId} />
     </section>
   );
 }

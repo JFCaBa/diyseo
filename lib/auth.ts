@@ -63,16 +63,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: {
     strategy: "database"
   },
+  events: {
+    async createUser({ user }) {
+      if (!user.id) {
+        return;
+      }
+      await ensureUserWorkspace(user.id, user.name);
+    }
+  },
   callbacks: {
     ...authConfig.callbacks,
-    async signIn({ user }) {
-      if (!user.id) {
-        return false;
-      }
-
-      await ensureUserWorkspace(user.id, user.name);
-      return true;
-    },
     async session({ session, user }) {
       if (session.user) {
         const workspace = await prisma.workspace.findUnique({
@@ -80,8 +80,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           select: { id: true }
         });
 
+        if (!workspace) {
+          const created = await ensureUserWorkspace(user.id, user.name);
+          session.user.id = user.id;
+          session.user.workspaceId = created;
+          return session;
+        }
+
         session.user.id = user.id;
-        session.user.workspaceId = workspace?.id ?? null;
+        session.user.workspaceId = workspace.id;
       }
 
       return session;

@@ -16,6 +16,13 @@
   }
 
   var normalizedBasePath = basePath.replace(/\/$/, "");
+
+  var apiOrigin = "";
+  try {
+    apiOrigin = new URL(scriptTag.src, window.location.href).origin;
+  } catch (err) {
+    apiOrigin = "";
+  }
   var container = document.getElementById("soro-widget-container");
   var widgetConfig = {
     siteName: "Articles",
@@ -202,7 +209,7 @@
   }
 
   function fetchJson(path) {
-    return fetch(normalizedBasePath + path, {
+    return fetch(apiOrigin + path, {
       headers: {
         Accept: "application/json"
       }

@@ -12,6 +12,26 @@ const nextConfig: NextConfig = {
         destination: "/api/public/sites/:siteId/config"
       }
     ];
+  },
+  async headers() {
+    return [
+      {
+        source: "/api/public/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Access-Control-Allow-Methods", value: "GET, OPTIONS" },
+          { key: "Access-Control-Allow-Headers", value: "Content-Type, Accept" },
+          { key: "Access-Control-Max-Age", value: "86400" }
+        ]
+      },
+      {
+        source: "/embed.js",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Cache-Control", value: "public, max-age=300" }
+        ]
+      }
+    ];
   }
 };
 

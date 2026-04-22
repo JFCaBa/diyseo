@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { SignInButton, SignOutButton } from "@/components/auth-buttons";
 import { auth } from "@/lib/auth";
@@ -50,18 +51,22 @@ const embedSnippet = `<script async src="/embed.js" data-site="demo" data-base-p
 
 export default async function HomePage() {
   const session = await auth();
-  const workspace = session?.user?.id
-    ? await prisma.workspace.findUnique({
-        where: { ownerId: session.user.id },
-        select: {
-          sites: {
-            orderBy: { createdAt: "asc" },
-            select: { id: true }
-          }
+
+  if (session?.user?.id) {
+    const workspace = await prisma.workspace.findUnique({
+      where: { ownerId: session.user.id },
+      select: {
+        sites: {
+          orderBy: { createdAt: "asc" },
+          select: { id: true }
         }
-      })
-    : null;
-  const startHref = workspace?.sites[0]?.id ? `/${workspace.sites[0].id}` : "/settings";
+      }
+    });
+
+    redirect(workspace?.sites[0]?.id ? `/${workspace.sites[0].id}` : "/settings");
+  }
+
+  const startHref = "/settings";
 
   return (
     <main className="min-h-screen">

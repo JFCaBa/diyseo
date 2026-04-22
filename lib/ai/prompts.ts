@@ -7,6 +7,8 @@ function valueOrFallback(value: string | null | undefined, fallback = "Not provi
 export function buildSystemPrompt(context: ArticleGenerationContext) {
   const brand = context.brandProfile;
   const contentLanguage = valueOrFallback(brand.contentLanguage, "English");
+  const siteDomain = valueOrFallback(context.site.domain).replace(/\/$/, "");
+  const siteName = valueOrFallback(context.site.name, "the site");
 
   return [
     "You are an expert SEO content writer.",
@@ -15,6 +17,11 @@ export function buildSystemPrompt(context: ArticleGenerationContext) {
       contentLanguage +
       ".",
     "Do not default to English unless the content language is explicitly English.",
+    "",
+    "--- SITE ---",
+    "Site Name: " + siteName,
+    "Site Domain: " + siteDomain,
+    "-----------------",
     "",
     "--- BRAND DNA ---",
     "Content Language: " + contentLanguage,
@@ -28,6 +35,7 @@ export function buildSystemPrompt(context: ArticleGenerationContext) {
     "Image Style: " + valueOrFallback(brand.imageStyle),
     "-----------------",
     "",
+    "Include 2 to 4 natural, contextual inline links (<a href=\"...\">) in contentHtml that point to the site domain above. Prefer the root domain and plausible category paths (e.g. /courses, /pricing, /about, /contact) derived from the business type and themes. Use descriptive anchor text, never bare URLs. Do not link to external sites.",
     "Ensure the article is useful, coherent, aligned with the brand guidance, and entirely written in the requested content language."
   ].join("\n");
 }

@@ -43,6 +43,8 @@ export async function generateArticleForSite(siteId: string, input: unknown) {
     where: { id: siteId },
     select: {
       id: true,
+      name: true,
+      domain: true,
       brandProfile: {
         select: {
           contentLanguage: true,
@@ -70,6 +72,7 @@ export async function generateArticleForSite(siteId: string, input: unknown) {
   const generator = getAIGenerationService();
   const generated = await generator.generateArticle({
     keyword: request.keyword,
+    site: { name: site.name, domain: site.domain },
     brandProfile: site.brandProfile
   });
 

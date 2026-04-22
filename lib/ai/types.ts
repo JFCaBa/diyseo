@@ -2,6 +2,10 @@ import type { GeneratedArticleInput, GeneratedBrandDNAInput } from "@/lib/valida
 
 export type ArticleGenerationContext = {
   keyword?: string;
+  site: {
+    name: string;
+    domain: string;
+  };
   brandProfile: {
     contentLanguage?: string | null;
     businessType?: string | null;

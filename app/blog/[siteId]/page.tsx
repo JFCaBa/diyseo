@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PublicBlogMetaLinks } from "@/components/public-blog-meta-links";
+import { getCoverImageProxyPath } from "@/lib/cover-image-url";
 import { getPublicSite, getPublishedArticles } from "@/lib/articles";
 import { getPublicUrls } from "@/lib/public-urls";
 import { PublicBlogIndexRouteParamsSchema } from "@/lib/validations";
@@ -116,8 +117,9 @@ export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPag
                   <div className="space-y-4">
                     {article.coverImageUrl ? (
                       <img
-                        src={article.coverImageUrl}
+                        src={getCoverImageProxyPath(article.coverImageUrl)}
                         alt=""
+                        referrerPolicy="no-referrer"
                         className="h-56 w-full rounded-[1.5rem] border border-line object-cover"
                       />
                     ) : null}

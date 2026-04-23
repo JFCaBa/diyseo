@@ -180,6 +180,10 @@
       .replace(/'/g, "&#39;");
   }
 
+  function getCoverImageProxyPath(url) {
+    return "/api/public/image?url=" + encodeURIComponent(url);
+  }
+
   function getCurrentSlug() {
     var hash = window.location.hash || "";
     var prefix = "#soro-article/";
@@ -316,8 +320,8 @@
               '<li class="soro-article-item">' +
               (article.coverImageUrl
                 ? '<img class="soro-cover soro-list-cover" src="' +
-                  escapeHtml(article.coverImageUrl) +
-                  '" alt="">' 
+                  escapeHtml(getCoverImageProxyPath(article.coverImageUrl)) +
+                  '" alt="" referrerpolicy="no-referrer">'
                 : "") +
               '<a href="#soro-article/' +
               encodeURIComponent(article.slug) +
@@ -385,8 +389,8 @@
             "</h1>" +
             (article.coverImageUrl
               ? '<img class="soro-cover soro-detail-cover" src="' +
-                escapeHtml(article.coverImageUrl) +
-                '" alt="">'
+                escapeHtml(getCoverImageProxyPath(article.coverImageUrl)) +
+                '" alt="" referrerpolicy="no-referrer">'
               : "") +
             (article.publishedAt
               ? '<p class="soro-widget-meta">' + escapeHtml(formatDate(article.publishedAt)) + "</p>"

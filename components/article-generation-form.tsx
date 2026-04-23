@@ -60,39 +60,37 @@ export function ArticleGenerationForm({ siteId }: ArticleGenerationFormProps) {
   }
 
   return (
-    <form
-      id="generate-article"
-      onSubmit={onSubmit}
-      className="grid gap-4 rounded-3xl border border-line bg-white/85 p-6 shadow-panel scroll-mt-24"
-    >
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold text-ink">Generate a Draft</h2>
-        <p className="text-sm text-slate-600">
-          Uses the current Brand DNA plus an optional keyword to produce a saved draft article you can edit before publishing.
-        </p>
-      </div>
+    <div className="grid gap-4 rounded-3xl border border-line bg-white/85 p-6 shadow-panel scroll-mt-24">
+      <form id="generate-article" onSubmit={onSubmit} className="grid gap-4">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold text-ink">Generate a Draft</h2>
+          <p className="text-sm text-slate-600">
+            Uses the current Brand DNA plus an optional keyword to produce a saved draft article you can edit before publishing.
+          </p>
+        </div>
 
-      <div className="grid gap-2">
-        <label htmlFor="keyword" className="text-sm font-medium text-ink">
-          Optional keyword
-        </label>
-        <input
-          id="keyword"
-          name="keyword"
-          value={keyword}
-          onChange={(event) => setKeyword(event.target.value)}
-          placeholder="e.g. self-hosted SEO strategy"
-          className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
-        />
-      </div>
+        <div className="grid gap-2">
+          <label htmlFor="keyword" className="text-sm font-medium text-ink">
+            Optional keyword
+          </label>
+          <input
+            id="keyword"
+            name="keyword"
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder="e.g. self-hosted SEO strategy"
+            className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
+          />
+        </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="inline-flex w-fit items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
-      >
-        {isSubmitting ? "Generating..." : "Generate Draft Article"}
-      </button>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="inline-flex w-fit items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {isSubmitting ? "Generating..." : "Generate Draft Article"}
+        </button>
+      </form>
 
       {result?.error ? <p className="text-sm text-red-600">{result.error}</p> : null}
       {result?.article ? (
@@ -109,6 +107,6 @@ export function ArticleGenerationForm({ siteId }: ArticleGenerationFormProps) {
           </Link>
         </div>
       ) : null}
-    </form>
+    </div>
   );
 }

@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { updateArticle, type ActionState } from "@/lib/actions";
+import { getCoverImageProxyPath } from "@/lib/cover-image-url";
 
 type ArticleEditorFormProps = {
   article: {
@@ -86,8 +87,9 @@ export function ArticleEditorForm({ article, siteId }: ArticleEditorFormProps) {
         <p className="text-xs text-slate-500">Optional. Use a publicly reachable image URL.</p>
         {article.coverImageUrl ? (
           <img
-            src={article.coverImageUrl}
+            src={getCoverImageProxyPath(article.coverImageUrl)}
             alt=""
+            referrerPolicy="no-referrer"
             className="mt-2 h-40 w-full rounded-2xl border border-line object-cover"
           />
         ) : null}

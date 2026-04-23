@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PublicBlogMetaLinks } from "@/components/public-blog-meta-links";
+import { getCoverImageProxyPath, getCoverImageProxyUrl } from "@/lib/cover-image-url";
 import { getAdjacentPublishedArticles, getPublishedArticleBySlug } from "@/lib/articles";
 import { getPublicUrls } from "@/lib/public-urls";
 import { PublicArticleRouteParamsSchema } from "@/lib/validations";
@@ -54,14 +55,14 @@ export async function generateMetadata({ params }: PublicArticlePageProps): Prom
       url,
       type: "article",
       siteName: article.siteProject?.name || "DIYSEO",
-      images: article.coverImageUrl ? [{ url: article.coverImageUrl }] : undefined,
+      images: article.coverImageUrl ? [{ url: getCoverImageProxyUrl(article.coverImageUrl, urls.origin || undefined) }] : undefined,
       publishedTime: article.publishedAt ? new Date(article.publishedAt).toISOString() : undefined
     },
     twitter: {
       card: article.coverImageUrl ? "summary_large_image" : "summary",
       title,
       description,
-      images: article.coverImageUrl ? [article.coverImageUrl] : undefined
+      images: article.coverImageUrl ? [getCoverImageProxyUrl(article.coverImageUrl, urls.origin || undefined)] : undefined
     }
   };
 }
@@ -103,8 +104,9 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
           </p>
           {article.coverImageUrl ? (
             <img
-              src={article.coverImageUrl}
+              src={getCoverImageProxyPath(article.coverImageUrl)}
               alt=""
+              referrerPolicy="no-referrer"
               className="h-auto w-full rounded-[1.75rem] border border-line object-cover"
             />
           ) : null}

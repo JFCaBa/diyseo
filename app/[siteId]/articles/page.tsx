@@ -2,6 +2,7 @@ import { ArticleGenerationForm } from "@/components/article-generation-form";
 import { ArticleKeywordAssignment } from "@/components/article-keyword-assignment";
 import { ArticleStatusToggle } from "@/components/article-status-toggle";
 import { PageHeader } from "@/components/page-header";
+import { getCoverImageProxyPath } from "@/lib/cover-image-url";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
@@ -136,8 +137,9 @@ export default async function ArticlesPage({ params }: ArticlesPageProps) {
                   <div>
                     {article.coverImageUrl ? (
                       <img
-                        src={article.coverImageUrl}
+                        src={getCoverImageProxyPath(article.coverImageUrl)}
                         alt=""
+                        referrerPolicy="no-referrer"
                         className="mb-3 h-32 w-full rounded-2xl border border-line object-cover md:max-w-sm"
                       />
                     ) : null}

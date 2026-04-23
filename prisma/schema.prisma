@@ -103,6 +103,7 @@ model Article {
   title         String
   slug          String
   excerpt       String?
+  coverImageUrl String?
   contentHtml   String
   seoTitle      String?
   seoDescription String?

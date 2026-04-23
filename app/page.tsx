@@ -342,6 +342,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <Link href="/blog" className="transition hover:text-ink">
               Blog
             </Link>
+            <Link href="/privacy" className="transition hover:text-ink">
+              Privacy
+            </Link>
+            <Link href="/terms" className="transition hover:text-ink">
+              Terms
+            </Link>
           </div>
         </footer>
       </section>

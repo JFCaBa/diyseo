@@ -54,12 +54,14 @@ export async function generateMetadata({ params }: PublicArticlePageProps): Prom
       url,
       type: "article",
       siteName: article.siteProject?.name || "DIYSEO",
+      images: article.coverImageUrl ? [{ url: article.coverImageUrl }] : undefined,
       publishedTime: article.publishedAt ? new Date(article.publishedAt).toISOString() : undefined
     },
     twitter: {
-      card: "summary",
+      card: article.coverImageUrl ? "summary_large_image" : "summary",
       title,
-      description
+      description,
+      images: article.coverImageUrl ? [article.coverImageUrl] : undefined
     }
   };
 }
@@ -99,6 +101,13 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
           <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">
             {article.siteProject?.name || "DIYSEO"}
           </p>
+          {article.coverImageUrl ? (
+            <img
+              src={article.coverImageUrl}
+              alt=""
+              className="h-auto w-full rounded-[1.75rem] border border-line object-cover"
+            />
+          ) : null}
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl md:text-5xl">{article.title}</h1>
           {article.excerpt ? <p className="max-w-2xl text-lg leading-8 text-slate-700 sm:text-xl">{article.excerpt}</p> : null}
           {publishedDate ? (

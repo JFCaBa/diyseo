@@ -496,6 +496,7 @@ export async function createArticle(
   const payload: CreateArticleInput = {
     title: typeof formData.get("title") === "string" ? formData.get("title")!.toString().trim() : "",
     excerpt: cleanNullableText(formData.get("excerpt")),
+    coverImageUrl: cleanNullableText(formData.get("coverImageUrl")),
     contentHtml: typeof formData.get("contentHtml") === "string" ? formData.get("contentHtml")!.toString() : "",
     seoTitle: cleanNullableText(formData.get("seoTitle")),
     seoDescription: cleanNullableText(formData.get("seoDescription")),
@@ -523,6 +524,7 @@ export async function createArticle(
       title: parsed.data.title,
       slug,
       excerpt: parsed.data.excerpt,
+      coverImageUrl: parsed.data.coverImageUrl,
       contentHtml: parsed.data.contentHtml,
       seoTitle: parsed.data.seoTitle,
       seoDescription: parsed.data.seoDescription,
@@ -546,6 +548,7 @@ export async function updateArticle(
   const parsed = UpdateArticleSchema.safeParse({
     title: formData.get("title"),
     excerpt: cleanNullableText(formData.get("excerpt")),
+    coverImageUrl: cleanNullableText(formData.get("coverImageUrl")),
     contentHtml: formData.get("contentHtml"),
     seoTitle: cleanNullableText(formData.get("seoTitle")),
     seoDescription: cleanNullableText(formData.get("seoDescription"))

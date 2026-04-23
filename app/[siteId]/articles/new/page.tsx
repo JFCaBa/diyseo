@@ -42,6 +42,7 @@ export default async function NewArticlePage({ params, searchParams }: NewArticl
         initialValues={{
           title: "",
           excerpt: "",
+          coverImageUrl: "",
           contentHtml: "<h2>Article heading</h2><p>Start drafting here.</p>",
           seoTitle: "",
           seoDescription: "",

@@ -21,6 +21,7 @@ export default async function ArticlesPage({ params }: ArticlesPageProps) {
         id: true,
         title: true,
         slug: true,
+        coverImageUrl: true,
         status: true,
         publishedAt: true,
         createdAt: true,
@@ -133,6 +134,13 @@ export default async function ArticlesPage({ params }: ArticlesPageProps) {
               <div key={article.id} className="rounded-2xl border border-line px-4 py-4">
                 <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
                   <div>
+                    {article.coverImageUrl ? (
+                      <img
+                        src={article.coverImageUrl}
+                        alt=""
+                        className="mb-3 h-32 w-full rounded-2xl border border-line object-cover md:max-w-sm"
+                      />
+                    ) : null}
                     <p className="font-semibold text-ink">{article.title}</p>
                     <p className="text-sm text-slate-600">{article.slug}</p>
                     {article.keyword ? (

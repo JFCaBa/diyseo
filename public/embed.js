@@ -85,6 +85,21 @@
       "padding:0 0 12px;" +
       "border-bottom:1px solid var(--soro-border-color,#dbe4ea);" +
       "}" +
+      "#soro-widget-container .soro-cover{" +
+      "display:block;" +
+      "width:100%;" +
+      "height:auto;" +
+      "margin:0 0 12px;" +
+      "border-radius:12px;" +
+      "object-fit:cover;" +
+      "}" +
+      "#soro-widget-container .soro-list-cover{" +
+      "aspect-ratio:16/9;" +
+      "}" +
+      "#soro-widget-container .soro-detail-cover{" +
+      "margin-top:12px;" +
+      "margin-bottom:16px;" +
+      "}" +
       "#soro-widget-container .soro-article-item:last-child{" +
       "border-bottom:none;" +
       "padding-bottom:0;" +
@@ -299,6 +314,11 @@
           .map(function (article) {
             return (
               '<li class="soro-article-item">' +
+              (article.coverImageUrl
+                ? '<img class="soro-cover soro-list-cover" src="' +
+                  escapeHtml(article.coverImageUrl) +
+                  '" alt="">' 
+                : "") +
               '<a href="#soro-article/' +
               encodeURIComponent(article.slug) +
               '" class="soro-link" data-slug="' +
@@ -363,6 +383,11 @@
             '<h1 class="soro-widget-title">' +
             escapeHtml(article.title) +
             "</h1>" +
+            (article.coverImageUrl
+              ? '<img class="soro-cover soro-detail-cover" src="' +
+                escapeHtml(article.coverImageUrl) +
+                '" alt="">'
+              : "") +
             (article.publishedAt
               ? '<p class="soro-widget-meta">' + escapeHtml(formatDate(article.publishedAt)) + "</p>"
               : "") +

@@ -26,6 +26,7 @@ export default async function ArticleEditorPage({ params }: ArticleEditorPagePro
       status: true,
       publishedAt: true,
       excerpt: true,
+      coverImageUrl: true,
       contentHtml: true,
       seoTitle: true,
       seoDescription: true

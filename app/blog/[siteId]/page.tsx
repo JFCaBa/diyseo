@@ -61,7 +61,8 @@ export async function generateMetadata({ params }: PublicBlogIndexPageProps): Pr
       description,
       url: urls.indexUrl,
       type: "website",
-      siteName: data.site.name
+      siteName: data.site.name,
+      images: data.articles[0]?.coverImageUrl ? [{ url: data.articles[0].coverImageUrl }] : undefined
     },
     twitter: {
       card: "summary",
@@ -113,6 +114,13 @@ export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPag
                   className="rounded-3xl border border-line bg-white px-5 py-5 transition hover:border-slate-300 hover:bg-mist/40 sm:px-6 sm:py-6"
                 >
                   <div className="space-y-4">
+                    {article.coverImageUrl ? (
+                      <img
+                        src={article.coverImageUrl}
+                        alt=""
+                        className="h-56 w-full rounded-[1.5rem] border border-line object-cover"
+                      />
+                    ) : null}
                     <div className="space-y-3">
                       <Link
                         href={urls.articlePath(article.slug)}

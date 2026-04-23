@@ -11,6 +11,7 @@ type ArticleEditorFormProps = {
     id: string;
     title: string;
     excerpt: string | null;
+    coverImageUrl: string | null;
     contentHtml: string;
     seoTitle: string | null;
     seoDescription: string | null;
@@ -68,6 +69,28 @@ export function ArticleEditorForm({ article, siteId }: ArticleEditorFormProps) {
           rows={4}
           className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
         />
+      </div>
+
+      <div className="grid gap-2">
+        <label htmlFor="coverImageUrl" className="text-sm font-medium text-ink">
+          Cover Image URL
+        </label>
+        <input
+          id="coverImageUrl"
+          name="coverImageUrl"
+          type="url"
+          defaultValue={article.coverImageUrl ?? ""}
+          placeholder="https://example.com/cover.jpg"
+          className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
+        />
+        <p className="text-xs text-slate-500">Optional. Use a publicly reachable image URL.</p>
+        {article.coverImageUrl ? (
+          <img
+            src={article.coverImageUrl}
+            alt=""
+            className="mt-2 h-40 w-full rounded-2xl border border-line object-cover"
+          />
+        ) : null}
       </div>
 
       <div className="grid gap-2">

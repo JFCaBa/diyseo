@@ -9,6 +9,7 @@ import { createArticle, type ActionState } from "@/lib/actions";
 type ArticleCreateFormProps = {
   initialValues: {
     contentHtml: string;
+    coverImageUrl: string;
     excerpt: string;
     publishedDate: string;
     seoDescription: string;
@@ -80,6 +81,21 @@ export function ArticleCreateForm({ initialValues, returnTo, siteId }: ArticleCr
           rows={4}
           className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
         />
+      </div>
+
+      <div className="grid gap-2">
+        <label htmlFor="coverImageUrl" className="text-sm font-medium text-ink">
+          Cover Image URL
+        </label>
+        <input
+          id="coverImageUrl"
+          name="coverImageUrl"
+          type="url"
+          defaultValue={initialValues.coverImageUrl}
+          placeholder="https://example.com/cover.jpg"
+          className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
+        />
+        <p className="text-xs text-slate-500">Optional. Use a publicly reachable image URL.</p>
       </div>
 
       <div className="grid gap-2">

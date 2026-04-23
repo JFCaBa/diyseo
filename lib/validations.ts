@@ -101,6 +101,7 @@ export const UpdateSearchConsolePropertySchema = z.object({
 export const UpdateArticleSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   excerpt: z.string().max(2000).optional().nullable(),
+  coverImageUrl: z.string().url("Cover image must be a valid URL").max(2000).optional().nullable(),
   contentHtml: z.string().min(1, "Content is required"),
   seoTitle: z.string().max(60, "SEO Title should be under 60 characters").optional().nullable(),
   seoDescription: z.string().max(160, "SEO Description should be under 160 characters").optional().nullable()
@@ -109,6 +110,7 @@ export const UpdateArticleSchema = z.object({
 export const CreateArticleSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   excerpt: z.string().max(2000).optional().nullable(),
+  coverImageUrl: z.string().url("Cover image must be a valid URL").max(2000).optional().nullable(),
   contentHtml: z.string().min(1, "Content is required"),
   seoTitle: z.string().max(60, "SEO Title should be under 60 characters").optional().nullable(),
   seoDescription: z.string().max(160, "SEO Description should be under 160 characters").optional().nullable(),

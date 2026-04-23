@@ -5,6 +5,7 @@ export const publicArticleSelect = {
   title: true,
   slug: true,
   excerpt: true,
+  coverImageUrl: true,
   contentHtml: true,
   seoTitle: true,
   seoDescription: true,

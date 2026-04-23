@@ -300,7 +300,12 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         </div>
       </div>
 
-      <WidgetInstallCard id="install-widget" baseUrl={appBaseUrl.replace(/\/$/, "")} siteId={siteId} />
+      <WidgetInstallCard
+        id="install-widget"
+        baseUrl={appBaseUrl.replace(/\/$/, "")}
+        siteId={siteId}
+        initialTheme={site.widgetTheme === "dark" ? "dark" : "light"}
+      />
     </section>
   );
 }

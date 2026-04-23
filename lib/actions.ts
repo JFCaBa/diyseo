@@ -17,6 +17,7 @@ import {
   CreateSiteSchema,
   ToggleArticleStatusSchema,
   UpdateSearchConsolePropertySchema,
+  UpdateWidgetThemeSchema,
   UpdateArticleDateSchema,
   UpdateArticleSchema,
   UpdateBrandDNASchema
@@ -415,6 +416,37 @@ export async function updateSearchConsoleProperty(
   revalidatePath(`/${siteId}/analytics`);
 
   return { success: "Search Console property connected." };
+}
+
+export async function updateWidgetTheme(
+  siteId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const parsed = UpdateWidgetThemeSchema.safeParse({
+    widgetTheme: formData.get("widgetTheme")
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid widget theme." };
+  }
+
+  try {
+    await requireOwnedSite(siteId);
+  } catch {
+    return { error: "Site not found." };
+  }
+
+  await prisma.siteProject.update({
+    where: { id: siteId },
+    data: {
+      widgetTheme: parsed.data.widgetTheme
+    }
+  });
+
+  revalidatePath(`/${siteId}`);
+
+  return { success: "Widget theme updated." };
 }
 
 export async function assignKeywordToArticle(

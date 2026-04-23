@@ -1,22 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+
+import { updateWidgetTheme, type ActionState } from "@/lib/actions";
+
+type WidgetTheme = "light" | "dark";
 
 type WidgetInstallCardProps = {
   baseUrl: string;
   siteId: string;
+  initialTheme?: WidgetTheme | null;
   id?: string;
 };
 
-export function WidgetInstallCard({ baseUrl, siteId, id }: WidgetInstallCardProps) {
+const initialState: ActionState = {};
+
+export function WidgetInstallCard({ baseUrl, siteId, initialTheme, id }: WidgetInstallCardProps) {
   const [copied, setCopied] = useState(false);
+  const [theme, setTheme] = useState<WidgetTheme>(initialTheme === "dark" ? "dark" : "light");
+  const formRef = useRef<HTMLFormElement>(null);
+  const updateWidgetThemeForSite = updateWidgetTheme.bind(null, siteId);
+  const [state, formAction] = useActionState(updateWidgetThemeForSite, initialState);
   const embedUrl = `${baseUrl}/embed.js`;
   const snippet = `<div id="soro-widget-container"></div>
 <script
   src="${embedUrl}"
   data-site="${siteId}"
   data-base-path="/blog"
+  data-theme="${theme}"
 ></script>`;
+
+  useEffect(() => {
+    setTheme(initialTheme === "dark" ? "dark" : "light");
+  }, [initialTheme]);
 
   async function handleCopy() {
     try {
@@ -34,7 +50,7 @@ export function WidgetInstallCard({ baseUrl, siteId, id }: WidgetInstallCardProp
         <div>
           <h2 className="text-lg font-semibold text-ink">Install Widget</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Copy this snippet to embed the published article widget for this site.
+            Choose a theme, then copy this snippet to embed the published article widget for this site.
           </p>
         </div>
         <button
@@ -46,7 +62,30 @@ export function WidgetInstallCard({ baseUrl, siteId, id }: WidgetInstallCardProp
         </button>
       </div>
 
-      <dl className="mt-6 grid gap-3 text-sm text-slate-600 md:grid-cols-3">
+      <form ref={formRef} action={formAction} className="mt-6 grid gap-2">
+        <label htmlFor="widgetTheme" className="text-sm font-medium text-ink">
+          Widget theme
+        </label>
+        <select
+          id="widgetTheme"
+          name="widgetTheme"
+          value={theme}
+          onChange={(event) => {
+            const nextTheme = event.target.value === "dark" ? "dark" : "light";
+            setTheme(nextTheme);
+            formRef.current?.requestSubmit();
+          }}
+          className="w-full max-w-xs rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-accent"
+        >
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+        <p className="text-xs text-slate-500">Default is Light. Change this if the host site uses a dark visual theme.</p>
+        {state.error ? <p className="text-xs text-red-600">{state.error}</p> : null}
+        {!state.error && state.success ? <p className="text-xs text-accent">{state.success}</p> : null}
+      </form>
+
+      <dl className="mt-6 grid gap-3 text-sm text-slate-600 md:grid-cols-4">
         <div>
           <dt className="font-semibold text-ink">embed.js URL</dt>
           <dd className="mt-1 break-all">{embedUrl}</dd>
@@ -58,6 +97,10 @@ export function WidgetInstallCard({ baseUrl, siteId, id }: WidgetInstallCardProp
         <div>
           <dt className="font-semibold text-ink">data-base-path</dt>
           <dd className="mt-1">/blog</dd>
+        </div>
+        <div>
+          <dt className="font-semibold text-ink">data-theme</dt>
+          <dd className="mt-1">{theme}</dd>
         </div>
       </dl>
 

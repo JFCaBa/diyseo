@@ -20,14 +20,14 @@ export async function PublicBlogMetaLinks({ siteId }: PublicBlogMetaLinksProps) 
     : [{ href: "/blog/robots.txt", label: "robots.txt" }];
 
   return (
-    <footer className="mt-10 border-t border-line pt-5 text-xs text-slate-500">
+    <footer className="mt-10 border-t border-slate-800 pt-5 text-xs text-slate-400">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {links.map((link, index) => (
           <div key={link.href} className="flex items-center gap-3">
-            <Link href={link.href} className="underline-offset-4 transition hover:text-slate-900 hover:underline">
+            <Link href={link.href} className="underline-offset-4 transition hover:text-white hover:underline">
               {link.label}
             </Link>
-            {index < links.length - 1 ? <span className="text-slate-300">•</span> : null}
+            {index < links.length - 1 ? <span className="text-slate-700">•</span> : null}
           </div>
         ))}
       </div>

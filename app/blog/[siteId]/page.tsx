@@ -83,20 +83,20 @@ export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPag
   const urls = await getPublicUrls(data.site.id);
 
   return (
-    <main className="min-h-screen bg-sand/40 px-4 py-10 sm:px-6 sm:py-12">
-      <section className="mx-auto max-w-4xl rounded-[2rem] border border-line bg-white px-5 py-7 shadow-panel sm:px-8 md:px-10 md:py-10">
-        <div className="space-y-4 border-b border-line pb-7">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">Public Blog</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">{data.site.name} Blog</h1>
-          <p className="max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#1e293b_0%,#020617_55%,#020617_100%)] px-4 py-10 text-slate-100 sm:px-6 sm:py-12">
+      <section className="mx-auto max-w-4xl rounded-[2rem] border border-slate-800 bg-slate-950/85 px-5 py-7 shadow-panel backdrop-blur sm:px-8 md:px-10 md:py-10">
+        <div className="space-y-4 border-b border-slate-800 pb-7">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-teal-300">Public Blog</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">{data.site.name} Blog</h1>
+          <p className="max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
             Published articles from {data.site.name}, served directly from the DIYSEO app.
           </p>
         </div>
 
         {data.articles.length === 0 ? (
-          <div className="mt-10 rounded-3xl border border-dashed border-line bg-mist/70 px-6 py-10 text-center">
-            <p className="text-lg font-semibold text-slate-900">No articles published yet.</p>
-            <p className="mt-2 text-sm text-slate-600">Check back later for new posts from this site.</p>
+          <div className="mt-10 rounded-3xl border border-dashed border-slate-700 bg-slate-900/60 px-6 py-10 text-center">
+            <p className="text-lg font-semibold text-white">No articles published yet.</p>
+            <p className="mt-2 text-sm text-slate-400">Check back later for new posts from this site.</p>
           </div>
         ) : (
           <div className="mt-10 space-y-6">
@@ -112,7 +112,7 @@ export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPag
               return (
                 <article
                   key={article.id}
-                  className="rounded-3xl border border-line bg-white px-5 py-5 transition hover:border-slate-300 hover:bg-mist/40 sm:px-6 sm:py-6"
+                  className="rounded-3xl border border-slate-800 bg-slate-900/70 px-5 py-5 transition hover:border-slate-700 hover:bg-slate-900 sm:px-6 sm:py-6"
                 >
                   <div className="space-y-4">
                     {article.coverImageUrl ? (
@@ -126,21 +126,21 @@ export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPag
                     <div className="space-y-3">
                       <Link
                         href={urls.articlePath(article.slug)}
-                        className="block text-2xl font-semibold tracking-tight text-slate-900 decoration-transparent underline-offset-4 transition hover:text-accent hover:decoration-accent hover:underline"
+                        className="block text-2xl font-semibold tracking-tight text-white decoration-transparent underline-offset-4 transition hover:text-teal-300 hover:decoration-teal-300 hover:underline"
                       >
                         {article.title}
                       </Link>
                       {publishedDate ? (
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                           Published {publishedDate}
                         </p>
                       ) : null}
                     </div>
-                    {article.excerpt ? <p className="text-base leading-relaxed text-slate-600">{article.excerpt}</p> : null}
+                    {article.excerpt ? <p className="text-base leading-relaxed text-slate-300">{article.excerpt}</p> : null}
                     <div>
                       <Link
                         href={`/blog/${data.site.id}/${article.slug}`}
-                        className="text-sm font-semibold text-accent underline-offset-4 transition hover:text-teal-700 hover:underline"
+                        className="text-sm font-semibold text-teal-300 underline-offset-4 transition hover:text-teal-200 hover:underline"
                       >
                         Read article
                       </Link>

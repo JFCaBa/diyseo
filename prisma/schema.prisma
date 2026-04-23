@@ -69,6 +69,7 @@ model SiteProject {
   workspaceId                String
   name                       String
   domain                     String
+  widgetTheme                String?
   searchConsolePropertyUrl   String?
   searchConsoleConnectedAt   DateTime?
   createdAt                  DateTime     @default(now())

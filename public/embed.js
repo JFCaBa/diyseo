@@ -44,25 +44,37 @@
     style.id = "soro-widget-style";
     style.textContent =
       "#soro-widget-container{" +
+      "--soro-surface:#ffffff;" +
+      "--soro-panel:#ffffff;" +
+      "--soro-text-color:#0f172a;" +
+      "--soro-muted-color:#64748b;" +
+      "--soro-border-color:#dbe4ea;" +
+      "--soro-link-color:#0f766e;" +
+      "--soro-link-hover-color:#115e59;" +
+      "--soro-code-background:#f8fafc;" +
+      "--soro-blockquote-border:#cbd5e1;" +
       "font-family:var(--soro-font-family,inherit);" +
       "line-height:1.6;" +
       "color:var(--soro-text-color,inherit);" +
       "background:var(--soro-background,transparent);" +
       "}" +
       "#soro-widget-container[data-theme='dark']{" +
-      "--soro-surface:#0f172a;" +
+      "--soro-surface:#020617;" +
+      "--soro-panel:#0f172a;" +
       "--soro-text-color:#e2e8f0;" +
       "--soro-muted-color:#94a3b8;" +
       "--soro-border-color:#334155;" +
       "--soro-link-color:#5eead4;" +
       "--soro-link-hover-color:#99f6e4;" +
+      "--soro-code-background:#111827;" +
+      "--soro-blockquote-border:#475569;" +
       "}" +
       "#soro-widget-container *{box-sizing:border-box;}" +
       "#soro-widget-container .soro-widget-shell{" +
       "border:1px solid var(--soro-border-color,#dbe4ea);" +
       "border-radius:16px;" +
       "padding:20px;" +
-      "background:var(--soro-surface,#fff);" +
+      "background:var(--soro-panel,#fff);" +
       "}" +
       "#soro-widget-container .soro-widget-title{" +
       "margin:0 0 16px;" +
@@ -126,14 +138,73 @@
       "#soro-widget-container .soro-content{" +
       "overflow-wrap:anywhere;" +
       "}" +
+      "#soro-widget-container .soro-content, " +
+      "#soro-widget-container .soro-content p, " +
+      "#soro-widget-container .soro-content li, " +
+      "#soro-widget-container .soro-content blockquote{" +
+      "color:var(--soro-text-color,#0f172a);" +
+      "}" +
       "#soro-widget-container .soro-content h1," +
       "#soro-widget-container .soro-content h2," +
       "#soro-widget-container .soro-content h3{" +
       "line-height:1.2;" +
       "margin:24px 0 12px;" +
+      "color:var(--soro-text-color,#0f172a);" +
+      "}" +
+      "#soro-widget-container .soro-content h4," +
+      "#soro-widget-container .soro-content h5," +
+      "#soro-widget-container .soro-content h6{" +
+      "line-height:1.25;" +
+      "margin:20px 0 10px;" +
+      "color:var(--soro-text-color,#0f172a);" +
       "}" +
       "#soro-widget-container .soro-content p{" +
       "margin:0 0 16px;" +
+      "}" +
+      "#soro-widget-container .soro-content ul," +
+      "#soro-widget-container .soro-content ol{" +
+      "margin:0 0 16px;" +
+      "padding-left:1.5rem;" +
+      "}" +
+      "#soro-widget-container .soro-content li + li{" +
+      "margin-top:6px;" +
+      "}" +
+      "#soro-widget-container .soro-content a{" +
+      "color:var(--soro-link-color,#0f766e);" +
+      "text-decoration:underline;" +
+      "text-underline-offset:3px;" +
+      "}" +
+      "#soro-widget-container .soro-content a:hover{" +
+      "color:var(--soro-link-hover-color,#115e59);" +
+      "}" +
+      "#soro-widget-container .soro-content strong{" +
+      "color:var(--soro-text-color,#0f172a);" +
+      "}" +
+      "#soro-widget-container .soro-content blockquote{" +
+      "margin:0 0 16px;" +
+      "padding-left:16px;" +
+      "border-left:3px solid var(--soro-blockquote-border,#cbd5e1);" +
+      "}" +
+      "#soro-widget-container .soro-content code{" +
+      "padding:0.15rem 0.35rem;" +
+      "border-radius:6px;" +
+      "background:var(--soro-code-background,#f8fafc);" +
+      "}" +
+      "#soro-widget-container .soro-content pre{" +
+      "margin:0 0 16px;" +
+      "padding:16px;" +
+      "overflow:auto;" +
+      "border-radius:12px;" +
+      "background:var(--soro-code-background,#f8fafc);" +
+      "}" +
+      "#soro-widget-container .soro-content pre code{" +
+      "padding:0;" +
+      "background:transparent;" +
+      "}" +
+      "#soro-widget-container .soro-content img{" +
+      "max-width:100%;" +
+      "height:auto;" +
+      "border-radius:12px;" +
       "}" +
       "#soro-widget-container .soro-state{" +
       "padding:20px 0;" +

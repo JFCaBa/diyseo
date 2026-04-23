@@ -34,9 +34,19 @@ function isBlockedHostname(hostname: string) {
   return false;
 }
 
+function normalizeImageUrl(url: string): string {
+  // Google Drive share links (drive.google.com/file/d/{fileId}/view...) don't
+  // serve the raw file — rewrite to the direct content URL.
+  const driveMatch = url.match(/^https:\/\/drive\.google\.com\/file\/d\/([^/?#]+)/);
+  if (driveMatch) {
+    return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+  }
+  return url;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const rawUrl = searchParams.get("url")?.trim();
+  const rawUrl = normalizeImageUrl(searchParams.get("url")?.trim() ?? "");
 
   if (!rawUrl) {
     return NextResponse.json({ error: "Missing image URL." }, { status: 400 });

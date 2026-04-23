@@ -75,9 +75,18 @@ export default async function KeywordsPage({ params }: KeywordsPageProps) {
           </p>
         </div>
         {keywords.length === 0 ? (
-          <p className="mt-4 rounded-2xl border border-dashed border-line px-4 py-6 text-sm text-slate-600">
-            No keywords yet. Add a few target phrases here so writers and generated drafts stay aligned.
-          </p>
+          <div className="mt-4 rounded-2xl border border-dashed border-line px-4 py-6">
+            <p className="text-sm text-slate-600">
+              No keywords yet. You can add them manually here, or generate an article first and let AI suggest site
+              keywords for you to review and assign one by one.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-4">
+              <Link href={`/${siteId}/articles`} className="text-sm font-semibold text-accent hover:underline">
+                Generate your first article
+              </Link>
+              <span className="text-sm text-slate-500">AI-generated keywords will appear after article generation.</span>
+            </div>
+          </div>
         ) : (
           <div className="mt-4 grid gap-3">
             {keywords.map((keyword) => (

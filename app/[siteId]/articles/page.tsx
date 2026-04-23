@@ -115,9 +115,18 @@ export default async function ArticlesPage({ params }: ArticlesPageProps) {
           </Link>
         </div>
         {articles.length === 0 ? (
-          <p className="mt-4 rounded-2xl border border-dashed border-line px-4 py-6 text-sm text-slate-600">
-            No articles yet. Generate a draft from Brand DNA or create one manually to start your publishing pipeline.
-          </p>
+          <div className="mt-4 rounded-2xl border border-dashed border-line px-4 py-6">
+            <p className="text-sm text-slate-600">
+              No articles yet. Generate your first article from Brand DNA to kick off the workflow, then publish it when
+              it is ready.
+            </p>
+            <Link
+              href={`/${siteId}/articles#generate-article`}
+              className="mt-4 inline-flex text-sm font-semibold text-accent hover:underline"
+            >
+              Generate your first article
+            </Link>
+          </div>
         ) : (
           <div className="mt-4 grid gap-3">
             {articles.map((article) => (

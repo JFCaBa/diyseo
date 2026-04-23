@@ -5,9 +5,10 @@ import { useState } from "react";
 type WidgetInstallCardProps = {
   baseUrl: string;
   siteId: string;
+  id?: string;
 };
 
-export function WidgetInstallCard({ baseUrl, siteId }: WidgetInstallCardProps) {
+export function WidgetInstallCard({ baseUrl, siteId, id }: WidgetInstallCardProps) {
   const [copied, setCopied] = useState(false);
   const embedUrl = `${baseUrl}/embed.js`;
   const snippet = `<div id="soro-widget-container"></div>
@@ -28,7 +29,7 @@ export function WidgetInstallCard({ baseUrl, siteId }: WidgetInstallCardProps) {
   }
 
   return (
-    <section className="rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
+    <section id={id} className="rounded-3xl border border-line bg-white/90 p-6 shadow-panel scroll-mt-24">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-ink">Install Widget</h2>

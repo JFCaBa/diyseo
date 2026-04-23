@@ -60,7 +60,11 @@ export function ArticleGenerationForm({ siteId }: ArticleGenerationFormProps) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-4 rounded-3xl border border-line bg-white/85 p-6 shadow-panel">
+    <form
+      id="generate-article"
+      onSubmit={onSubmit}
+      className="grid gap-4 rounded-3xl border border-line bg-white/85 p-6 shadow-panel scroll-mt-24"
+    >
       <div className="space-y-1">
         <h2 className="text-lg font-semibold text-ink">Generate a Draft</h2>
         <p className="text-sm text-slate-600">

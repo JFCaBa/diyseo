@@ -102,6 +102,10 @@ export const UpdateWidgetThemeSchema = z.object({
   widgetTheme: z.enum(["light", "dark"])
 });
 
+export const TransferSiteSchema = z.object({
+  email: z.string().email("Enter a valid user email.")
+});
+
 export const UpdateArticleSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   excerpt: z.string().max(2000).optional().nullable(),
@@ -167,5 +171,6 @@ export type ToggleArticleStatusInput = z.infer<typeof ToggleArticleStatusSchema>
 export type CreateKeywordInput = z.infer<typeof CreateKeywordSchema>;
 export type UpdateSearchConsolePropertyInput = z.infer<typeof UpdateSearchConsolePropertySchema>;
 export type UpdateWidgetThemeInput = z.infer<typeof UpdateWidgetThemeSchema>;
+export type TransferSiteInput = z.infer<typeof TransferSiteSchema>;
 export type UpdateArticleInput = z.infer<typeof UpdateArticleSchema>;
 export type CreateArticleInput = z.infer<typeof CreateArticleSchema>;

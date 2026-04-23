@@ -5,6 +5,7 @@ import { SignOutButton } from "@/components/auth-buttons";
 import { CreateSiteForm } from "@/components/create-site-form";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { SiteTransferForm } from "@/components/site-transfer-form";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -61,17 +62,21 @@ export default async function SettingsPage() {
           ) : (
             <div className="grid gap-3">
               {sites.map((site) => (
-                <Link
-                  key={site.id}
-                  href={`/${site.id}`}
-                  className="flex items-center justify-between rounded-2xl border border-line px-4 py-4 transition hover:border-accent hover:bg-mist"
-                >
-                  <div>
-                    <h3 className="font-semibold text-ink">{site.name}</h3>
-                    <p className="text-sm text-slate-600">{site.domain}</p>
+                <div key={site.id} className="rounded-2xl border border-line px-4 py-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h3 className="font-semibold text-ink">{site.name}</h3>
+                      <p className="text-sm text-slate-600">{site.domain}</p>
+                    </div>
+                    <Link
+                      href={`/${site.id}`}
+                      className="inline-flex shrink-0 rounded-2xl border border-line px-4 py-2 text-sm font-medium text-accent transition hover:bg-mist"
+                    >
+                      Open site
+                    </Link>
                   </div>
-                  <span className="text-sm font-medium text-accent">Open site</span>
-                </Link>
+                  <SiteTransferForm siteId={site.id} />
+                </div>
               ))}
             </div>
           )}

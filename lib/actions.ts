@@ -15,6 +15,7 @@ import {
   CreateKeywordSchema,
   CreateSiteInput,
   CreateSiteSchema,
+  TransferSiteSchema,
   ToggleArticleStatusSchema,
   UpdateSearchConsolePropertySchema,
   UpdateWidgetThemeSchema,
@@ -151,6 +152,25 @@ async function getWorkspaceId() {
   return workspace.id;
 }
 
+async function getOrCreateWorkspaceIdForUser(userId: string, userName?: string | null) {
+  const existingWorkspace = await prisma.workspace.findUnique({
+    where: { ownerId: userId }
+  });
+
+  if (existingWorkspace) {
+    return existingWorkspace.id;
+  }
+
+  const workspace = await prisma.workspace.create({
+    data: {
+      ownerId: userId,
+      name: userName?.trim() ? `${userName.trim()}'s Workspace` : "My Workspace"
+    }
+  });
+
+  return workspace.id;
+}
+
 async function getCurrentUserId() {
   const session = await auth();
 
@@ -218,6 +238,72 @@ export async function createSite(
   revalidatePath("/settings");
   revalidatePath("/new-site");
   redirect(`/${site.id}`);
+}
+
+export async function transferSite(
+  siteId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const parsed = TransferSiteSchema.safeParse({
+    email: typeof formData.get("email") === "string" ? formData.get("email")!.toString().trim().toLowerCase() : ""
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid transfer target." };
+  }
+
+  const currentUserId = await getCurrentUserId();
+  const site = await prisma.siteProject.findFirst({
+    where: {
+      id: siteId,
+      workspace: {
+        ownerId: currentUserId
+      }
+    },
+    select: {
+      id: true,
+      name: true,
+      workspaceId: true
+    }
+  });
+
+  if (!site) {
+    return { error: "Site not found." };
+  }
+
+  const targetUser = await prisma.user.findUnique({
+    where: {
+      email: parsed.data.email
+    },
+    select: {
+      id: true,
+      name: true
+    }
+  });
+
+  if (!targetUser) {
+    return { error: "That user does not exist yet." };
+  }
+
+  const targetWorkspaceId = await getOrCreateWorkspaceIdForUser(targetUser.id, targetUser.name);
+
+  await prisma.siteProject.update({
+    where: { id: site.id },
+    data: {
+      workspaceId: targetWorkspaceId
+    }
+  });
+
+  revalidatePath("/settings");
+  revalidatePath(`/${siteId}`);
+  revalidatePath(`/${siteId}/brand-dna`);
+  revalidatePath(`/${siteId}/articles`);
+  revalidatePath(`/${siteId}/analytics`);
+  revalidatePath(`/${siteId}/keywords`);
+  revalidatePath(`/${siteId}/calendar`);
+
+  return { success: `Transferred ${site.name} to ${parsed.data.email}. Refresh to update your site list.` };
 }
 
 export async function updateBrandDNA(

@@ -36,6 +36,13 @@ async function createUniqueSlug(siteProjectId: string, title: string) {
   }
 }
 
+function normalizeKeywordTerm(value: string) {
+  return value
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase();
+}
+
 export async function generateArticleForSite(siteId: string, input: unknown) {
   const request = GenerateArticleRequestSchema.parse(input);
 
@@ -77,26 +84,60 @@ export async function generateArticleForSite(siteId: string, input: unknown) {
   });
 
   const slug = await createUniqueSlug(site.id, generated.title);
+  const keywordTerms = Array.from(new Set(generated.keywords.map((keyword) => normalizeKeywordTerm(keyword)))).slice(0, 7);
 
-  return prisma.article.create({
-    data: {
-      siteProjectId: site.id,
-      title: generated.title,
-      slug,
-      excerpt: generated.excerpt,
-      contentHtml: generated.contentHtml,
-      seoTitle: generated.seoTitle,
-      seoDescription: generated.seoDescription,
-      status: "DRAFT"
-    },
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-      excerpt: true,
-      seoTitle: true,
-      seoDescription: true,
-      status: true
-    }
+  return prisma.$transaction(async (tx) => {
+    const article = await tx.article.create({
+      data: {
+        siteProjectId: site.id,
+        title: generated.title,
+        slug,
+        excerpt: generated.excerpt,
+        contentHtml: generated.contentHtml,
+        seoTitle: generated.seoTitle,
+        seoDescription: generated.seoDescription,
+        status: "DRAFT"
+      },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        seoTitle: true,
+        seoDescription: true,
+        status: true
+      }
+    });
+
+    await tx.keyword.createMany({
+      data: keywordTerms.map((term) => ({
+        siteProjectId: site.id,
+        term,
+        status: "NEW" as const
+      })),
+      skipDuplicates: true
+    });
+
+    const keywords = await tx.keyword.findMany({
+      where: {
+        siteProjectId: site.id,
+        term: {
+          in: keywordTerms
+        }
+      },
+      orderBy: {
+        term: "asc"
+      },
+      select: {
+        id: true,
+        term: true,
+        status: true
+      }
+    });
+
+    return {
+      article,
+      keywords
+    };
   });
 }

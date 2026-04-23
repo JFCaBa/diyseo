@@ -11,9 +11,9 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const { siteId } = await context.params;
     const body = await request.json().catch(() => ({}));
-    const article = await generateArticleForSite(siteId, body);
+    const result = await generateArticleForSite(siteId, body);
 
-    return NextResponse.json({ article }, { status: 201 });
+    return NextResponse.json(result, { status: 201 });
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json(

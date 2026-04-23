@@ -8,6 +8,23 @@ function truncateGeneratedText(value: string, maxLength: number) {
   return normalizeGeneratedText(value).slice(0, maxLength);
 }
 
+function normalizeGeneratedKeyword(value: string) {
+  return normalizeGeneratedText(value).toLocaleLowerCase();
+}
+
+const GeneratedKeywordSchema = z
+  .string()
+  .transform((value) => normalizeGeneratedKeyword(value))
+  .pipe(
+    z
+      .string()
+      .min(1)
+      .max(100)
+      .refine((value) => value.split(/\s+/).length >= 2 && value.split(/\s+/).length <= 5, {
+        message: "Generated keywords must be short phrases of 2 to 5 words."
+      })
+  );
+
 export const CreateSiteSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(50),
   domain: z.string().url("Must be a valid URL (e.g., https://example.com)"),
@@ -41,7 +58,11 @@ export const GeneratedArticleSchema = z.object({
   seoDescription: z
     .string()
     .transform((value) => truncateGeneratedText(value, 160))
-    .pipe(z.string().min(1).max(160))
+    .pipe(z.string().min(1).max(160)),
+  keywords: z
+    .array(GeneratedKeywordSchema)
+    .transform((keywords) => Array.from(new Set(keywords)).slice(0, 7))
+    .pipe(z.array(GeneratedKeywordSchema).min(5).max(7))
 });
 
 export const GenerateBrandDNARequestSchema = z.object({

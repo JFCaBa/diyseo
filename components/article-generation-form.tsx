@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { SuggestedKeywords } from "@/components/suggested-keywords";
+
 type ArticleGenerationFormProps = {
   siteId: string;
 };
@@ -14,6 +16,10 @@ type GenerationResult = {
     slug: string;
     status: string;
   };
+  keywords?: Array<{
+    id: string;
+    term: string;
+  }>;
   error?: string;
 };
 
@@ -90,6 +96,7 @@ export function ArticleGenerationForm({ siteId }: ArticleGenerationFormProps) {
           <p className="font-semibold text-ink">{result.article.title}</p>
           <p>Slug: {result.article.slug}</p>
           <p>Status: {result.article.status}</p>
+          <SuggestedKeywords articleId={result.article.id} siteId={siteId} keywords={result.keywords ?? []} />
           <Link
             href={`/${siteId}/articles/${result.article.id}`}
             className="mt-3 inline-flex text-sm font-semibold text-accent hover:underline"

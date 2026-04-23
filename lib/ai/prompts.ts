@@ -36,6 +36,7 @@ export function buildSystemPrompt(context: ArticleGenerationContext) {
     "-----------------",
     "",
     "Include 2 to 4 natural, contextual inline links (<a href=\"...\">) in contentHtml that point to the site domain above. Prefer the root domain and plausible category paths (e.g. /courses, /pricing, /about, /contact) derived from the business type and themes. Use descriptive anchor text, never bare URLs. Do not link to external sites.",
+    "Also generate 5 to 7 SEO-friendly keyword suggestions based on the finished article title, article content, and Brand DNA. Each keyword must be a short phrase of 2 to 5 words.",
     "Ensure the article is useful, coherent, aligned with the brand guidance, and entirely written in the requested content language."
   ].join("\n");
 }
@@ -51,7 +52,8 @@ export function buildUserPrompt(context: ArticleGenerationContext) {
     '  "excerpt": "A short, engaging 2-3 sentence summary",',
     '  "contentHtml": "The full article content formatted in semantic HTML5 (do not include <html>, <head>, or <body> tags, start with <h2> or <p>)",',
     '  "seoTitle": "Optimized meta title (under 60 characters)",',
-    '  "seoDescription": "Optimized meta description (under 160 characters)"',
+    '  "seoDescription": "Optimized meta description (under 160 characters)",',
+    '  "keywords": ["5 to 7 relevant SEO-friendly short phrases, each 2 to 5 words"]',
     "}"
   ].join("\n");
 }

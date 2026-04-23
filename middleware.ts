@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_EXACT = new Set(["/"]);
+const PUBLIC_EXACT = new Set(["/", "/privacy", "/terms"]);
 const PUBLIC_PREFIXES = ["/blog", "/api/auth", "/api/public"];
 
 const SESSION_COOKIES = [

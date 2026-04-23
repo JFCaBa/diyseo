@@ -65,17 +65,19 @@ model Session {
 }
 
 model SiteProject {
-  id           String       @id @default(cuid())
-  workspaceId  String
-  name         String
-  domain       String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id                         String       @id @default(cuid())
+  workspaceId                String
+  name                       String
+  domain                     String
+  searchConsolePropertyUrl   String?
+  searchConsoleConnectedAt   DateTime?
+  createdAt                  DateTime     @default(now())
+  updatedAt                  DateTime     @updatedAt
 
-  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  brandProfile BrandProfile?
-  articles     Article[]
-  keywords     Keyword[]
+  workspace                  Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  brandProfile               BrandProfile?
+  articles                   Article[]
+  keywords                   Keyword[]
 }
 
 model BrandProfile {

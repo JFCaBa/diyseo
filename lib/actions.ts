@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/lib/auth";
+import { listSearchConsolePropertiesForUser } from "@/lib/google-search-console";
 import { prisma } from "@/lib/prisma";
 import {
   AssignKeywordSchema,
@@ -15,6 +16,7 @@ import {
   CreateSiteInput,
   CreateSiteSchema,
   ToggleArticleStatusSchema,
+  UpdateSearchConsolePropertySchema,
   UpdateArticleDateSchema,
   UpdateArticleSchema,
   UpdateBrandDNASchema
@@ -357,6 +359,62 @@ export async function createKeyword(
   revalidatePath(`/${siteId}/articles`);
 
   return { success: "Keyword created." };
+}
+
+export async function updateSearchConsoleProperty(
+  siteId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const parsed = UpdateSearchConsolePropertySchema.safeParse({
+    propertyUrl: formData.get("propertyUrl")
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid Search Console property." };
+  }
+
+  const userId = await getCurrentUserId();
+  const site = await prisma.siteProject.findFirst({
+    where: {
+      id: siteId,
+      workspace: {
+        ownerId: userId
+      }
+    },
+    select: {
+      id: true,
+      domain: true
+    }
+  });
+
+  if (!site) {
+    return { error: "Site not found." };
+  }
+
+  const properties = await listSearchConsolePropertiesForUser(userId, site.domain);
+
+  if (!properties) {
+    return { error: "Google Search Console is not connected." };
+  }
+
+  const selectedProperty = properties.find((property) => property.siteUrl === parsed.data.propertyUrl);
+
+  if (!selectedProperty) {
+    return { error: "Selected property is not available for this Google account." };
+  }
+
+  await prisma.siteProject.update({
+    where: { id: site.id },
+    data: {
+      searchConsolePropertyUrl: selectedProperty.siteUrl,
+      searchConsoleConnectedAt: new Date()
+    }
+  });
+
+  revalidatePath(`/${siteId}/analytics`);
+
+  return { success: "Search Console property connected." };
 }
 
 export async function assignKeywordToArticle(

@@ -2,6 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/page-header";
+import { SearchConsolePropertyPicker } from "@/components/search-console-property-picker";
+import { auth, signIn } from "@/lib/auth";
+import {
+  GOOGLE_SEARCH_CONSOLE_READONLY_SCOPE,
+  getSearchConsolePerformanceForUser,
+  listSearchConsolePropertiesForUser
+} from "@/lib/google-search-console";
 import { prisma } from "@/lib/prisma";
 import { AnalyticsRouteParamsSchema } from "@/lib/validations";
 
@@ -43,6 +50,17 @@ function formatUpdatedAt(date: Date) {
   }).format(date);
 }
 
+function formatCompactNumber(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1
+  }).format(value);
+}
+
+function formatPercent(value: number) {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 export default async function AnalyticsPage({ params }: AnalyticsPageProps) {
   const parsedParams = AnalyticsRouteParamsSchema.safeParse(await params);
 
@@ -51,10 +69,27 @@ export default async function AnalyticsPage({ params }: AnalyticsPageProps) {
   }
 
   const { siteId } = parsedParams.data;
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    notFound();
+  }
+
   const [site, articleMetrics, keywordMetrics, recentActivity] = await Promise.all([
     prisma.siteProject.findUnique({
       where: { id: siteId },
-      select: { id: true, name: true }
+      select: {
+        id: true,
+        name: true,
+        domain: true,
+        searchConsolePropertyUrl: true,
+        searchConsoleConnectedAt: true,
+        workspace: {
+          select: {
+            ownerId: true
+          }
+        }
+      }
     }),
     prisma.article.groupBy({
       by: ["status"],
@@ -81,6 +116,35 @@ export default async function AnalyticsPage({ params }: AnalyticsPageProps) {
 
   if (!site) {
     notFound();
+  }
+
+  if (site.workspace.ownerId !== session.user.id) {
+    notFound();
+  }
+
+  let searchConsoleProperties: Awaited<ReturnType<typeof listSearchConsolePropertiesForUser>> = null;
+  let searchConsolePropertiesError: string | null = null;
+
+  try {
+    searchConsoleProperties = await listSearchConsolePropertiesForUser(session.user.id, site.domain);
+  } catch (error) {
+    searchConsolePropertiesError = error instanceof Error ? error.message : "Unable to load Search Console properties.";
+  }
+
+  const hasSearchConsoleAccess = Boolean(searchConsoleProperties);
+  const storedPropertyUrl = site.searchConsolePropertyUrl;
+  const selectedProperty = searchConsoleProperties?.find((property) => property.siteUrl === storedPropertyUrl) ?? null;
+
+  let searchConsolePerformance: Awaited<ReturnType<typeof getSearchConsolePerformanceForUser>> = null;
+  let searchConsolePerformanceError: string | null = null;
+
+  if (selectedProperty?.siteUrl) {
+    try {
+      searchConsolePerformance = await getSearchConsolePerformanceForUser(session.user.id, selectedProperty.siteUrl);
+    } catch (error) {
+      searchConsolePerformanceError =
+        error instanceof Error ? error.message : "Unable to load Search Console performance data.";
+    }
   }
 
   const articleCounts = articleMetrics.reduce(
@@ -116,11 +180,30 @@ export default async function AnalyticsPage({ params }: AnalyticsPageProps) {
     { label: "Used Keywords", value: keywordCounts.used.toString(), detail: "Keywords currently attached to articles" }
   ];
 
+  const hasSearchConsoleData = Boolean(
+    searchConsolePerformance &&
+      (searchConsolePerformance.clicks > 0 ||
+        searchConsolePerformance.impressions > 0 ||
+        searchConsolePerformance.topQueries.length > 0)
+  );
+
+  const searchConsoleState = selectedProperty
+    ? searchConsolePerformanceError
+      ? "error"
+      : hasSearchConsoleData
+        ? "connected-with-data"
+        : searchConsolePerformance
+          ? "connected-no-data"
+          : "error"
+    : storedPropertyUrl
+      ? "reconnect-required"
+      : "not-connected";
+
   return (
     <section className="space-y-8">
       <PageHeader
         title="Analytics"
-        description={`Track real internal publishing metrics for ${site.name} and prepare the workspace for later Search Console integration.`}
+        description={`Track real internal product metrics for ${site.name} and, when connected, verified Google Search Console data.`}
         action={
           <div className="flex flex-wrap items-center gap-3">
             <Link
@@ -143,30 +226,125 @@ export default async function AnalyticsPage({ params }: AnalyticsPageProps) {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Search Console</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">Connect Google Search Console to unlock real SEO performance data.</h2>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">
+              {searchConsoleState === "connected-with-data"
+                ? "Google Search Console is connected and returning live search data."
+                : searchConsoleState === "connected-no-data"
+                  ? "Google Search Console is connected, but there is no search data yet for this range."
+                  : searchConsoleState === "reconnect-required"
+                    ? "Reconnect Google Search Console to restore live analytics."
+                    : searchConsoleState === "error"
+                      ? "Google Search Console is connected, but the live fetch failed."
+                      : "Connect Google Search Console to unlock real SEO performance data."}
+            </h2>
             <p className="mt-3 text-sm leading-6 text-slate-700">
-              Impressions, clicks, click-through rate, average position, and top queries should only be shown once a
-              real Search Console connection exists. This page now stays honest and shows internal publishing metrics
-              until that integration is available.
+              Internal cards below always reflect real product data from DIYSEO. Search performance cards only render
+              verified Google Search Console data after a successful property connection and live query fetch.
             </p>
           </div>
 
           <div className="rounded-3xl border border-white/70 bg-white/80 px-5 py-4 lg:max-w-sm">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Integration Status</p>
-            <p className="mt-2 text-2xl font-semibold text-ink">Not connected</p>
-            <p className="mt-2 text-sm text-slate-600">
-              Future integration should populate impressions, clicks, CTR, average position, and top query reporting.
+            <p className="mt-2 text-2xl font-semibold text-ink">
+              {searchConsoleState === "connected-with-data"
+                ? "Connected with data"
+                : searchConsoleState === "connected-no-data"
+                  ? "Connected, no data yet"
+                  : searchConsoleState === "reconnect-required"
+                    ? "Reconnect required"
+                    : searchConsoleState === "error"
+                      ? "Fetch error"
+                      : hasSearchConsoleAccess
+                        ? "Access granted"
+                        : "Not connected"}
             </p>
-            <button
-              type="button"
-              disabled
-              className="mt-4 inline-flex cursor-not-allowed items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-slate-400"
-            >
-              Connect Google Search Console
-            </button>
+
+            {selectedProperty ? (
+              <>
+                <p className="mt-2 text-sm text-slate-600">Selected property</p>
+                <p className="mt-1 break-all text-sm font-semibold text-ink">{selectedProperty.siteUrl}</p>
+                <p className="mt-2 text-xs text-slate-500">
+                  Connected {site.searchConsoleConnectedAt ? formatUpdatedAt(site.searchConsoleConnectedAt) : "recently"}
+                </p>
+                <p className="mt-2 text-xs text-slate-500">Live GSC requests run on page load.</p>
+              </>
+            ) : storedPropertyUrl ? (
+              <>
+                <p className="mt-2 text-sm text-slate-600">Previously selected property</p>
+                <p className="mt-1 break-all text-sm font-semibold text-ink">{storedPropertyUrl}</p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Google Search Console access needs to be refreshed before this property can be used again.
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-slate-600">
+                Search metrics stay hidden until this site has an authorized Search Console property.
+              </p>
+            )}
+
+            {searchConsolePropertiesError ? (
+              <p className="mt-3 text-sm text-red-600">Property load failed. {searchConsolePropertiesError}</p>
+            ) : null}
+            {searchConsolePerformanceError ? (
+              <p className="mt-3 text-sm text-red-600">Performance load failed. {searchConsolePerformanceError}</p>
+            ) : null}
+
+            {!hasSearchConsoleAccess ? (
+              <form
+                action={async () => {
+                  "use server";
+                  await signIn(
+                    "google",
+                    { redirectTo: `/${siteId}/analytics` },
+                    {
+                      scope: `openid email profile ${GOOGLE_SEARCH_CONSOLE_READONLY_SCOPE}`,
+                      access_type: "offline",
+                      prompt: "consent",
+                      include_granted_scopes: "true"
+                    }
+                  );
+                }}
+              >
+                <button
+                  type="submit"
+                  className="mt-4 inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Connect Google Search Console
+                </button>
+              </form>
+            ) : null}
           </div>
         </div>
       </section>
+
+      {hasSearchConsoleAccess ? (
+        <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Property Selection</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Choose the Search Console property for this site.</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                We fetch properties from `sites.list` for the signed-in Google account and suggest matches based on this
+                site&apos;s domain. Saving a property enables real GSC analytics for this site.
+              </p>
+            </div>
+          </div>
+
+          {searchConsoleProperties && searchConsoleProperties.length > 0 ? (
+            <div className="mt-6">
+              <SearchConsolePropertyPicker
+                siteId={siteId}
+                properties={searchConsoleProperties}
+                selectedPropertyUrl={site.searchConsolePropertyUrl}
+              />
+            </div>
+          ) : (
+            <p className="mt-6 rounded-2xl border border-dashed border-line px-4 py-6 text-sm text-slate-600">
+              No Search Console properties were returned for this Google account.
+            </p>
+          )}
+        </section>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {internalMetrics.map((metric) => (
@@ -178,84 +356,215 @@ export default async function AnalyticsPage({ params }: AnalyticsPageProps) {
         ))}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">What Will Unlock Later</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Search analytics will appear here once connected.</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                The future Search Console integration should provide verified search performance instead of placeholders.
-              </p>
-            </div>
-          </div>
+      <section className="rounded-3xl border border-line bg-white/90 p-5 shadow-panel">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Internal Product Data</p>
+        <p className="mt-2 text-sm text-slate-600">
+          These counts come directly from DIYSEO records for articles, keywords, and publishing activity. They do not
+          depend on Google Search Console.
+        </p>
+      </section>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-2">
-            <div className="rounded-2xl border border-dashed border-line bg-mist/70 px-4 py-4">
-              <p className="font-semibold text-ink">Impressions</p>
-              <p className="mt-1 text-sm text-slate-600">Requires Search Console property data.</p>
+      {searchConsolePerformance ? (
+        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Google Search Console Data</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
+                  {hasSearchConsoleData ? "Real Google Search Console metrics" : "Connected, but no search data yet"}
+                </h2>
+                <p className="mt-2 text-sm text-slate-600">
+                  Data below comes from `searchAnalytics.query` for the connected property over the last 28 days.
+                  {hasSearchConsoleData
+                    ? " These are verified GSC metrics, not product estimates."
+                    : " Google returned no clicks, impressions, or top-query rows for the current range yet."}
+                </p>
+              </div>
+              <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+                {searchConsolePerformance.startDate} to {searchConsolePerformance.endDate}
+              </span>
             </div>
-            <div className="rounded-2xl border border-dashed border-line bg-mist/70 px-4 py-4">
-              <p className="font-semibold text-ink">Clicks</p>
-              <p className="mt-1 text-sm text-slate-600">Requires Search Console property data.</p>
-            </div>
-            <div className="rounded-2xl border border-dashed border-line bg-mist/70 px-4 py-4">
-              <p className="font-semibold text-ink">CTR</p>
-              <p className="mt-1 text-sm text-slate-600">Derived from real impressions and clicks.</p>
-            </div>
-            <div className="rounded-2xl border border-dashed border-line bg-mist/70 px-4 py-4">
-              <p className="font-semibold text-ink">Average position</p>
-              <p className="mt-1 text-sm text-slate-600">Requires query-level search ranking data.</p>
-            </div>
-            <div className="rounded-2xl border border-dashed border-line bg-mist/70 px-4 py-4 md:col-span-2">
-              <p className="font-semibold text-ink">Top queries</p>
-              <p className="mt-1 text-sm text-slate-600">
-                Once connected, this section should show real top search queries instead of estimated keywords.
-              </p>
-            </div>
-          </div>
-        </section>
 
-        <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Recent Activity</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Editorial movement</h2>
-            <p className="mt-2 text-sm text-slate-600">The most recent article updates for this site.</p>
-          </div>
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl bg-mist px-4 py-4">
+                <p className="text-sm text-slate-500">Clicks</p>
+                <p className="mt-2 text-3xl font-semibold text-ink">{formatCompactNumber(searchConsolePerformance.clicks)}</p>
+              </div>
+              <div className="rounded-2xl bg-mist px-4 py-4">
+                <p className="text-sm text-slate-500">Impressions</p>
+                <p className="mt-2 text-3xl font-semibold text-ink">
+                  {formatCompactNumber(searchConsolePerformance.impressions)}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-mist px-4 py-4">
+                <p className="text-sm text-slate-500">CTR</p>
+                <p className="mt-2 text-3xl font-semibold text-ink">{formatPercent(searchConsolePerformance.ctr)}</p>
+              </div>
+              <div className="rounded-2xl bg-mist px-4 py-4">
+                <p className="text-sm text-slate-500">Average position</p>
+                <p className="mt-2 text-3xl font-semibold text-ink">{searchConsolePerformance.position.toFixed(1)}</p>
+              </div>
+            </div>
 
-          {recentActivity.length === 0 ? (
-            <p className="mt-6 rounded-2xl border border-dashed border-line px-4 py-6 text-sm text-slate-600">
-              No article activity yet.
-            </p>
-          ) : (
-            <div className="mt-6 space-y-3">
-              {recentActivity.map((article) => (
-                <Link
-                  key={article.id}
-                  href={`/${siteId}/articles/${article.id}`}
-                  className="block rounded-2xl border border-line px-4 py-4 transition hover:border-accent hover:bg-mist"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-ink">{article.title}</p>
-                      <p className="mt-1 text-sm text-slate-600">Updated {formatUpdatedAt(article.updatedAt)}</p>
-                    </div>
-                    <span
-                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                        article.status === "PUBLISHED"
-                          ? "bg-accent/10 text-accent"
-                          : "border border-dashed border-line bg-white text-slate-600"
-                      }`}
-                    >
-                      {article.status}
-                    </span>
+            <div className="mt-8 overflow-hidden rounded-[1.5rem] border border-line">
+              <div className="grid grid-cols-[1.6fr_0.8fr_0.9fr_0.7fr_0.8fr] gap-3 bg-mist px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <p>Top query</p>
+                <p>Clicks</p>
+                <p>Impressions</p>
+                <p>CTR</p>
+                <p>Position</p>
+              </div>
+              <div className="divide-y divide-line">
+                {searchConsolePerformance.topQueries.length === 0 ? (
+                  <div className="px-4 py-6 text-sm text-slate-600">
+                    No top-query rows were returned by Google Search Console for this date range yet.
                   </div>
-                </Link>
-              ))}
+                ) : (
+                  searchConsolePerformance.topQueries.map((query) => (
+                    <div
+                      key={query.query}
+                      className="grid grid-cols-[1.6fr_0.8fr_0.9fr_0.7fr_0.8fr] gap-3 px-4 py-4 text-sm text-slate-700"
+                    >
+                      <p className="font-semibold text-ink">{query.query}</p>
+                      <p>{formatCompactNumber(query.clicks)}</p>
+                      <p>{formatCompactNumber(query.impressions)}</p>
+                      <p>{formatPercent(query.ctr)}</p>
+                      <p>{query.position.toFixed(1)}</p>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-          )}
-        </section>
-      </div>
+          </section>
+
+          <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Recent Activity</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Editorial movement</h2>
+              <p className="mt-2 text-sm text-slate-600">The most recent article updates for this site.</p>
+            </div>
+
+            {recentActivity.length === 0 ? (
+              <p className="mt-6 rounded-2xl border border-dashed border-line px-4 py-6 text-sm text-slate-600">
+                No article activity yet.
+              </p>
+            ) : (
+              <div className="mt-6 space-y-3">
+                {recentActivity.map((article) => (
+                  <Link
+                    key={article.id}
+                    href={`/${siteId}/articles/${article.id}`}
+                    className="block rounded-2xl border border-line px-4 py-4 transition hover:border-accent hover:bg-mist"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-ink">{article.title}</p>
+                        <p className="mt-1 text-sm text-slate-600">Updated {formatUpdatedAt(article.updatedAt)}</p>
+                      </div>
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                          article.status === "PUBLISHED"
+                            ? "bg-accent/10 text-accent"
+                            : "border border-dashed border-line bg-white text-slate-600"
+                        }`}
+                      >
+                        {article.status}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+          <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Google Search Console Data</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
+                  {searchConsoleState === "reconnect-required"
+                    ? "Reconnect Search Console to resume live SEO metrics."
+                    : searchConsoleState === "error"
+                      ? "Search Console is connected, but live metrics could not be loaded."
+                      : "Search analytics will appear here once query access succeeds."}
+                </h2>
+                <p className="mt-2 text-sm text-slate-600">
+                  {searchConsoleState === "reconnect-required"
+                    ? "A property was previously selected for this site, but the current Google account access is no longer valid."
+                    : searchConsoleState === "error"
+                      ? "The property is connected, but the live Search Console request failed. Try again or reconnect if the issue persists."
+                      : "Once a property is connected and query data is accessible, this section will render real clicks, impressions, CTR, average position, and top queries for the last 28 days."}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-3 md:grid-cols-2">
+              <div className="rounded-2xl border border-dashed border-line bg-mist/70 px-4 py-4">
+                <p className="font-semibold text-ink">Impressions</p>
+                <p className="mt-1 text-sm text-slate-600">Requires Google Search Console query data.</p>
+              </div>
+              <div className="rounded-2xl border border-dashed border-line bg-mist/70 px-4 py-4">
+                <p className="font-semibold text-ink">Clicks</p>
+                <p className="mt-1 text-sm text-slate-600">Requires Google Search Console query data.</p>
+              </div>
+              <div className="rounded-2xl border border-dashed border-line bg-mist/70 px-4 py-4">
+                <p className="font-semibold text-ink">CTR</p>
+                <p className="mt-1 text-sm text-slate-600">Calculated from real GSC impressions and clicks.</p>
+              </div>
+              <div className="rounded-2xl border border-dashed border-line bg-mist/70 px-4 py-4">
+                <p className="font-semibold text-ink">Average position</p>
+                <p className="mt-1 text-sm text-slate-600">Requires query-level search ranking data from GSC.</p>
+              </div>
+              <div className="rounded-2xl border border-dashed border-line bg-mist/70 px-4 py-4 md:col-span-2">
+                <p className="font-semibold text-ink">Top queries</p>
+                <p className="mt-1 text-sm text-slate-600">Will populate once Google returns query rows for this site and range.</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Recent Activity</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Editorial movement</h2>
+              <p className="mt-2 text-sm text-slate-600">The most recent article updates for this site.</p>
+            </div>
+
+            {recentActivity.length === 0 ? (
+              <p className="mt-6 rounded-2xl border border-dashed border-line px-4 py-6 text-sm text-slate-600">
+                No article activity yet.
+              </p>
+            ) : (
+              <div className="mt-6 space-y-3">
+                {recentActivity.map((article) => (
+                  <Link
+                    key={article.id}
+                    href={`/${siteId}/articles/${article.id}`}
+                    className="block rounded-2xl border border-line px-4 py-4 transition hover:border-accent hover:bg-mist"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-ink">{article.title}</p>
+                        <p className="mt-1 text-sm text-slate-600">Updated {formatUpdatedAt(article.updatedAt)}</p>
+                      </div>
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                          article.status === "PUBLISHED"
+                            ? "bg-accent/10 text-accent"
+                            : "border border-dashed border-line bg-white text-slate-600"
+                        }`}
+                      >
+                        {article.status}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      )}
     </section>
   );
 }

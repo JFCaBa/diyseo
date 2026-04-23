@@ -48,6 +48,7 @@ export async function generateMetadata({ params }: PublicBlogIndexPageProps): Pr
   return {
     title,
     description,
+    robots: urls.isTenant ? undefined : { index: false, follow: false },
     alternates: {
       canonical: urls.indexUrl,
       types: {

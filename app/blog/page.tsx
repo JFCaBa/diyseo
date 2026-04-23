@@ -27,6 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
       title: "Blogs - Currently Unavailable",
       description: "There are currently no public blogs available on this platform.",
+      robots: { index: false, follow: false },
       openGraph: {
         title: "Blogs - Currently Unavailable",
         description: "There are currently no public blogs available on this platform.",
@@ -49,6 +50,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${workspace?.name || "Platform"} Blogs`,
     description: "Browse and discover the latest articles across all our hosted publications.",
+    robots: { index: false, follow: false },
     openGraph: {
       title: `${workspace?.name || "Platform"} Blogs`,
       description: "Browse and discover the latest articles across all our hosted publications.",

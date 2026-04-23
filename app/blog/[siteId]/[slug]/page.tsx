@@ -44,6 +44,7 @@ export async function generateMetadata({ params }: PublicArticlePageProps): Prom
   return {
     title,
     description,
+    robots: urls.isTenant ? undefined : { index: false, follow: false },
     alternates: {
       canonical: url
     },

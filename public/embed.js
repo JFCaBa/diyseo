@@ -181,7 +181,7 @@
   }
 
   function getCoverImageProxyPath(url) {
-    return "/api/public/image?url=" + encodeURIComponent(url);
+    return apiOrigin + "/api/public/image?url=" + encodeURIComponent(url);
   }
 
   function getCurrentSlug() {

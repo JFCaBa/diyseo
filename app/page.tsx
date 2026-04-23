@@ -5,52 +5,79 @@ import { SignInButton, SignOutButton } from "@/components/auth-buttons";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const features = [
+const capabilities = [
   {
-    title: "AI article generation",
-    description: "Generate SEO-ready drafts from a keyword and your site context."
+    title: "Brand-aware generation",
+    description: "Use Brand DNA to generate a first draft that already matches tone, audience, and topic direction."
   },
   {
-    title: "Brand-aware content",
-    description: "Keep language, tone, themes, and visual direction consistent."
+    title: "Draft to publish workflow",
+    description: "Edit, review, assign keywords, and publish articles through the same lightweight admin flow."
   },
   {
-    title: "Public API",
-    description: "Serve published articles through stable site-specific endpoints."
+    title: "Open public delivery",
+    description: "Keep your public blog, public API, RSS, sitemap, and widget available without extra integration work."
   },
   {
-    title: "Embeddable widget",
-    description: "Render articles on any page with a single script snippet."
+    title: "Embed anywhere",
+    description: "Drop the widget into an existing site and render published content without changing your architecture."
   },
   {
-    title: "Self-hosted",
-    description: "Run the product on your own stack with your own database."
+    title: "Self-hosted control",
+    description: "Run the app on your own stack with your own database, routes, and deployment setup."
   },
   {
-    title: "No vendor lock-in",
-    description: "Keep your content, routes, and publishing flow under your control."
+    title: "Google sign-in to workspace",
+    description: "Log in, land in your workspace, and go straight into the first-use onboarding path."
   }
 ];
 
 const steps = [
   {
-    title: "Create a site",
-    description: "Set up a website, domain, and content language in the admin."
+    number: "01",
+    title: "Sign in with Google",
+    description: "Create your workspace and land directly in the admin for your first site."
   },
   {
-    title: "Generate articles",
-    description: "Use Brand DNA and AI generation to create and edit drafts quickly."
+    number: "02",
+    title: "Generate your first article",
+    description: "Use Brand DNA plus AI generation to get to a real draft in under a minute."
   },
   {
-    title: "Embed on your website",
-    description: "Publish through the built-in blog or drop the widget into any page."
+    number: "03",
+    title: "Publish it",
+    description: "Move one article live so the blog, public API, and widget all have real content."
+  },
+  {
+    number: "04",
+    title: "Embed it on your site",
+    description: "Copy the widget snippet and drop published articles into an existing page."
   }
 ];
 
-const embedSnippet = `<script async src="/embed.js" data-site="demo" data-base-path="/blog"></script>`;
+const proofPoints = [
+  "Google sign-in",
+  "Article generation",
+  "Keyword suggestions",
+  "Publishing workflow",
+  "Public blog and API",
+  "Embeddable widget"
+];
 
-export default async function HomePage() {
+const embedSnippet = `<div id="soro-widget-container"></div>
+<script
+  src="/embed.js"
+  data-site="your-site-id"
+  data-base-path="/blog"
+></script>`;
+
+type HomePageProps = {
+  searchParams?: Promise<{ error?: string }>;
+};
+
+export default async function HomePage({ searchParams }: HomePageProps) {
   const session = await auth();
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
 
   if (session?.user?.id) {
     const workspace = await prisma.workspace.findUnique({
@@ -81,7 +108,7 @@ export default async function HomePage() {
                 href={startHref}
                 className="inline-flex items-center justify-center rounded-2xl border border-line bg-white/80 px-4 py-2 text-sm font-semibold text-ink transition hover:bg-white"
               >
-                Start using
+                Open workspace
               </Link>
             ) : (
               <SignInButton
@@ -99,16 +126,22 @@ export default async function HomePage() {
           </nav>
         </header>
 
-        <section className="grid gap-12 pb-24 pt-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        {resolvedSearchParams?.error === "access_limited" ? (
+          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Access is currently limited. Contact us for access.
+          </div>
+        ) : null}
+
+        <section className="grid gap-12 pb-24 pt-16 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <div className="space-y-8">
             <div className="space-y-5">
-              <p className="text-sm font-semibold text-accent">Self-hosted. No lock-in.</p>
+              <p className="text-sm font-semibold text-accent">Self-hosted SEO workflow</p>
               <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-ink sm:text-6xl">
-                Run your own AI blog engine
+                Sign in, generate an article, publish it, and embed it.
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-slate-600">
-                Generate brand-aware SEO articles, publish them through your own blog, and embed them anywhere
-                with one script.
+                DIYSEO is a technical, credible content workflow for teams that want user-based access, AI-assisted
+                article generation, public delivery, and a widget they can install on an existing site.
               </p>
             </div>
 
@@ -118,102 +151,76 @@ export default async function HomePage() {
                   href={startHref}
                   className="inline-flex items-center justify-center rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
-                  Start using
+                  Open workspace
                 </Link>
               ) : (
-                <SignInButton />
+                <SignInButton label="Sign in with Google" />
               )}
               <Link
                 href="/blog/widget-demo"
                 className="inline-flex items-center justify-center rounded-2xl border border-line bg-white/80 px-5 py-3 text-sm font-semibold text-ink transition hover:bg-white"
               >
-                View demo
+                View widget demo
               </Link>
             </div>
+
+            <div className="flex flex-wrap gap-2">
+              {proofPoints.map((item) => (
+                <span key={item} className="rounded-full border border-line bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600">
+                  {item}
+                </span>
+              ))}
+            </div>
           </div>
 
-          <div className="rounded-[2rem] border border-line bg-white/85 p-5 shadow-panel">
-            <div className="rounded-[1.5rem] border border-line bg-ink px-4 py-3 text-xs font-medium text-slate-300">
-              widget.tsx
+          <div className="rounded-[2rem] border border-line bg-white/88 p-5 shadow-panel">
+            <div className="rounded-[1.5rem] border border-line bg-[linear-gradient(135deg,#0f172a,#1f2937)] p-5 text-slate-100">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-teal-300">First Value</p>
+                  <h2 className="mt-2 text-2xl font-semibold">Under 60 seconds</h2>
+                </div>
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200">Onboarding-aligned</span>
+              </div>
+              <div className="mt-5 space-y-3">
+                {steps.map((step) => (
+                  <div key={step.number} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-teal-300">{step.number}</p>
+                    <p className="mt-1 font-semibold">{step.title}</p>
+                    <p className="mt-1 text-sm text-slate-300">{step.description}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="mt-4 space-y-4 rounded-[1.5rem] border border-line bg-sand/70 p-5">
-              <pre className="overflow-x-auto text-sm leading-7 text-ink">
+
+            <div className="mt-4 rounded-[1.5rem] border border-line bg-sand/70 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-lg font-semibold text-ink">Widget snippet</p>
+                  <p className="mt-1 text-sm text-slate-500">The final step stays simple and copyable.</p>
+                </div>
+                <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">Install</span>
+              </div>
+              <pre className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white p-4 text-sm leading-7 text-ink">
                 <code>{embedSnippet}</code>
               </pre>
-              <div className="rounded-[1.25rem] border border-line bg-white p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-lg font-semibold text-ink">Published Articles</p>
-                    <p className="mt-1 text-sm text-slate-500">Rendered from the existing public API</p>
-                  </div>
-                  <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-                    Widget
-                  </span>
-                </div>
-                <div className="mt-4 space-y-3">
-                  <div className="rounded-2xl border border-line px-4 py-3">
-                    <p className="font-semibold text-ink">Planning a Simple Editorial Calendar</p>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Start with a small set of themes, match them to audience intent, and publish on a cadence.
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-line px-4 py-3">
-                    <p className="font-semibold text-ink">How To Structure a Brand DNA Brief</p>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Give AI and editors the same operating context before you publish.
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
-        </section>
-
-        <section className="grid gap-10 border-t border-line py-20 lg:grid-cols-2">
-          <div className="space-y-5">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Problem</p>
-            <h2 className="text-3xl font-semibold tracking-tight text-ink">Content is slow. SEO is harder.</h2>
-            <ul className="space-y-3 text-base text-slate-600">
-              <li>Writing takes time</li>
-              <li>Tools are fragmented</li>
-              <li>Content doesn&apos;t scale</li>
-            </ul>
-          </div>
-          <div className="space-y-5">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Solution</p>
-            <h2 className="text-3xl font-semibold tracking-tight text-ink">DIYSEO fixes that</h2>
-            <ul className="space-y-3 text-base text-slate-600">
-              <li>Generate articles instantly</li>
-              <li>Manage everything in one place</li>
-              <li>Publish anywhere with a snippet</li>
-            </ul>
-          </div>
-        </section>
-
-        <section className="border-t border-line py-20">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Features</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">Built for a simple publishing loop</h2>
-          </div>
-          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {features.map((feature) => (
-              <div key={feature.title} className="rounded-3xl border border-line bg-white/85 p-6 shadow-panel">
-                <h3 className="text-lg font-semibold text-ink">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-7 text-slate-600">{feature.description}</p>
-              </div>
-            ))}
           </div>
         </section>
 
         <section className="border-t border-line py-20">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">How It Works</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">Three steps to live content</h2>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">The same path users see after login</h2>
+            <p className="mt-4 text-base leading-8 text-slate-600">
+              The marketing page now mirrors the in-app onboarding directly: authenticate, generate a draft, publish one
+              article, then install the widget.
+            </p>
           </div>
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {steps.map((step, index) => (
-              <div key={step.title} className="rounded-3xl border border-line bg-white/85 p-6 shadow-panel">
-                <p className="text-sm font-semibold text-accent">0{index + 1}</p>
+          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {steps.map((step) => (
+              <div key={step.number} className="rounded-3xl border border-line bg-white/85 p-6 shadow-panel">
+                <p className="text-sm font-semibold text-accent">{step.number}</p>
                 <h3 className="mt-3 text-lg font-semibold text-ink">{step.title}</h3>
                 <p className="mt-2 text-sm leading-7 text-slate-600">{step.description}</p>
               </div>
@@ -222,26 +229,54 @@ export default async function HomePage() {
         </section>
 
         <section className="border-t border-line py-20">
-          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Capabilities</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">Built for a practical content workflow</h2>
+            <p className="mt-4 text-base leading-8 text-slate-600">
+              Everything here is based on what the product already does today. The message is tighter, but the promise
+              stays honest.
+            </p>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {capabilities.map((capability) => (
+              <div key={capability.title} className="rounded-3xl border border-line bg-white/85 p-6 shadow-panel">
+                <h3 className="text-lg font-semibold text-ink">{capability.title}</h3>
+                <p className="mt-2 text-sm leading-7 text-slate-600">{capability.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="border-t border-line py-20">
+          <div className="grid gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Live Example</p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">Drop the widget into your site</h2>
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Why It Feels Credible</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">No abstract funnel. Just a working loop.</h2>
               <p className="mt-4 max-w-xl text-base leading-8 text-slate-600">
-                Use the existing public API and widget to publish articles outside the admin without changing your
-                site architecture.
+                The homepage now points to the same progression users take inside the product, so the marketing message
+                does not drift away from the actual onboarding experience.
               </p>
-              <Link
-                href="/blog/widget-demo"
-                className="mt-6 inline-flex items-center justify-center rounded-2xl border border-line bg-white/80 px-5 py-3 text-sm font-semibold text-ink transition hover:bg-white"
-              >
-                Open widget demo
-              </Link>
             </div>
 
             <div className="rounded-[2rem] border border-line bg-white/85 p-6 shadow-panel">
-              <pre className="overflow-x-auto rounded-[1.5rem] border border-line bg-ink p-5 text-sm leading-7 text-slate-200">
-                <code>{embedSnippet}</code>
-              </pre>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl border border-line px-4 py-4">
+                  <p className="text-sm text-slate-500">Input</p>
+                  <p className="mt-2 font-semibold text-ink">Brand DNA + article generation</p>
+                </div>
+                <div className="rounded-2xl border border-line px-4 py-4">
+                  <p className="text-sm text-slate-500">Output</p>
+                  <p className="mt-2 font-semibold text-ink">Public article + widget-ready content</p>
+                </div>
+                <div className="rounded-2xl border border-line px-4 py-4">
+                  <p className="text-sm text-slate-500">Access</p>
+                  <p className="mt-2 font-semibold text-ink">Google sign-in and owned workspace</p>
+                </div>
+                <div className="rounded-2xl border border-line px-4 py-4">
+                  <p className="text-sm text-slate-500">Delivery</p>
+                  <p className="mt-2 font-semibold text-ink">Blog, API, feeds, sitemap, and embed</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -250,10 +285,10 @@ export default async function HomePage() {
           <div className="rounded-[2rem] border border-line bg-ink px-8 py-10 text-white shadow-panel">
             <div className="max-w-3xl space-y-4">
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-teal-300">Start</p>
-              <h2 className="text-4xl font-semibold tracking-tight">Start your own AI blog today</h2>
+              <h2 className="text-4xl font-semibold tracking-tight">Get to a published article fast</h2>
               <p className="max-w-2xl text-base leading-8 text-slate-300">
-                Run the admin, generate articles, publish to your own blog routes, and embed content anywhere you
-                need it.
+                Sign in with Google, let the onboarding flow point you at the first article, publish one, and install the
+                widget when you are ready.
               </p>
             </div>
             <div className="mt-8 flex flex-wrap items-center gap-4">
@@ -262,7 +297,7 @@ export default async function HomePage() {
                   href={startHref}
                   className="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:bg-slate-100"
                 >
-                  Start using
+                  Open workspace
                 </Link>
               ) : (
                 <SignInButton
@@ -296,7 +331,7 @@ export default async function HomePage() {
           <div className="flex flex-wrap items-center gap-4">
             {session?.user ? (
               <Link href={startHref} className="transition hover:text-ink">
-                Start using
+                Open workspace
               </Link>
             ) : (
               <span>Sign in with Google</span>

@@ -13,7 +13,7 @@ export async function SignInButton({
     <form
       action={async () => {
         "use server";
-        await signIn("google");
+        await signIn("google", { redirectTo: "/auth/continue" });
       }}
     >
       <button type="submit" className={className}>

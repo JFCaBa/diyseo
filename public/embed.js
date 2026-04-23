@@ -94,8 +94,27 @@
       "gap:12px;" +
       "}" +
       "#soro-widget-container .soro-article-item{" +
+      "display:grid;" +
+      "grid-template-columns:minmax(0,1fr);" +
+      "gap:14px;" +
       "padding:0 0 12px;" +
       "border-bottom:1px solid var(--soro-border-color,#dbe4ea);" +
+      "}" +
+      "@media (min-width:640px){" +
+      "#soro-widget-container .soro-article-item.has-cover{" +
+      "grid-template-columns:160px minmax(0,1fr);" +
+      "align-items:start;" +
+      "}" +
+      "}" +
+      "#soro-widget-container .soro-article-main{" +
+      "min-width:0;" +
+      "}" +
+      "#soro-widget-container .soro-article-title{" +
+      "display:block;" +
+      "margin:0;" +
+      "font-size:1.15rem;" +
+      "font-weight:600;" +
+      "line-height:1.35;" +
       "}" +
       "#soro-widget-container .soro-cover{" +
       "display:block;" +
@@ -106,7 +125,8 @@
       "object-fit:cover;" +
       "}" +
       "#soro-widget-container .soro-list-cover{" +
-      "aspect-ratio:16/9;" +
+      "aspect-ratio:16/10;" +
+      "margin:0;" +
       "}" +
       "#soro-widget-container .soro-detail-cover{" +
       "margin-top:12px;" +
@@ -388,15 +408,18 @@
         var items = articles
           .map(function (article) {
             return (
-              '<li class="soro-article-item">' +
+              '<li class="soro-article-item' +
+              (article.coverImageUrl ? " has-cover" : "") +
+              '">' +
               (article.coverImageUrl
                 ? '<img class="soro-cover soro-list-cover" src="' +
                   escapeHtml(getCoverImageProxyPath(article.coverImageUrl)) +
                   '" alt="" referrerpolicy="no-referrer">'
                 : "") +
+              '<div class="soro-article-main">' +
               '<a href="#soro-article/' +
               encodeURIComponent(article.slug) +
-              '" class="soro-link" data-slug="' +
+              '" class="soro-link soro-article-title" data-slug="' +
               escapeHtml(article.slug) +
               '">' +
               escapeHtml(article.title) +
@@ -407,6 +430,7 @@
               (article.excerpt
                 ? '<p class="soro-excerpt">' + escapeHtml(article.excerpt) + "</p>"
                 : "") +
+              "</div>" +
               "</li>"
             );
           })

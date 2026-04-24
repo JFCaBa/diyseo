@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 
-import { updateWidgetTheme, type ActionState } from "@/lib/actions";
+import { updateWidgetInstalledState, updateWidgetTheme, type ActionState } from "@/lib/actions";
 
 type WidgetTheme = "light" | "dark";
 
@@ -10,17 +10,20 @@ type WidgetInstallCardProps = {
   baseUrl: string;
   siteId: string;
   initialTheme?: WidgetTheme | null;
+  widgetInstalledAt?: string | null;
   id?: string;
 };
 
 const initialState: ActionState = {};
 
-export function WidgetInstallCard({ baseUrl, siteId, initialTheme, id }: WidgetInstallCardProps) {
+export function WidgetInstallCard({ baseUrl, siteId, initialTheme, widgetInstalledAt, id }: WidgetInstallCardProps) {
   const [copied, setCopied] = useState(false);
   const [theme, setTheme] = useState<WidgetTheme>(initialTheme === "dark" ? "dark" : "light");
   const formRef = useRef<HTMLFormElement>(null);
   const updateWidgetThemeForSite = updateWidgetTheme.bind(null, siteId);
+  const updateWidgetInstalledStateForSite = updateWidgetInstalledState.bind(null, siteId);
   const [state, formAction] = useActionState(updateWidgetThemeForSite, initialState);
+  const [installState, installFormAction] = useActionState(updateWidgetInstalledStateForSite, initialState);
   const embedUrl = `${baseUrl}/embed.js`;
   const snippet = `<div id="soro-widget-container"></div>
 <script
@@ -29,6 +32,13 @@ export function WidgetInstallCard({ baseUrl, siteId, initialTheme, id }: WidgetI
   data-base-path="/blog"
   data-theme="${theme}"
 ></script>`;
+  const installedDateLabel = widgetInstalledAt
+    ? new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      }).format(new Date(widgetInstalledAt))
+    : null;
 
   useEffect(() => {
     setTheme(initialTheme === "dark" ? "dark" : "light");
@@ -107,6 +117,30 @@ export function WidgetInstallCard({ baseUrl, siteId, initialTheme, id }: WidgetI
       <pre className="mt-6 overflow-x-auto rounded-2xl border border-line bg-sand/70 p-4 text-sm text-ink">
         <code>{snippet}</code>
       </pre>
+
+      <div className="mt-6 rounded-2xl border border-line bg-mist/60 p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-ink">{widgetInstalledAt ? "Widget installed" : "Installation status"}</p>
+            <p className="mt-1 text-sm text-slate-600">
+              {widgetInstalledAt
+                ? `Marked installed on ${installedDateLabel}.`
+                : "Mark this complete after you place the snippet on your website."}
+            </p>
+          </div>
+          <form action={installFormAction}>
+            <input type="hidden" name="installed" value={widgetInstalledAt ? "false" : "true"} />
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-white"
+            >
+              {widgetInstalledAt ? "Mark as not installed" : "Mark as installed"}
+            </button>
+          </form>
+        </div>
+        {installState.error ? <p className="mt-3 text-xs text-red-600">{installState.error}</p> : null}
+        {!installState.error && installState.success ? <p className="mt-3 text-xs text-accent">{installState.success}</p> : null}
+      </div>
     </section>
   );
 }

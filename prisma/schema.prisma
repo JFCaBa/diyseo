@@ -70,6 +70,7 @@ model SiteProject {
   name                       String
   domain                     String
   widgetTheme                String?
+  widgetInstalledAt          DateTime?
   searchConsolePropertyUrl   String?
   searchConsoleConnectedAt   DateTime?
   createdAt                  DateTime     @default(now())

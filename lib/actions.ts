@@ -598,6 +598,31 @@ export async function updateWidgetTheme(
   return { success: "Widget theme updated." };
 }
 
+export async function updateWidgetInstalledState(
+  siteId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const markInstalled = formData.get("installed") === "true";
+
+  try {
+    await requireOwnedSite(siteId);
+  } catch {
+    return { error: "Site not found." };
+  }
+
+  await prisma.siteProject.update({
+    where: { id: siteId },
+    data: {
+      widgetInstalledAt: markInstalled ? new Date() : null
+    }
+  });
+
+  revalidatePath(`/${siteId}`);
+
+  return { success: markInstalled ? "Widget marked as installed." : "Widget marked as not installed." };
+}
+
 export async function assignKeywordToArticle(
   siteId: string,
   _prevState: ActionState,

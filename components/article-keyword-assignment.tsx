@@ -41,12 +41,12 @@ export function ArticleKeywordAssignment({
   const [state, formAction] = useActionState(assignKeywordToArticleForSite, initialState);
 
   return (
-    <form action={formAction} className="flex flex-col items-start gap-2">
+    <form action={formAction} className="flex flex-col items-start gap-2 md:flex-row md:flex-wrap md:items-center">
       <input type="hidden" name="articleId" value={articleId} />
       <select
         name="keywordId"
         defaultValue={currentKeywordId ?? ""}
-        className="min-w-52 rounded-2xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
+        className="min-w-44 rounded-2xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
       >
         <option value="">No keyword</option>
         {keywords.map((keyword) => (
@@ -57,8 +57,8 @@ export function ArticleKeywordAssignment({
       </select>
 
       <SubmitButton />
-      {state.error ? <p className="text-xs text-red-600">{state.error}</p> : null}
-      {state.success ? <p className="text-xs text-accent">{state.success}</p> : null}
+      {state.error ? <p className="text-xs text-red-600 md:basis-full">{state.error}</p> : null}
+      {state.success ? <p className="text-xs text-accent md:basis-full">{state.success}</p> : null}
     </form>
   );
 }

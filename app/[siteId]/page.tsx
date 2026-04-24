@@ -110,7 +110,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     {
       title: "3. Embed on your website",
       description: "Copy the widget snippet and place it on your site once an article is published.",
-      completed: false,
+      completed: Boolean(site.widgetInstalledAt),
       ctaLabel: "Install widget",
       ctaHref: "#install-widget"
     }
@@ -305,6 +305,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         baseUrl={appBaseUrl.replace(/\/$/, "")}
         siteId={siteId}
         initialTheme={site.widgetTheme === "dark" ? "dark" : "light"}
+        widgetInstalledAt={site.widgetInstalledAt ? site.widgetInstalledAt.toISOString() : null}
       />
     </section>
   );

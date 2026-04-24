@@ -46,6 +46,17 @@ export type SearchConsoleTopQuery = SearchConsoleQueryMetric & {
 };
 
 export type SearchConsolePerformanceSnapshot = SearchConsoleQueryMetric & {
+  debug?: {
+    endDate: string;
+    propertyUrl: string;
+    queryBodySummary: Record<string, unknown>;
+    queryBodyTopQueries: Record<string, unknown>;
+    rawSummaryAggregationType: string | null;
+    rawSummaryRowCount: number;
+    rawSummaryTotals: SearchConsoleQueryMetric;
+    rawTopQueriesAggregationType: string | null;
+    rawTopQueriesRowCount: number;
+  };
   endDate: string;
   startDate: string;
   topQueries: SearchConsoleTopQuery[];
@@ -295,18 +306,22 @@ export async function getSearchConsolePerformanceForUser(userId: string, propert
   const startDate = formatUtcDateOffset(28);
   const endDate = formatUtcDateOffset(1);
 
+  const queryBodySummary = {
+    startDate,
+    endDate,
+    rowLimit: 1
+  } satisfies Record<string, unknown>;
+
+  const queryBodyTopQueries = {
+    startDate,
+    endDate,
+    dimensions: ["query"],
+    rowLimit: 10
+  } satisfies Record<string, unknown>;
+
   const [summary, topQueries] = await Promise.all([
-    runSearchAnalyticsQuery(access.accessToken, propertyUrl, {
-      startDate,
-      endDate,
-      rowLimit: 1
-    }),
-    runSearchAnalyticsQuery(access.accessToken, propertyUrl, {
-      startDate,
-      endDate,
-      dimensions: ["query"],
-      rowLimit: 10
-    })
+    runSearchAnalyticsQuery(access.accessToken, propertyUrl, queryBodySummary),
+    runSearchAnalyticsQuery(access.accessToken, propertyUrl, queryBodyTopQueries)
   ]);
 
   if (!summary || !topQueries) {
@@ -314,6 +329,23 @@ export async function getSearchConsolePerformanceForUser(userId: string, propert
   }
 
   const summaryRow = summary.rows?.[0];
+  const debug = {
+    propertyUrl,
+    startDate,
+    endDate,
+    queryBodySummary,
+    queryBodyTopQueries,
+    rawSummaryAggregationType: summary.responseAggregationType ?? null,
+    rawSummaryRowCount: summary.rows?.length ?? 0,
+    rawSummaryTotals: {
+      clicks: summaryRow?.clicks ?? 0,
+      impressions: summaryRow?.impressions ?? 0,
+      ctr: summaryRow?.ctr ?? 0,
+      position: summaryRow?.position ?? 0
+    },
+    rawTopQueriesAggregationType: topQueries.responseAggregationType ?? null,
+    rawTopQueriesRowCount: topQueries.rows?.length ?? 0
+  };
 
   return {
     clicks: summaryRow?.clicks ?? 0,
@@ -322,6 +354,7 @@ export async function getSearchConsolePerformanceForUser(userId: string, propert
     position: summaryRow?.position ?? 0,
     startDate,
     endDate,
+    debug,
     topQueries:
       topQueries.rows?.map((row) => ({
         query: row.keys?.[0] ?? "Unknown query",

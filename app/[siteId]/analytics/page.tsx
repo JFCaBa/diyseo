@@ -16,6 +16,7 @@ export const dynamic = "force-dynamic";
 
 type AnalyticsPageProps = {
   params: Promise<{ siteId: string }>;
+  searchParams?: Promise<{ gscDebug?: string }>;
 };
 
 function formatUpdatedAt(date: Date) {
@@ -61,14 +62,16 @@ function formatPercent(value: number) {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-export default async function AnalyticsPage({ params }: AnalyticsPageProps) {
+export default async function AnalyticsPage({ params, searchParams }: AnalyticsPageProps) {
   const parsedParams = AnalyticsRouteParamsSchema.safeParse(await params);
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
 
   if (!parsedParams.success) {
     notFound();
   }
 
   const { siteId } = parsedParams.data;
+  const gscDebugEnabled = resolvedSearchParams?.gscDebug === "1";
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -145,6 +148,26 @@ export default async function AnalyticsPage({ params }: AnalyticsPageProps) {
       searchConsolePerformanceError =
         error instanceof Error ? error.message : "Unable to load Search Console performance data.";
     }
+  }
+
+  if (gscDebugEnabled) {
+    console.log(
+      JSON.stringify(
+        {
+          type: "gsc-debug",
+          siteId,
+          siteDomain: site.domain,
+          storedPropertyUrl,
+          selectedPropertyUrl: selectedProperty?.siteUrl ?? null,
+          searchConsoleStateHint: selectedProperty?.siteUrl ? "query-attempted" : "no-selected-property",
+          debug: searchConsolePerformance?.debug ?? null,
+          performanceError: searchConsolePerformanceError,
+          propertiesError: searchConsolePropertiesError
+        },
+        null,
+        2
+      )
+    );
   }
 
   const articleCounts = articleMetrics.reduce(
@@ -343,6 +366,75 @@ export default async function AnalyticsPage({ params }: AnalyticsPageProps) {
               No Search Console properties were returned for this Google account.
             </p>
           )}
+        </section>
+      ) : null}
+
+      {gscDebugEnabled ? (
+        <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-panel">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">GSC Debug</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Live query diagnostics</h2>
+          <p className="mt-2 text-sm text-slate-700">
+            This block is temporary debug output for Search Console troubleshooting. It reflects the exact property and
+            request bodies currently being used.
+          </p>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl border border-amber-200 bg-white px-4 py-4 text-sm">
+              <p className="font-semibold text-ink">Stored property</p>
+              <p className="mt-1 break-all text-slate-700">{storedPropertyUrl ?? "None"}</p>
+            </div>
+            <div className="rounded-2xl border border-amber-200 bg-white px-4 py-4 text-sm">
+              <p className="font-semibold text-ink">Selected property used for query</p>
+              <p className="mt-1 break-all text-slate-700">{selectedProperty?.siteUrl ?? "None"}</p>
+            </div>
+            <div className="rounded-2xl border border-amber-200 bg-white px-4 py-4 text-sm">
+              <p className="font-semibold text-ink">Date range</p>
+              <p className="mt-1 text-slate-700">
+                {searchConsolePerformance?.startDate ?? "n/a"} to {searchConsolePerformance?.endDate ?? "n/a"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-amber-200 bg-white px-4 py-4 text-sm">
+              <p className="font-semibold text-ink">Raw response rows</p>
+              <p className="mt-1 text-slate-700">
+                Summary: {searchConsolePerformance?.debug?.rawSummaryRowCount ?? 0}, Top queries:{" "}
+                {searchConsolePerformance?.debug?.rawTopQueriesRowCount ?? 0}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 xl:grid-cols-2">
+            <div className="rounded-2xl border border-amber-200 bg-white p-4">
+              <p className="text-sm font-semibold text-ink">Exact summary query body</p>
+              <pre className="mt-3 overflow-x-auto rounded-xl bg-sand/70 p-3 text-xs text-slate-800">
+                <code>{JSON.stringify(searchConsolePerformance?.debug?.queryBodySummary ?? null, null, 2)}</code>
+              </pre>
+            </div>
+            <div className="rounded-2xl border border-amber-200 bg-white p-4">
+              <p className="text-sm font-semibold text-ink">Exact top queries query body</p>
+              <pre className="mt-3 overflow-x-auto rounded-xl bg-sand/70 p-3 text-xs text-slate-800">
+                <code>{JSON.stringify(searchConsolePerformance?.debug?.queryBodyTopQueries ?? null, null, 2)}</code>
+              </pre>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-white p-4">
+            <p className="text-sm font-semibold text-ink">Raw response summary</p>
+            <pre className="mt-3 overflow-x-auto rounded-xl bg-sand/70 p-3 text-xs text-slate-800">
+              <code>
+                {JSON.stringify(
+                  {
+                    rawSummaryAggregationType: searchConsolePerformance?.debug?.rawSummaryAggregationType ?? null,
+                    rawSummaryTotals: searchConsolePerformance?.debug?.rawSummaryTotals ?? null,
+                    rawTopQueriesAggregationType: searchConsolePerformance?.debug?.rawTopQueriesAggregationType ?? null,
+                    performanceError: searchConsolePerformanceError,
+                    propertiesError: searchConsolePropertiesError
+                  },
+                  null,
+                  2
+                )}
+              </code>
+            </pre>
+          </div>
         </section>
       ) : null}
 

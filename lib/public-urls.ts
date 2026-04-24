@@ -15,6 +15,7 @@ function getDefaultOrigin() {
 export type PublicUrls = {
   isTenant: boolean;
   origin: string;
+  imageProxyOrigin: string;
   indexPath: string;
   articlePath: (slug: string) => string;
   sitemapPath: string;
@@ -49,6 +50,7 @@ export async function getPublicUrls(siteId: string): Promise<PublicUrls> {
     return {
       isTenant: true,
       origin,
+      imageProxyOrigin: getDefaultOrigin(),
       indexPath,
       articlePath: (slug: string) => `/blog/${slug}`,
       sitemapPath,
@@ -73,6 +75,7 @@ export async function getPublicUrls(siteId: string): Promise<PublicUrls> {
   return {
     isTenant: false,
     origin,
+    imageProxyOrigin: origin,
     indexPath,
     articlePath: (slug: string) => `/blog/${siteId}/${slug}`,
     sitemapPath,

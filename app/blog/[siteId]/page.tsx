@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PublicBlogMetaLinks } from "@/components/public-blog-meta-links";
-import { getCoverImageProxyPath } from "@/lib/cover-image-url";
+import { getCoverImageProxyUrl } from "@/lib/cover-image-url";
 import { getPublicSite, getPublishedArticles } from "@/lib/articles";
 import { getPublicBlogTheme } from "@/lib/public-blog-theme";
 import { getPublicUrls } from "@/lib/public-urls";
@@ -120,7 +120,7 @@ export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPag
                   <div className="space-y-4">
                     {article.coverImageUrl ? (
                       <img
-                        src={getCoverImageProxyPath(article.coverImageUrl)}
+                        src={getCoverImageProxyUrl(article.coverImageUrl, urls.imageProxyOrigin || undefined)}
                         alt=""
                         referrerPolicy="no-referrer"
                         className={cn("h-56 w-full rounded-[1.5rem] border object-cover", theme.imageBorder)}
@@ -145,7 +145,7 @@ export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPag
                     {article.excerpt ? <p className={cn("text-base leading-relaxed", theme.body)}>{article.excerpt}</p> : null}
                     <div>
                       <Link
-                        href={`/blog/${data.site.id}/${article.slug}`}
+                        href={urls.articlePath(article.slug)}
                         className={cn("text-sm font-semibold underline-offset-4 transition hover:underline", theme.link)}
                       >
                         Read article

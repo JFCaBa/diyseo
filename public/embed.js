@@ -275,32 +275,72 @@
     return apiOrigin + "/api/public/image?url=" + encodeURIComponent(url);
   }
 
-  function getCurrentSlug() {
+  function getLegacySlugFromHash() {
     var hash = window.location.hash || "";
-    var prefix = "#soro-article/";
+    var prefixes = ["#soro-article/", "#diyseo-article/"];
 
-    if (hash.slice(0, prefix.length) !== prefix) {
+    for (var i = 0; i < prefixes.length; i += 1) {
+      var prefix = prefixes[i];
+
+      if (hash.slice(0, prefix.length) === prefix) {
+        var legacySlug = hash.slice(prefix.length);
+        return legacySlug ? decodeURIComponent(legacySlug) : null;
+      }
+    }
+
+    return null;
+  }
+
+  function buildWidgetUrl(slug) {
+    var url = new URL(window.location.href);
+    var legacySlug = getLegacySlugFromHash();
+
+    if (slug) {
+      url.searchParams.set("post", slug);
+    } else {
+      url.searchParams.delete("post");
+    }
+
+    if (legacySlug) {
+      url.hash = "";
+    }
+
+    return url.pathname + url.search + url.hash;
+  }
+
+  function normalizeLegacyHashRoute() {
+    var slug = getLegacySlugFromHash();
+
+    if (!slug) {
       return null;
     }
 
-    var slug = hash.slice(prefix.length);
-    return slug ? decodeURIComponent(slug) : null;
+    history.replaceState("", document.title, buildWidgetUrl(slug));
+    return slug;
   }
 
-  function setHash(slug) {
-    if (slug) {
-      window.location.hash = "soro-article/" + encodeURIComponent(slug);
+  function getCurrentSlug() {
+    var url = new URL(window.location.href);
+    var querySlug = url.searchParams.get("post");
+
+    if (querySlug) {
+      return decodeURIComponent(querySlug);
+    }
+
+    return normalizeLegacyHashRoute();
+  }
+
+  function setPostSlug(slug) {
+    var nextUrl = buildWidgetUrl(slug);
+    var currentUrl = window.location.pathname + window.location.search + window.location.hash;
+
+    if (nextUrl === currentUrl) {
+      render();
       return;
     }
 
-    if ((window.location.hash || "").indexOf("#soro-article/") === 0) {
-      history.pushState(
-        "",
-        document.title,
-        window.location.pathname + window.location.search
-      );
-      render();
-    }
+    history.pushState("", document.title, nextUrl);
+    render();
   }
 
   function renderShell(content) {
@@ -417,8 +457,8 @@
                   '" alt="" referrerpolicy="no-referrer">'
                 : "") +
               '<div class="soro-article-main">' +
-              '<a href="#soro-article/' +
-              encodeURIComponent(article.slug) +
+              '<a href="' +
+              escapeHtml(buildWidgetUrl(article.slug)) +
               '" class="soro-link soro-article-title" data-slug="' +
               escapeHtml(article.slug) +
               '">' +
@@ -450,7 +490,7 @@
           links[i].addEventListener("click", function (event) {
             event.preventDefault();
             var slug = event.currentTarget.getAttribute("data-slug");
-            setHash(slug);
+            setPostSlug(slug);
           });
         }
       })
@@ -499,7 +539,7 @@
         var backButton = container.querySelector(".soro-back-button");
         if (backButton) {
           backButton.addEventListener("click", function () {
-            setHash(null);
+            setPostSlug(null);
           });
         }
       })
@@ -524,6 +564,7 @@
     renderList();
   }
 
+  window.addEventListener("popstate", render);
   window.addEventListener("hashchange", render);
   widgetConfig = resolveConfig(null);
   applyContainerAttributes();

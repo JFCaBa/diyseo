@@ -56,9 +56,10 @@ export default async function AdminSitesPage() {
       </div>
 
       <div className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/80 shadow-2xl">
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_100px_100px_120px] gap-3 border-b border-slate-800 bg-slate-950/70 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_80px_80px_100px] gap-3 border-b border-slate-800 bg-slate-950/70 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
           <p>Site</p>
           <p>Domain</p>
+          <p>Site ID</p>
           <p>Owner</p>
           <p>Articles</p>
           <p>Keywords</p>
@@ -68,11 +69,14 @@ export default async function AdminSitesPage() {
           {sites.map((site) => (
             <div
               key={site.id}
-              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_100px_100px_120px] gap-3 px-4 py-4 text-sm text-slate-300"
+              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_80px_80px_100px] gap-3 px-4 py-4 text-sm text-slate-300"
             >
               <p className="truncate font-medium text-white">{site.name}</p>
               <p className="truncate" title={site.domain}>
                 {formatDomain(site.domain)}
+              </p>
+              <p className="truncate font-mono text-xs text-slate-400" title={site.id}>
+                {site.id}
               </p>
               <p className="truncate">{site.workspace.owner.email || "No owner email"}</p>
               <p>{site._count.articles}</p>

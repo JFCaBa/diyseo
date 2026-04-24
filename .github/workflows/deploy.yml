@@ -36,8 +36,9 @@ jobs:
             cd /opt/diyseo
             git fetch --prune origin main
             git reset --hard origin/main
-            npm ci --omit=dev=false
+            npm ci
             npx prisma migrate deploy
+            rm -rf .next
             npm run build
             pm2 reload ecosystem.config.js --update-env
             pm2 save

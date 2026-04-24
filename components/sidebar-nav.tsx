@@ -44,10 +44,10 @@ export function SidebarNav({ siteId }: SidebarNavProps) {
       })}
 
       <Link
-        href="/settings"
+        href={`/${siteId}/settings`}
         className={cn(
           "mt-6 flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition hover:bg-slate-50 hover:text-ink dark:hover:bg-slate-800 dark:hover:text-slate-100",
-          pathname === "/settings"
+          pathname === `/${siteId}/settings`
             ? "bg-slate-50 text-ink shadow-sm dark:bg-slate-800 dark:text-slate-100"
             : "text-slate-600 dark:text-slate-400"
         )}

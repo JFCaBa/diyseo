@@ -56,6 +56,21 @@ export async function getPublicSite(siteId: string) {
   });
 }
 
+export async function getSiteByHost(host: string) {
+  const sites = await prisma.siteProject.findMany({
+    where: { domain: { contains: host } },
+    select: { id: true, name: true, domain: true, widgetTheme: true }
+  });
+
+  return sites.find((site) => {
+    try {
+      return new URL(site.domain).host.toLowerCase() === host.toLowerCase();
+    } catch {
+      return false;
+    }
+  }) ?? null;
+}
+
 export async function getAdjacentPublishedArticles(siteId: string, currentArticle: { publishedAt: Date | null; createdAt: Date }) {
   const publishedAt = currentArticle.publishedAt ?? currentArticle.createdAt;
 

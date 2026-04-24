@@ -61,13 +61,6 @@ const proofPoints = [
   "Self-hostable"
 ];
 
-const embedSnippet = `<div id="soro-widget-container"></div>
-<script
-  src="/embed.js"
-  data-site="your-site-id"
-  data-base-path="/blog"
-></script>`;
-
 type HomePageProps = {
   searchParams?: Promise<{ error?: string }>;
 };
@@ -123,14 +116,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           </div>
         ) : null}
 
-        <section className="grid gap-10 pb-20 pt-10 lg:min-h-[72vh] lg:grid-cols-[minmax(0,1.05fr)_380px] lg:items-center">
-          <div className="space-y-7">
+        <section className="flex justify-center pb-20 pt-12 lg:min-h-[68vh] lg:items-center">
+          <div className="max-w-3xl space-y-7">
             <div className="space-y-4">
               <p className="text-sm font-semibold text-accent">Self-hosted SEO workflow</p>
-              <h1 className="max-w-2xl text-5xl font-semibold tracking-tight text-ink sm:text-6xl">
+              <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-ink sm:text-6xl">
                 Launch an AI blog on any website
               </h1>
-              <p className="max-w-xl text-lg leading-8 text-slate-600">
+              <p className="max-w-2xl text-lg leading-8 text-slate-600">
                 Generate SEO articles, publish them, and embed a live blog with one snippet.
               </p>
             </div>
@@ -160,41 +153,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   {item}
                 </span>
               ))}
-            </div>
-          </div>
-
-          <div className="rounded-[2rem] border border-line bg-white/88 p-4 shadow-panel">
-            <div className="rounded-[1.5rem] border border-line bg-[linear-gradient(160deg,#ffffff,#f6f8f9)] p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Product flow</p>
-                  <h2 className="mt-2 text-xl font-semibold text-ink">From idea to live article</h2>
-                  <p className="mt-2 text-sm text-slate-600">A compact workflow from draft generation to a live embedded blog.</p>
-                </div>
-                <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">4 steps</span>
-              </div>
-              <div className="mt-5 space-y-2.5">
-                {steps.map((step) => (
-                  <div key={step.number} className="rounded-2xl border border-line bg-white px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-accent">{step.number}</p>
-                    <p className="mt-1 font-semibold text-ink">{step.title}</p>
-                    <p className="mt-1 text-sm text-slate-600">{step.description}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-[1.5rem] border border-line bg-sand/70 p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-lg font-semibold text-ink">Widget snippet</p>
-                  <p className="mt-1 text-sm text-slate-500">The final step stays simple and copyable.</p>
-                </div>
-                <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">Install</span>
-              </div>
-              <pre className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white p-4 text-sm leading-7 text-ink">
-                <code>{embedSnippet}</code>
-              </pre>
             </div>
           </div>
         </section>

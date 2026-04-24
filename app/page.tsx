@@ -35,33 +35,30 @@ const capabilities = [
 const steps = [
   {
     number: "01",
-    title: "Sign in with Google",
-    description: "Create your workspace and land directly in the admin for your first site."
+    title: "Connect your site",
+    description: "Create your workspace and start with a site that will power the blog, API, and widget."
   },
   {
     number: "02",
-    title: "Generate your first article",
-    description: "Use Brand DNA plus AI generation to get to a real draft in under a minute."
+    title: "Generate article",
+    description: "Use AI plus Brand DNA to turn an idea into a draft quickly."
   },
   {
     number: "03",
     title: "Publish it",
-    description: "Move one article live so the blog, public API, and widget all have real content."
+    description: "Push one article live so your public blog has real content immediately."
   },
   {
     number: "04",
-    title: "Embed it on your site",
-    description: "Copy the widget snippet and drop published articles into an existing page."
+    title: "Embed widget",
+    description: "Drop one snippet into your site and render the live blog anywhere."
   }
 ];
 
 const proofPoints = [
-  "Google sign-in",
-  "Article generation",
-  "Keyword suggestions",
-  "Publishing workflow",
-  "Public blog and API",
-  "Embeddable widget"
+  "API-first",
+  "Widget-ready",
+  "Self-hostable"
 ];
 
 const embedSnippet = `<div id="soro-widget-container"></div>
@@ -137,11 +134,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <div className="space-y-5">
               <p className="text-sm font-semibold text-accent">Self-hosted SEO workflow</p>
               <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-ink sm:text-6xl">
-                Sign in, generate an article, publish it, and embed it.
+                Launch an AI blog on any website
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-slate-600">
-                DIYSEO is a technical, credible content workflow for teams that want user-based access, AI-assisted
-                article generation, public delivery, and a widget they can install on an existing site.
+                Generate SEO articles, publish them, and embed a live blog with one snippet. Use DIYSEO online or
+                self-host it.
               </p>
             </div>
 
@@ -160,7 +157,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 href="/blog/widget-demo"
                 className="inline-flex items-center justify-center rounded-2xl border border-line bg-white/80 px-5 py-3 text-sm font-semibold text-ink transition hover:bg-white"
               >
-                View widget demo
+                View demo
               </Link>
             </div>
 
@@ -174,20 +171,21 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           </div>
 
           <div className="rounded-[2rem] border border-line bg-white/88 p-5 shadow-panel">
-            <div className="rounded-[1.5rem] border border-line bg-[linear-gradient(135deg,#0f172a,#1f2937)] p-5 text-slate-100">
-              <div className="flex items-center justify-between gap-3">
+            <div className="rounded-[1.5rem] border border-line bg-[linear-gradient(160deg,#ffffff,#f4f7f9)] p-5">
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-teal-300">First Value</p>
-                  <h2 className="mt-2 text-2xl font-semibold">Under 60 seconds</h2>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Product flow</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-ink">From idea to live article</h2>
+                  <p className="mt-2 text-sm text-slate-600">A short path from draft generation to an embedded public blog.</p>
                 </div>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200">Onboarding-aligned</span>
+                <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">Live workflow</span>
               </div>
               <div className="mt-5 space-y-3">
                 {steps.map((step) => (
-                  <div key={step.number} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-teal-300">{step.number}</p>
-                    <p className="mt-1 font-semibold">{step.title}</p>
-                    <p className="mt-1 text-sm text-slate-300">{step.description}</p>
+                  <div key={step.number} className="rounded-2xl border border-line bg-white px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-accent">{step.number}</p>
+                    <p className="mt-1 font-semibold text-ink">{step.title}</p>
+                    <p className="mt-1 text-sm text-slate-600">{step.description}</p>
                   </div>
                 ))}
               </div>
@@ -211,10 +209,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <section className="border-t border-line py-20">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">How It Works</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">The same path users see after login</h2>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">A simple path from content to distribution</h2>
             <p className="mt-4 text-base leading-8 text-slate-600">
-              The marketing page now mirrors the in-app onboarding directly: authenticate, generate a draft, publish one
-              article, then install the widget.
+              DIYSEO combines article generation, publishing, and a public blog widget in one product flow that is easy
+              to understand quickly.
             </p>
           </div>
           <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -285,10 +283,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <div className="rounded-[2rem] border border-line bg-ink px-8 py-10 text-white shadow-panel">
             <div className="max-w-3xl space-y-4">
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-teal-300">Start</p>
-              <h2 className="text-4xl font-semibold tracking-tight">Get to a published article fast</h2>
+              <h2 className="text-4xl font-semibold tracking-tight">Launch an AI blog without rebuilding your site</h2>
               <p className="max-w-2xl text-base leading-8 text-slate-300">
-                Sign in with Google, let the onboarding flow point you at the first article, publish one, and install the
-                widget when you are ready.
+                Sign in with Google, generate your first article, publish it, and embed the live blog when you are ready.
               </p>
             </div>
             <div className="mt-8 flex flex-wrap items-center gap-4">

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_EXACT = new Set(["/", "/privacy", "/terms"]);
-const PUBLIC_PREFIXES = ["/blog", "/api/auth", "/api/public"];
+const PUBLIC_PREFIXES = ["/blog", "/api/auth", "/api/public", "/api/internal/cron"];
 
 const SESSION_COOKIES = [
   "__Secure-authjs.session-token",

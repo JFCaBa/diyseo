@@ -77,6 +77,8 @@ export default {
       originPath = "/blog/" + SITE_ID + "/sitemap.xml";
     } else if (url.pathname === BLOG_BASE + "/rss.xml") {
       originPath = "/blog/" + SITE_ID + "/rss.xml";
+    } else if (url.pathname === BLOG_BASE + "/atom.xml") {
+      originPath = "/blog/" + SITE_ID + "/atom.xml";
     } else {
       const remainder = url.pathname.slice((BLOG_BASE + "/").length);
 

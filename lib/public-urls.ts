@@ -41,9 +41,9 @@ export async function getPublicUrls(siteId: string): Promise<PublicUrls> {
   if (isTenant && forwardedHost) {
     const origin = `${forwardedProto}://${forwardedHost}`;
     const indexPath = "/blog";
-    const sitemapPath = "/blog-sitemap.xml";
-    const rssPath = "/blog-rss.xml";
-    const atomPath = "/blog-atom.xml";
+    const sitemapPath = "/blog/sitemap.xml";
+    const rssPath = "/blog/rss.xml";
+    const atomPath = "/blog/atom.xml";
     const robotsPath = "/robots.txt";
 
     return {

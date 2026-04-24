@@ -9,6 +9,7 @@ type WidgetTheme = "light" | "dark";
 type WidgetInstallCardProps = {
   baseUrl: string;
   siteId: string;
+  siteDomain?: string | null;
   initialTheme?: WidgetTheme | null;
   widgetInstalledAt?: string | null;
   id?: string;
@@ -16,7 +17,19 @@ type WidgetInstallCardProps = {
 
 const initialState: ActionState = {};
 
-export function WidgetInstallCard({ baseUrl, siteId, initialTheme, widgetInstalledAt, id }: WidgetInstallCardProps) {
+function formatRouteDomain(value?: string | null) {
+  if (!value) {
+    return "clientdomain.com";
+  }
+
+  try {
+    return new URL(value).host.replace(/\/$/, "");
+  } catch {
+    return value.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  }
+}
+
+export function WidgetInstallCard({ baseUrl, siteId, siteDomain, initialTheme, widgetInstalledAt, id }: WidgetInstallCardProps) {
   const [copied, setCopied] = useState(false);
   const [workerCopied, setWorkerCopied] = useState(false);
   const [theme, setTheme] = useState<WidgetTheme>(initialTheme === "dark" ? "dark" : "light");
@@ -26,6 +39,8 @@ export function WidgetInstallCard({ baseUrl, siteId, initialTheme, widgetInstall
   const [state, formAction] = useActionState(updateWidgetThemeForSite, initialState);
   const [installState, installFormAction] = useActionState(updateWidgetInstalledStateForSite, initialState);
   const embedUrl = `${baseUrl}/embed.js`;
+  const routeDomain = formatRouteDomain(siteDomain);
+  const recommendedRoute = `${routeDomain}/blog*`;
   const snippet = `<div id="soro-widget-container"></div>
 <script
   src="${embedUrl}"
@@ -239,19 +254,31 @@ export default {
             </div>
             <div>
               <dt className="font-semibold text-ink">Recommended route</dt>
-              <dd className="mt-1">clientdomain.com/blog*</dd>
+              <dd className="mt-1 break-all">{recommendedRoute}</dd>
             </div>
           </dl>
 
           <ol className="mt-4 grid gap-2 text-sm text-slate-600">
             <li>1. Create a Cloudflare Worker and paste this script.</li>
-            <li>2. Attach the Worker to `clientdomain.com/blog*`.</li>
+            <li>2. Attach the Worker to `{recommendedRoute}`.</li>
             <li>3. Test `/blog`, `/blog/sitemap.xml`, `/blog/rss.xml`, and one article URL.</li>
           </ol>
 
-          <pre className="mt-4 overflow-x-auto rounded-2xl border border-line bg-sand/70 p-4 text-sm text-ink">
+          <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-sand/70">
+            <div className="flex items-center justify-between gap-3 border-b border-line/70 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Worker script</p>
+              <button
+                type="button"
+                onClick={handleWorkerCopy}
+                className="inline-flex items-center justify-center rounded-xl border border-line bg-white px-3 py-2 text-xs font-semibold text-ink transition hover:bg-mist"
+              >
+                {workerCopied ? "Copied" : "Copy script"}
+              </button>
+            </div>
+            <pre className="overflow-x-auto p-4 text-sm text-ink">
             <code>{workerScript}</code>
-          </pre>
+            </pre>
+          </div>
         </div>
       </div>
 

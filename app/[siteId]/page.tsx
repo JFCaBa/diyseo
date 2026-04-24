@@ -304,6 +304,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         id="install-widget"
         baseUrl={appBaseUrl.replace(/\/$/, "")}
         siteId={siteId}
+        siteDomain={site.domain}
         initialTheme={site.widgetTheme === "dark" ? "dark" : "light"}
         widgetInstalledAt={site.widgetInstalledAt ? site.widgetInstalledAt.toISOString() : null}
       />

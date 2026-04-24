@@ -1,5 +1,3 @@
-import "server-only";
-
 import { createWriteStream } from "node:fs";
 import { promises as fs } from "node:fs";
 import { spawn } from "node:child_process";

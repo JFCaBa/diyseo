@@ -472,7 +472,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
                     : " Google returned no clicks, impressions, or top-query rows for the current range yet."}
                 </p>
               </div>
-              <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+              <span className="whitespace-nowrap rounded-full bg-accent/10 px-3 py-1 text-sm font-semibold text-accent">
                 {searchConsolePerformance.startDate} to {searchConsolePerformance.endDate}
               </span>
             </div>

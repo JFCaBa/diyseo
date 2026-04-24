@@ -32,8 +32,10 @@ export function SidebarNav({ siteId }: SidebarNavProps) {
             key={item.label}
             href={href}
             className={cn(
-              "flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition hover:bg-white hover:text-ink",
-              active ? "bg-white text-ink shadow-sm" : "text-slate-600"
+              "flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition hover:bg-slate-50 hover:text-ink dark:hover:bg-slate-800 dark:hover:text-slate-100",
+              active
+                ? "bg-slate-50 text-ink shadow-sm dark:bg-slate-800 dark:text-slate-100"
+                : "text-slate-600 dark:text-slate-400"
             )}
           >
             {item.label}
@@ -44,8 +46,10 @@ export function SidebarNav({ siteId }: SidebarNavProps) {
       <Link
         href="/settings"
         className={cn(
-          "mt-6 flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition hover:bg-white hover:text-ink",
-          pathname === "/settings" ? "bg-white text-ink shadow-sm" : "text-slate-600"
+          "mt-6 flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition hover:bg-slate-50 hover:text-ink dark:hover:bg-slate-800 dark:hover:text-slate-100",
+          pathname === "/settings"
+            ? "bg-slate-50 text-ink shadow-sm dark:bg-slate-800 dark:text-slate-100"
+            : "text-slate-600 dark:text-slate-400"
         )}
       >
         Settings

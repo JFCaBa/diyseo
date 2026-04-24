@@ -5,7 +5,9 @@ import { notFound } from "next/navigation";
 import { PublicBlogMetaLinks } from "@/components/public-blog-meta-links";
 import { getCoverImageProxyPath } from "@/lib/cover-image-url";
 import { getPublicSite, getPublishedArticles } from "@/lib/articles";
+import { getPublicBlogTheme } from "@/lib/public-blog-theme";
 import { getPublicUrls } from "@/lib/public-urls";
+import { cn } from "@/lib/utils";
 import { PublicBlogIndexRouteParamsSchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
@@ -81,22 +83,23 @@ export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPag
   }
 
   const urls = await getPublicUrls(data.site.id);
+  const theme = getPublicBlogTheme(data.site.widgetTheme);
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#1e293b_0%,#020617_55%,#020617_100%)] px-4 py-10 text-slate-100 sm:px-6 sm:py-12">
-      <section className="mx-auto max-w-4xl rounded-[2rem] border border-slate-800 bg-slate-950/85 px-5 py-7 shadow-panel backdrop-blur sm:px-8 md:px-10 md:py-10">
-        <div className="space-y-4 border-b border-slate-800 pb-7">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-teal-300">Public Blog</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">{data.site.name} Blog</h1>
-          <p className="max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
+    <main className={cn("min-h-screen px-4 py-10 sm:px-6 sm:py-12", theme.page)}>
+      <section className={cn("mx-auto max-w-4xl rounded-[2rem] border px-5 py-7 shadow-panel backdrop-blur sm:px-8 md:px-10 md:py-10", theme.shell)}>
+        <div className={cn("space-y-4 border-b pb-7", theme.divider)}>
+          <p className={cn("text-[11px] font-semibold uppercase tracking-[0.28em]", theme.eyebrow)}>Public Blog</p>
+          <h1 className={cn("text-3xl font-semibold tracking-tight sm:text-4xl", theme.title)}>{data.site.name} Blog</h1>
+          <p className={cn("max-w-2xl text-sm leading-7 sm:text-base", theme.body)}>
             Published articles from {data.site.name}, served directly from the DIYSEO app.
           </p>
         </div>
 
         {data.articles.length === 0 ? (
-          <div className="mt-10 rounded-3xl border border-dashed border-slate-700 bg-slate-900/60 px-6 py-10 text-center">
-            <p className="text-lg font-semibold text-white">No articles published yet.</p>
-            <p className="mt-2 text-sm text-slate-400">Check back later for new posts from this site.</p>
+          <div className={cn("mt-10 rounded-3xl border border-dashed px-6 py-10 text-center", theme.empty)}>
+            <p className={cn("text-lg font-semibold", theme.title)}>No articles published yet.</p>
+            <p className={cn("mt-2 text-sm", theme.muted)}>Check back later for new posts from this site.</p>
           </div>
         ) : (
           <div className="mt-10 space-y-6">
@@ -112,7 +115,7 @@ export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPag
               return (
                 <article
                   key={article.id}
-                  className="rounded-3xl border border-slate-800 bg-slate-900/70 px-5 py-5 transition hover:border-slate-700 hover:bg-slate-900 sm:px-6 sm:py-6"
+                  className={cn("rounded-3xl border px-5 py-5 transition sm:px-6 sm:py-6", theme.card)}
                 >
                   <div className="space-y-4">
                     {article.coverImageUrl ? (
@@ -120,27 +123,30 @@ export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPag
                         src={getCoverImageProxyPath(article.coverImageUrl)}
                         alt=""
                         referrerPolicy="no-referrer"
-                        className="h-56 w-full rounded-[1.5rem] border border-line object-cover"
+                        className={cn("h-56 w-full rounded-[1.5rem] border object-cover", theme.imageBorder)}
                       />
                     ) : null}
                     <div className="space-y-3">
                       <Link
                         href={urls.articlePath(article.slug)}
-                        className="block text-2xl font-semibold tracking-tight text-white decoration-transparent underline-offset-4 transition hover:text-teal-300 hover:decoration-teal-300 hover:underline"
+                        className={cn(
+                          "block text-2xl font-semibold tracking-tight decoration-transparent underline-offset-4 transition hover:underline",
+                          theme.titleLink
+                        )}
                       >
                         {article.title}
                       </Link>
                       {publishedDate ? (
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                        <p className={cn("text-[11px] font-semibold uppercase tracking-[0.22em]", theme.muted)}>
                           Published {publishedDate}
                         </p>
                       ) : null}
                     </div>
-                    {article.excerpt ? <p className="text-base leading-relaxed text-slate-300">{article.excerpt}</p> : null}
+                    {article.excerpt ? <p className={cn("text-base leading-relaxed", theme.body)}>{article.excerpt}</p> : null}
                     <div>
                       <Link
                         href={`/blog/${data.site.id}/${article.slug}`}
-                        className="text-sm font-semibold text-teal-300 underline-offset-4 transition hover:text-teal-200 hover:underline"
+                        className={cn("text-sm font-semibold underline-offset-4 transition hover:underline", theme.link)}
                       >
                         Read article
                       </Link>
@@ -152,7 +158,7 @@ export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPag
           </div>
         )}
 
-        <PublicBlogMetaLinks siteId={data.site.id} />
+        <PublicBlogMetaLinks siteId={data.site.id} theme={theme.mode} />
       </section>
     </main>
   );

@@ -5,7 +5,9 @@ import { notFound } from "next/navigation";
 import { PublicBlogMetaLinks } from "@/components/public-blog-meta-links";
 import { getCoverImageProxyPath, getCoverImageProxyUrl } from "@/lib/cover-image-url";
 import { getAdjacentPublishedArticles, getPublishedArticleBySlug } from "@/lib/articles";
+import { getPublicBlogTheme } from "@/lib/public-blog-theme";
 import { getPublicUrls } from "@/lib/public-urls";
+import { cn } from "@/lib/utils";
 import { PublicArticleRouteParamsSchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
@@ -88,18 +90,25 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
         day: "numeric"
       }).format(new Date(article.publishedAt))
     : null;
+  const theme = getPublicBlogTheme(article.siteProject?.widgetTheme);
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#1e293b_0%,#020617_55%,#020617_100%)] px-4 py-10 text-slate-100 sm:px-6 sm:py-12">
-      <article className="mx-auto max-w-3xl rounded-[2rem] border border-slate-800 bg-slate-950/88 px-5 py-7 shadow-panel backdrop-blur sm:px-8 md:px-10 md:py-10">
-        <div className="space-y-5 border-b border-slate-800 pb-7">
+    <main className={cn("min-h-screen px-4 py-10 sm:px-6 sm:py-12", theme.page)}>
+      <article
+        className={cn(
+          "mx-auto max-w-3xl rounded-[2rem] border px-5 py-7 shadow-panel backdrop-blur sm:px-8 md:px-10 md:py-10",
+          theme.shell,
+          theme.surfaceText
+        )}
+      >
+        <div className={cn("space-y-5 border-b pb-7", theme.divider)}>
           <Link
             href={urls.indexPath}
-            className="inline-flex text-sm font-semibold text-teal-300 underline-offset-4 transition hover:text-teal-200 hover:underline"
+            className={cn("inline-flex text-sm font-semibold underline-offset-4 transition hover:underline", theme.link)}
           >
             ← Back to Blog
           </Link>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">
+          <p className={cn("text-[11px] font-semibold uppercase tracking-[0.28em]", theme.eyebrow)}>
             {article.siteProject?.name || "DIYSEO"}
           </p>
           {article.coverImageUrl ? (
@@ -107,31 +116,31 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
               src={getCoverImageProxyPath(article.coverImageUrl)}
               alt=""
               referrerPolicy="no-referrer"
-              className="h-auto w-full rounded-[1.75rem] border border-slate-800 object-cover"
+              className={cn("h-auto w-full rounded-[1.75rem] border object-cover", theme.imageBorder)}
             />
           ) : null}
-          <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl md:text-5xl">{article.title}</h1>
-          {article.excerpt ? <p className="max-w-2xl text-lg leading-8 text-slate-300 sm:text-xl">{article.excerpt}</p> : null}
+          <h1 className={cn("text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl", theme.title)}>{article.title}</h1>
+          {article.excerpt ? <p className={cn("max-w-2xl text-lg leading-8 sm:text-xl", theme.body)}>{article.excerpt}</p> : null}
           {publishedDate ? (
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Published {publishedDate}</p>
+            <p className={cn("text-[11px] font-semibold uppercase tracking-[0.22em]", theme.muted)}>Published {publishedDate}</p>
           ) : null}
         </div>
 
         <div
-          className="prose prose-invert prose-lg mt-10 max-w-none leading-relaxed prose-headings:tracking-tight prose-headings:text-white prose-p:text-slate-300 prose-li:text-slate-300 prose-strong:text-white prose-a:text-teal-300 prose-a:decoration-teal-400/40 prose-a:underline-offset-4 prose-blockquote:border-l-slate-600 prose-blockquote:text-slate-300 prose-code:rounded prose-code:bg-slate-900 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-slate-100 prose-pre:border prose-pre:border-slate-800 prose-pre:bg-slate-900 prose-pre:text-slate-100"
+          className={cn("mt-10", theme.prose)}
           dangerouslySetInnerHTML={{ __html: article.contentHtml }}
         />
 
-        <nav className="mt-10 border-t border-slate-800 pt-6" aria-label="Article navigation">
+        <nav className={cn("mt-10 border-t pt-6", theme.divider)} aria-label="Article navigation">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div className="sm:max-w-[32%]">
               {previousArticle ? (
                 <Link
                   href={urls.articlePath(previousArticle.slug)}
-                  className="block text-sm text-slate-400 transition hover:text-white"
+                  className={cn("block text-sm transition", theme.navText)}
                 >
-                  <span className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-teal-300">Previous</span>
-                  <span className="mt-2 block text-base font-semibold leading-relaxed text-white underline-offset-4 hover:underline">
+                  <span className={cn("block text-[11px] font-semibold uppercase tracking-[0.22em]", theme.eyebrow)}>Previous</span>
+                  <span className={cn("mt-2 block text-base font-semibold leading-relaxed underline-offset-4 hover:underline", theme.navTitle)}>
                     ← {previousArticle.title}
                   </span>
                 </Link>
@@ -141,7 +150,7 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
             <div className="sm:text-center">
               <Link
                 href={urls.indexPath}
-                className="inline-flex text-sm font-semibold text-teal-300 underline-offset-4 transition hover:text-teal-200 hover:underline"
+                className={cn("inline-flex text-sm font-semibold underline-offset-4 transition hover:underline", theme.link)}
               >
                 Back to Blog Index
               </Link>
@@ -151,10 +160,10 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
               {nextArticle ? (
                 <Link
                   href={urls.articlePath(nextArticle.slug)}
-                  className="block text-sm text-slate-400 transition hover:text-white"
+                  className={cn("block text-sm transition", theme.navText)}
                 >
-                  <span className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-teal-300">Next</span>
-                  <span className="mt-2 block text-base font-semibold leading-relaxed text-white underline-offset-4 hover:underline">
+                  <span className={cn("block text-[11px] font-semibold uppercase tracking-[0.22em]", theme.eyebrow)}>Next</span>
+                  <span className={cn("mt-2 block text-base font-semibold leading-relaxed underline-offset-4 hover:underline", theme.navTitle)}>
                     {nextArticle.title} →
                   </span>
                 </Link>
@@ -163,7 +172,7 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
           </div>
         </nav>
 
-        <PublicBlogMetaLinks siteId={article.siteProjectId} />
+        <PublicBlogMetaLinks siteId={article.siteProjectId} theme={theme.mode} />
       </article>
     </main>
   );

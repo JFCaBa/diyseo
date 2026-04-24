@@ -9,6 +9,8 @@ import {
   getPublishedArticleBySlug,
   getPublishedArticles
 } from "@/lib/articles";
+import { getPublicBlogTheme } from "@/lib/public-blog-theme";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +55,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
     });
 
     const publishedDate = formatPublishedDate(article.publishedAt);
+    const theme = getPublicBlogTheme(site.widgetTheme);
 
     return (
       <section className="space-y-8">
@@ -79,45 +82,47 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
           }
         />
 
-        <article className="rounded-[2rem] border border-slate-800 bg-slate-950/88 px-5 py-7 text-slate-100 shadow-panel sm:px-8 md:px-10 md:py-10">
-          <div className="space-y-5 border-b border-slate-800 pb-7">
+        <article
+          className={cn("rounded-[2rem] border px-5 py-7 shadow-panel sm:px-8 md:px-10 md:py-10", theme.shell, theme.surfaceText)}
+        >
+          <div className={cn("space-y-5 border-b pb-7", theme.divider)}>
             <Link
               href={`/${siteId}/preview`}
-              className="inline-flex text-sm font-semibold text-teal-300 underline-offset-4 transition hover:text-teal-200 hover:underline"
+              className={cn("inline-flex text-sm font-semibold underline-offset-4 transition hover:underline", theme.link)}
             >
               ← Back to Preview Index
             </Link>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-teal-300">{site.name}</p>
+            <p className={cn("text-[11px] font-semibold uppercase tracking-[0.28em]", theme.eyebrow)}>{site.name}</p>
             {article.coverImageUrl ? (
               <img
                 src={getCoverImageProxyPath(article.coverImageUrl)}
                 alt=""
                 referrerPolicy="no-referrer"
-                className="h-auto w-full rounded-[1.75rem] border border-slate-800 object-cover"
+                className={cn("h-auto w-full rounded-[1.75rem] border object-cover", theme.imageBorder)}
               />
             ) : null}
-            <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl md:text-5xl">{article.title}</h1>
-            {article.excerpt ? <p className="max-w-2xl text-lg leading-8 text-slate-300 sm:text-xl">{article.excerpt}</p> : null}
+            <h1 className={cn("text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl", theme.title)}>{article.title}</h1>
+            {article.excerpt ? <p className={cn("max-w-2xl text-lg leading-8 sm:text-xl", theme.body)}>{article.excerpt}</p> : null}
             {publishedDate ? (
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Published {publishedDate}</p>
+              <p className={cn("text-[11px] font-semibold uppercase tracking-[0.22em]", theme.muted)}>Published {publishedDate}</p>
             ) : null}
           </div>
 
           <div
-            className="prose prose-invert prose-lg mt-10 max-w-none leading-relaxed prose-headings:tracking-tight prose-headings:text-white prose-p:text-slate-300 prose-li:text-slate-300 prose-strong:text-white prose-a:text-teal-300 prose-a:decoration-teal-400/40 prose-a:underline-offset-4 prose-blockquote:border-l-slate-600 prose-blockquote:text-slate-300 prose-code:rounded prose-code:bg-slate-900 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-slate-100 prose-pre:border prose-pre:border-slate-800 prose-pre:bg-slate-900 prose-pre:text-slate-100"
+            className={cn("mt-10", theme.prose)}
             dangerouslySetInnerHTML={{ __html: article.contentHtml }}
           />
 
-          <nav className="mt-10 border-t border-slate-800 pt-6" aria-label="Article navigation">
+          <nav className={cn("mt-10 border-t pt-6", theme.divider)} aria-label="Article navigation">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
               <div className="sm:max-w-[32%]">
                 {previousArticle ? (
                   <Link
                     href={`/${siteId}/preview?slug=${encodeURIComponent(previousArticle.slug)}`}
-                    className="block text-sm text-slate-400 transition hover:text-white"
+                    className={cn("block text-sm transition", theme.navText)}
                   >
-                    <span className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-teal-300">Previous</span>
-                    <span className="mt-2 block text-base font-semibold leading-relaxed text-white underline-offset-4 hover:underline">
+                    <span className={cn("block text-[11px] font-semibold uppercase tracking-[0.22em]", theme.eyebrow)}>Previous</span>
+                    <span className={cn("mt-2 block text-base font-semibold leading-relaxed underline-offset-4 hover:underline", theme.navTitle)}>
                       ← {previousArticle.title}
                     </span>
                   </Link>
@@ -127,7 +132,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
               <div className="sm:text-center">
                 <Link
                   href={`/${siteId}/preview`}
-                  className="inline-flex text-sm font-semibold text-teal-300 underline-offset-4 transition hover:text-teal-200 hover:underline"
+                  className={cn("inline-flex text-sm font-semibold underline-offset-4 transition hover:underline", theme.link)}
                 >
                   Back to Blog Preview
                 </Link>
@@ -137,10 +142,10 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
                 {nextArticle ? (
                   <Link
                     href={`/${siteId}/preview?slug=${encodeURIComponent(nextArticle.slug)}`}
-                    className="block text-sm text-slate-400 transition hover:text-white"
+                    className={cn("block text-sm transition", theme.navText)}
                   >
-                    <span className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-teal-300">Next</span>
-                    <span className="mt-2 block text-base font-semibold leading-relaxed text-white underline-offset-4 hover:underline">
+                    <span className={cn("block text-[11px] font-semibold uppercase tracking-[0.22em]", theme.eyebrow)}>Next</span>
+                    <span className={cn("mt-2 block text-base font-semibold leading-relaxed underline-offset-4 hover:underline", theme.navTitle)}>
                       {nextArticle.title} →
                     </span>
                   </Link>
@@ -154,6 +159,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
   }
 
   const articles = await getPublishedArticles(siteId);
+  const theme = getPublicBlogTheme(site.widgetTheme);
 
   return (
     <section className="space-y-8">
@@ -172,19 +178,19 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
         }
       />
 
-      <section className="rounded-[2rem] border border-slate-800 bg-slate-950/85 px-5 py-7 text-slate-100 shadow-panel sm:px-8 md:px-10 md:py-10">
-        <div className="space-y-4 border-b border-slate-800 pb-7">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-teal-300">Public Blog Preview</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">{site.name} Blog</h1>
-          <p className="max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
+      <section className={cn("rounded-[2rem] border px-5 py-7 shadow-panel sm:px-8 md:px-10 md:py-10", theme.shell, theme.surfaceText)}>
+        <div className={cn("space-y-4 border-b pb-7", theme.divider)}>
+          <p className={cn("text-[11px] font-semibold uppercase tracking-[0.28em]", theme.eyebrow)}>Public Blog Preview</p>
+          <h1 className={cn("text-3xl font-semibold tracking-tight sm:text-4xl", theme.title)}>{site.name} Blog</h1>
+          <p className={cn("max-w-2xl text-sm leading-7 sm:text-base", theme.body)}>
             This is the same published content, rendered inside the admin app so you can preview without leaving the shell.
           </p>
         </div>
 
         {articles.length === 0 ? (
-          <div className="mt-10 rounded-3xl border border-dashed border-slate-700 bg-slate-900/60 px-6 py-10 text-center">
-            <p className="text-lg font-semibold text-white">No articles published yet.</p>
-            <p className="mt-2 text-sm text-slate-400">Publish an article to preview the public blog here.</p>
+          <div className={cn("mt-10 rounded-3xl border border-dashed px-6 py-10 text-center", theme.empty)}>
+            <p className={cn("text-lg font-semibold", theme.title)}>No articles published yet.</p>
+            <p className={cn("mt-2 text-sm", theme.muted)}>Publish an article to preview the public blog here.</p>
           </div>
         ) : (
           <div className="mt-10 space-y-6">
@@ -194,7 +200,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
               return (
                 <article
                   key={article.id}
-                  className="rounded-3xl border border-slate-800 bg-slate-900/70 px-5 py-5 transition hover:border-slate-700 hover:bg-slate-900 sm:px-6 sm:py-6"
+                  className={cn("rounded-3xl border px-5 py-5 transition sm:px-6 sm:py-6", theme.card)}
                 >
                   <div className="space-y-4">
                     {article.coverImageUrl ? (
@@ -202,27 +208,30 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
                         src={getCoverImageProxyPath(article.coverImageUrl)}
                         alt=""
                         referrerPolicy="no-referrer"
-                        className="h-56 w-full rounded-[1.5rem] border border-line object-cover"
+                        className={cn("h-56 w-full rounded-[1.5rem] border object-cover", theme.imageBorder)}
                       />
                     ) : null}
                     <div className="space-y-3">
                       <Link
                         href={`/${siteId}/preview?slug=${encodeURIComponent(article.slug)}`}
-                        className="block text-2xl font-semibold tracking-tight text-white decoration-transparent underline-offset-4 transition hover:text-teal-300 hover:decoration-teal-300 hover:underline"
+                        className={cn(
+                          "block text-2xl font-semibold tracking-tight decoration-transparent underline-offset-4 transition hover:underline",
+                          theme.titleLink
+                        )}
                       >
                         {article.title}
                       </Link>
                       {publishedDate ? (
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                        <p className={cn("text-[11px] font-semibold uppercase tracking-[0.22em]", theme.muted)}>
                           Published {publishedDate}
                         </p>
                       ) : null}
                     </div>
-                    {article.excerpt ? <p className="text-base leading-relaxed text-slate-300">{article.excerpt}</p> : null}
+                    {article.excerpt ? <p className={cn("text-base leading-relaxed", theme.body)}>{article.excerpt}</p> : null}
                     <div>
                       <Link
                         href={`/${siteId}/preview?slug=${encodeURIComponent(article.slug)}`}
-                        className="text-sm font-semibold text-teal-300 underline-offset-4 transition hover:text-teal-200 hover:underline"
+                        className={cn("text-sm font-semibold underline-offset-4 transition hover:underline", theme.link)}
                       >
                         Read article
                       </Link>

@@ -16,7 +16,8 @@ export const publicArticleSelect = {
   siteProjectId: true,
   siteProject: {
     select: {
-      name: true
+      name: true,
+      widgetTheme: true
     }
   }
 } as const;
@@ -49,7 +50,8 @@ export async function getPublicSite(siteId: string) {
     select: {
       id: true,
       name: true,
-      domain: true
+      domain: true,
+      widgetTheme: true
     }
   });
 }

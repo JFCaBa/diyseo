@@ -102,6 +102,16 @@ export const UpdateWidgetThemeSchema = z.object({
   widgetTheme: z.enum(["light", "dark"])
 });
 
+export const UpdateAutoPublishSettingsSchema = z.object({
+  autoPublishEnabled: z.boolean(),
+  articlesPerWeek: z.coerce
+    .number()
+    .int("Articles per week must be a whole number.")
+    .min(1, "Articles per week must be at least 1.")
+    .max(50, "Articles per week must be 50 or less."),
+  requireReview: z.boolean()
+});
+
 export const TransferSiteSchema = z.object({
   email: z.string().email("Enter a valid user email.")
 });
@@ -175,6 +185,7 @@ export type ToggleArticleStatusInput = z.infer<typeof ToggleArticleStatusSchema>
 export type CreateKeywordInput = z.infer<typeof CreateKeywordSchema>;
 export type UpdateSearchConsolePropertyInput = z.infer<typeof UpdateSearchConsolePropertySchema>;
 export type UpdateWidgetThemeInput = z.infer<typeof UpdateWidgetThemeSchema>;
+export type UpdateAutoPublishSettingsInput = z.infer<typeof UpdateAutoPublishSettingsSchema>;
 export type TransferSiteInput = z.infer<typeof TransferSiteSchema>;
 export type DeleteSiteInput = z.infer<typeof DeleteSiteSchema>;
 export type UpdateArticleInput = z.infer<typeof UpdateArticleSchema>;

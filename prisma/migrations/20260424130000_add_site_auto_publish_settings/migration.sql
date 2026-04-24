@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "SiteProject"
+ADD COLUMN "autoPublishEnabled" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "articlesPerWeek" INTEGER NOT NULL DEFAULT 2,
+ADD COLUMN "requireReview" BOOLEAN NOT NULL DEFAULT true;

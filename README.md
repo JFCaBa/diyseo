@@ -90,6 +90,7 @@ Required for most setups:
 - `DATABASE_URL`
 - `NEXT_PUBLIC_APP_URL`
 - `AI_PROVIDER`
+- `CRON_SECRET`
 
 AI provider credentials:
 
@@ -363,6 +364,17 @@ npm run start
 ```
 
 Please keep changes focused, avoid unnecessary schema churn, and preserve the existing public API and widget contracts unless a change is clearly justified.
+
+## Auto-Publish Cron
+
+Trigger the internal auto-publish scheduler with:
+
+```bash
+curl -X POST https://yourdomain.com/api/internal/cron/auto-publish \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+The scheduler only processes sites with `autoPublishEnabled=true`, counts this week's `AUTO` articles against each site's `articlesPerWeek` target, and caps each run to 5 generated articles total.
 
 ## Release Notes Guidance
 

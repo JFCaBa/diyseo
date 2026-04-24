@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { generateNextAutoArticleForSite as runAutoPublishGenerationForSite } from "@/lib/auto-publish";
 import { auth } from "@/lib/auth";
 import { listSearchConsolePropertiesForUser } from "@/lib/google-search-console";
 import { prisma } from "@/lib/prisma";
@@ -18,6 +19,7 @@ import {
   DeleteSiteSchema,
   TransferSiteSchema,
   ToggleArticleStatusSchema,
+  UpdateAutoPublishSettingsSchema,
   UpdateSearchConsolePropertySchema,
   UpdateWidgetThemeSchema,
   UpdateArticleDateSchema,
@@ -28,7 +30,27 @@ import {
 export type ActionState = {
   error?: string;
   success?: string;
+  generatedArticle?: {
+    id: string;
+    title: string;
+    slug: string;
+    status: "DRAFT" | "PUBLISHED";
+  };
 };
+
+function normalizeActionErrorMessage(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : fallback;
+
+  if (
+    message === "GEMINI_API_KEY is not configured." ||
+    message === "DEEPSEEK_API_KEY is not configured." ||
+    message.startsWith("Unsupported AI provider:")
+  ) {
+    return "AI provider is not configured.";
+  }
+
+  return message;
+}
 
 function cleanOptionalText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") {
@@ -598,6 +620,42 @@ export async function updateWidgetTheme(
   return { success: "Widget theme updated." };
 }
 
+export async function updateAutoPublishSettings(
+  siteId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const parsed = UpdateAutoPublishSettingsSchema.safeParse({
+    autoPublishEnabled: formData.get("autoPublishEnabled") === "true",
+    articlesPerWeek: formData.get("articlesPerWeek"),
+    requireReview: formData.get("requireReview") === "true"
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid auto-publish settings." };
+  }
+
+  try {
+    await requireOwnedSite(siteId);
+  } catch {
+    return { error: "Site not found." };
+  }
+
+  await prisma.siteProject.update({
+    where: { id: siteId },
+    data: {
+      autoPublishEnabled: parsed.data.autoPublishEnabled,
+      articlesPerWeek: parsed.data.articlesPerWeek,
+      requireReview: parsed.data.requireReview
+    }
+  });
+
+  revalidatePath(`/${siteId}`);
+  revalidatePath(`/${siteId}/settings`);
+
+  return { success: "Auto-publish settings updated." };
+}
+
 export async function updateWidgetInstalledState(
   siteId: string,
   _prevState: ActionState,
@@ -621,6 +679,41 @@ export async function updateWidgetInstalledState(
   revalidatePath(`/${siteId}`);
 
   return { success: markInstalled ? "Widget marked as installed." : "Widget marked as not installed." };
+}
+
+export async function generateNextAutoArticle(
+  siteId: string,
+  _prevState: ActionState,
+  _formData: FormData
+): Promise<ActionState> {
+  try {
+    await requireOwnedSite(siteId);
+  } catch {
+    return { error: "Site not found." };
+  }
+
+  try {
+    const result = await runAutoPublishGenerationForSite(siteId);
+
+    revalidatePath(`/${siteId}`);
+    revalidatePath(`/${siteId}/settings`);
+    revalidatePath(`/${siteId}/articles`);
+    revalidatePath(`/${siteId}/keywords`);
+    revalidatePath(`/${siteId}/calendar`);
+    revalidatePath(`/blog/${siteId}`);
+    revalidatePath(`/blog/${siteId}/${result.article.slug}`);
+    revalidatePath(`/api/public/sites/${siteId}/articles`);
+    revalidatePath(`/api/public/sites/${siteId}/articles/${result.article.slug}`);
+
+    return {
+      success: `Generated ${result.article.status === "PUBLISHED" ? "and published" : "as a draft"} from keyword "${result.selectedKeyword.term}".`,
+      generatedArticle: result.article
+    };
+  } catch (error) {
+    return {
+      error: normalizeActionErrorMessage(error, "Auto article generation failed.")
+    };
+  }
 }
 
 export async function assignKeywordToArticle(

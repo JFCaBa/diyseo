@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { SiteAutoPublishForm } from "@/components/site-auto-publish-form";
 import { SiteDeleteForm } from "@/components/site-delete-form";
 import { SiteTransferForm } from "@/components/site-transfer-form";
 import { auth } from "@/lib/auth";
@@ -38,7 +39,12 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
           ownerId: session.user.id
         }
       },
-      select: { id: true }
+      select: {
+        id: true,
+        autoPublishEnabled: true,
+        articlesPerWeek: true,
+        requireReview: true
+      }
     }),
     prisma.workspace.findUnique({
       where: { ownerId: session.user.id },
@@ -138,6 +144,13 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
           </div>
         )}
       </section>
+
+      <SiteAutoPublishForm
+        siteId={currentSite.id}
+        initialAutoPublishEnabled={currentSite.autoPublishEnabled}
+        initialArticlesPerWeek={currentSite.articlesPerWeek}
+        initialRequireReview={currentSite.requireReview}
+      />
     </section>
   );
 }

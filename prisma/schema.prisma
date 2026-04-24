@@ -69,6 +69,9 @@ model SiteProject {
   workspaceId                String
   name                       String
   domain                     String
+  autoPublishEnabled         Boolean      @default(false)
+  articlesPerWeek            Int          @default(2)
+  requireReview              Boolean      @default(true)
   widgetTheme                String?
   widgetInstalledAt          DateTime?
   searchConsolePropertyUrl   String?
@@ -110,6 +113,7 @@ model Article {
   seoTitle      String?
   seoDescription String?
   status        ArticleStatus @default(DRAFT)
+  generationSource ArticleGenerationSource @default(MANUAL)
   publishedAt   DateTime?
   siteProjectId String
   keywordId     String?
@@ -126,6 +130,11 @@ model Article {
 enum ArticleStatus {
   DRAFT
   PUBLISHED
+}
+
+enum ArticleGenerationSource {
+  MANUAL
+  AUTO
 }
 
 model Keyword {

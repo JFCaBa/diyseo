@@ -235,6 +235,10 @@ export default {
               <p className="mt-1 text-sm text-slate-600">
                 Advanced option: proxy your DIYSEO blog under the client domain at `/blog`.
               </p>
+              <p className="mt-2 text-xs font-medium text-slate-500">
+                Important: creating the Worker is not enough. You must also attach a route so `/blog*` traffic
+                actually runs through this Worker.
+              </p>
             </div>
             <button
               type="button"
@@ -262,8 +266,9 @@ export default {
 
           <ol className="mt-4 grid gap-2 text-sm text-slate-600">
             <li>1. Create a Cloudflare Worker and paste this script.</li>
-            <li>2. Attach the Worker to `{recommendedRoute}`.</li>
-            <li>3. Test `/blog`, `/blog/sitemap.xml`, `/blog/rss.xml`, and one article URL.</li>
+            <li>2. Attach a Cloudflare route to `{recommendedRoute}` and point it to this Worker.</li>
+            <li>3. Deploy the Worker after the route is attached.</li>
+            <li>4. Test `/blog`, `/blog/sitemap.xml`, `/blog/rss.xml`, and one article URL.</li>
           </ol>
 
           <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-sand/70">

@@ -84,7 +84,7 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
               <div className="flex items-center gap-3">
                 <Link
-                  href={`/blog/${siteId}`}
+                  href={`/${siteId}/preview`}
                   className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink shadow-sm transition hover:bg-mist"
                 >
                   View Blog

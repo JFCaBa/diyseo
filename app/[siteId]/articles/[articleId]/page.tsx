@@ -52,7 +52,7 @@ export default async function ArticleEditorPage({ params }: ArticleEditorPagePro
             </Link>
             {article.status === "PUBLISHED" ? (
               <Link
-                href={`/blog/${siteId}/${article.slug}`}
+                href={`/${siteId}/preview?slug=${encodeURIComponent(article.slug)}`}
                 className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
                 View Public Article

@@ -166,7 +166,7 @@ export default async function ArticlesPage({ params }: ArticlesPageProps) {
                       </Link>
                       {article.status === "PUBLISHED" ? (
                         <Link
-                          href={`/blog/${siteId}/${article.slug}`}
+                          href={`/${siteId}/preview?slug=${encodeURIComponent(article.slug)}`}
                           className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:bg-mist"
                         >
                           View Public

@@ -117,41 +117,29 @@ export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPag
                   key={article.id}
                   className={cn("rounded-3xl border px-5 py-5 transition sm:px-6 sm:py-6", theme.card)}
                 >
-                  <div className="space-y-4">
+                  <Link href={urls.articlePath(article.slug)} className="flex items-start gap-5">
                     {article.coverImageUrl ? (
                       <img
                         src={getCoverImageProxyUrl(article.coverImageUrl, urls.imageProxyOrigin || undefined)}
                         alt=""
                         referrerPolicy="no-referrer"
-                        className={cn("h-56 w-full rounded-[1.5rem] border object-cover", theme.imageBorder)}
+                        className={cn("h-24 w-24 shrink-0 rounded-2xl border object-cover sm:h-28 sm:w-28", theme.imageBorder)}
                       />
                     ) : null}
-                    <div className="space-y-3">
-                      <Link
-                        href={urls.articlePath(article.slug)}
-                        className={cn(
-                          "block text-2xl font-semibold tracking-tight decoration-transparent underline-offset-4 transition hover:underline",
-                          theme.titleLink
-                        )}
-                      >
+                    <div className="min-w-0 space-y-2">
+                      <p className={cn("text-lg font-semibold leading-snug tracking-tight underline-offset-4 transition hover:underline", theme.titleLink)}>
                         {article.title}
-                      </Link>
+                      </p>
+                      {article.excerpt ? (
+                        <p className={cn("line-clamp-2 text-sm leading-relaxed", theme.body)}>{article.excerpt}</p>
+                      ) : null}
                       {publishedDate ? (
                         <p className={cn("text-[11px] font-semibold uppercase tracking-[0.22em]", theme.muted)}>
-                          Published {publishedDate}
+                          {publishedDate}
                         </p>
                       ) : null}
                     </div>
-                    {article.excerpt ? <p className={cn("text-base leading-relaxed", theme.body)}>{article.excerpt}</p> : null}
-                    <div>
-                      <Link
-                        href={urls.articlePath(article.slug)}
-                        className={cn("text-sm font-semibold underline-offset-4 transition hover:underline", theme.link)}
-                      >
-                        Read article
-                      </Link>
-                    </div>
-                  </div>
+                  </Link>
                 </article>
               );
             })}

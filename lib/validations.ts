@@ -106,6 +106,10 @@ export const TransferSiteSchema = z.object({
   email: z.string().email("Enter a valid user email.")
 });
 
+export const DeleteSiteSchema = z.object({
+  confirmName: z.string().min(1, "Type the site name to confirm deletion.")
+});
+
 export const UpdateArticleSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   excerpt: z.string().max(2000).optional().nullable(),
@@ -172,5 +176,6 @@ export type CreateKeywordInput = z.infer<typeof CreateKeywordSchema>;
 export type UpdateSearchConsolePropertyInput = z.infer<typeof UpdateSearchConsolePropertySchema>;
 export type UpdateWidgetThemeInput = z.infer<typeof UpdateWidgetThemeSchema>;
 export type TransferSiteInput = z.infer<typeof TransferSiteSchema>;
+export type DeleteSiteInput = z.infer<typeof DeleteSiteSchema>;
 export type UpdateArticleInput = z.infer<typeof UpdateArticleSchema>;
 export type CreateArticleInput = z.infer<typeof CreateArticleSchema>;

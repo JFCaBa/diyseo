@@ -15,6 +15,7 @@ import {
   CreateKeywordSchema,
   CreateSiteInput,
   CreateSiteSchema,
+  DeleteSiteSchema,
   TransferSiteSchema,
   ToggleArticleStatusSchema,
   UpdateSearchConsolePropertySchema,
@@ -304,6 +305,68 @@ export async function transferSite(
   revalidatePath(`/${siteId}/calendar`);
 
   return { success: `Transferred ${site.name} to ${parsed.data.email}. Refresh to update your site list.` };
+}
+
+export async function deleteSite(
+  siteId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const parsed = DeleteSiteSchema.safeParse({
+    confirmName: typeof formData.get("confirmName") === "string" ? formData.get("confirmName")!.toString().trim() : ""
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid site deletion confirmation." };
+  }
+
+  const userId = await getCurrentUserId();
+  const site = await prisma.siteProject.findFirst({
+    where: {
+      id: siteId,
+      workspace: {
+        ownerId: userId
+      }
+    },
+    select: {
+      id: true,
+      name: true,
+      workspaceId: true
+    }
+  });
+
+  if (!site) {
+    return { error: "Site not found." };
+  }
+
+  if (parsed.data.confirmName !== site.name) {
+    return { error: "Site name does not match. Deletion cancelled." };
+  }
+
+  await prisma.siteProject.delete({
+    where: { id: site.id }
+  });
+
+  const remainingSites = await prisma.siteProject.findMany({
+    where: {
+      workspace: {
+        ownerId: userId
+      }
+    },
+    orderBy: { createdAt: "asc" },
+    select: { id: true }
+  });
+
+  revalidatePath("/settings");
+  revalidatePath(`/${siteId}`);
+  revalidatePath(`/${siteId}/settings`);
+  revalidatePath(`/${siteId}/brand-dna`);
+  revalidatePath(`/${siteId}/articles`);
+  revalidatePath(`/${siteId}/analytics`);
+  revalidatePath(`/${siteId}/keywords`);
+  revalidatePath(`/${siteId}/calendar`);
+
+  redirect(remainingSites[0]?.id ? `/${remainingSites[0].id}/settings` : "/new-site");
 }
 
 export async function updateBrandDNA(

@@ -60,7 +60,7 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
-      <aside className="border-b border-line bg-white p-6 dark:border-slate-800 dark:bg-slate-900 lg:border-b-0 lg:border-r">
+      <aside className="border-b border-line bg-white p-6 dark:border-slate-800 dark:bg-slate-900 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-b-0 lg:border-r">
         <div className="mb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-accent">DIYSEO</p>
           <h1 className="mt-2 text-xl font-semibold text-ink dark:text-slate-100">{currentSite.name}</h1>
@@ -74,7 +74,7 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
         <SidebarNav siteId={siteId} />
       </aside>
 
-      <div className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen min-w-0 flex-col">
         <header className="border-b border-line bg-white/70 px-6 py-4 backdrop-blur">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -101,7 +101,7 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
             </div>
           </div>
         </header>
-        <main className="flex-1 px-6 py-8">{children}</main>
+        <main className="min-w-0 flex-1 px-6 py-8">{children}</main>
       </div>
     </div>
   );

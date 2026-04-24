@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { SiteDeleteForm } from "@/components/site-delete-form";
 import { SiteTransferForm } from "@/components/site-transfer-form";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -128,6 +129,7 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
                         Open site
                       </Link>
                       <SiteTransferForm siteId={site.id} />
+                      <SiteDeleteForm siteId={site.id} siteName={site.name} />
                     </div>
                   </div>
                 </div>

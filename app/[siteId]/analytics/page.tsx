@@ -443,10 +443,18 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
                 placeholder="Search keyword position..."
                 className="min-w-0 rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-accent md:min-w-[300px] md:flex-1"
               />
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 md:shrink-0"
+              >
+                Google
+              </button>
+            </div>
+            <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center">
               <select
                 name="serpLocale"
                 defaultValue={selectedSerpLocale}
-                className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-accent md:w-[240px] md:shrink-0"
+                className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-accent md:w-[320px] md:shrink-0"
               >
                 {SEARCH_LOCALE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -454,23 +462,17 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
                   </option>
                 ))}
               </select>
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 md:shrink-0"
-              >
-                Check Google position
-              </button>
+              <label className="inline-flex items-center gap-2 text-sm text-slate-600">
+                <input
+                  type="checkbox"
+                  name="serpDeep"
+                  value="1"
+                  defaultChecked={serpDeepCheckEnabled}
+                  className="h-4 w-4 rounded border-line text-accent focus:ring-accent"
+                />
+                Deep check (up to top 50)
+              </label>
             </div>
-            <label className="mt-3 inline-flex items-center gap-2 text-sm text-slate-600">
-              <input
-                type="checkbox"
-                name="serpDeep"
-                value="1"
-                defaultChecked={serpDeepCheckEnabled}
-                className="h-4 w-4 rounded border-line text-accent focus:ring-accent"
-              />
-              Deep check (up to top 50)
-            </label>
           </form>
         </div>
 

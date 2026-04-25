@@ -102,6 +102,10 @@ AI provider credentials:
   - `DEEPSEEK_BASE_URL` optional
   - `DEEPSEEK_MODEL` optional
 
+SEO provider credentials:
+
+- `SERPER_API_KEY` for manual live SERP checks on the analytics page
+
 ### Example `.env`
 
 ```env
@@ -116,6 +120,8 @@ DEEPSEEK_MODEL="deepseek-chat"
 
 GEMINI_API_KEY=""
 GEMINI_MODEL="gemini-1.5-flash"
+
+SERPER_API_KEY=""
 ```
 
 ## Local PostgreSQL Setup

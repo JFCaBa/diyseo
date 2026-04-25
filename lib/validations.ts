@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SEARCH_COUNTRY_OPTIONS, SEARCH_LANGUAGE_OPTIONS } from "@/lib/search-locale";
 
 function normalizeGeneratedText(value: string) {
   return value.trim().replace(/\s+/g, " ");
@@ -112,6 +113,11 @@ export const UpdateAutoPublishSettingsSchema = z.object({
   requireReview: z.boolean()
 });
 
+export const UpdateSearchLocaleDefaultsSchema = z.object({
+  defaultSearchCountry: z.enum(SEARCH_COUNTRY_OPTIONS.map((option) => option.value) as [string, ...string[]]),
+  defaultSearchLanguage: z.enum(SEARCH_LANGUAGE_OPTIONS.map((option) => option.value) as [string, ...string[]])
+});
+
 export const TransferSiteSchema = z.object({
   email: z.string().email("Enter a valid user email.")
 });
@@ -186,6 +192,7 @@ export type CreateKeywordInput = z.infer<typeof CreateKeywordSchema>;
 export type UpdateSearchConsolePropertyInput = z.infer<typeof UpdateSearchConsolePropertySchema>;
 export type UpdateWidgetThemeInput = z.infer<typeof UpdateWidgetThemeSchema>;
 export type UpdateAutoPublishSettingsInput = z.infer<typeof UpdateAutoPublishSettingsSchema>;
+export type UpdateSearchLocaleDefaultsInput = z.infer<typeof UpdateSearchLocaleDefaultsSchema>;
 export type TransferSiteInput = z.infer<typeof TransferSiteSchema>;
 export type DeleteSiteInput = z.infer<typeof DeleteSiteSchema>;
 export type UpdateArticleInput = z.infer<typeof UpdateArticleSchema>;

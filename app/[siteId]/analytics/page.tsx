@@ -13,13 +13,20 @@ import {
   listSearchConsolePropertiesForUser
 } from "@/lib/google-search-console";
 import { prisma } from "@/lib/prisma";
+import {
+  normalizeSearchCountry,
+  normalizeSearchLanguage,
+  SEARCH_COUNTRY_OPTIONS,
+  SEARCH_LANGUAGE_OPTIONS
+} from "@/lib/search-locale";
+import { runLiveSerpCheck } from "@/lib/serper";
 import { AnalyticsRouteParamsSchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
 
 type AnalyticsPageProps = {
   params: Promise<{ siteId: string }>;
-  searchParams?: Promise<{ gscDebug?: string; keyword?: string }>;
+  searchParams?: Promise<{ gscDebug?: string; keyword?: string; serpCountry?: string; serpKeyword?: string; serpLanguage?: string }>;
 };
 
 function formatPropertyDomain(propertyUrl: string | null | undefined) {
@@ -57,6 +64,13 @@ function formatCompactNumber(value: number) {
   }).format(value);
 }
 
+function formatCheckedAt(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(new Date(value));
+}
+
 export default async function AnalyticsPage({ params, searchParams }: AnalyticsPageProps) {
   const parsedParams = AnalyticsRouteParamsSchema.safeParse(await params);
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
@@ -68,6 +82,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
   const { siteId } = parsedParams.data;
   const gscDebugEnabled = resolvedSearchParams?.gscDebug === "1";
   const searchedKeyword = resolvedSearchParams?.keyword?.trim() ?? "";
+  const serpKeyword = resolvedSearchParams?.serpKeyword?.trim() ?? "";
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -83,6 +98,8 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
         domain: true,
         searchConsolePropertyUrl: true,
         searchConsoleConnectedAt: true,
+        defaultSearchCountry: true,
+        defaultSearchLanguage: true,
         workspace: {
           select: {
             ownerId: true
@@ -110,6 +127,9 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
     notFound();
   }
 
+  const selectedSerpCountry = normalizeSearchCountry(resolvedSearchParams?.serpCountry ?? site.defaultSearchCountry);
+  const selectedSerpLanguage = normalizeSearchLanguage(resolvedSearchParams?.serpLanguage ?? site.defaultSearchLanguage);
+
   let searchConsoleProperties: Awaited<ReturnType<typeof listSearchConsolePropertiesForUser>> = null;
   let searchConsolePropertiesError: string | null = null;
 
@@ -127,6 +147,8 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
   let searchConsolePerformanceError: string | null = null;
   let searchConsoleKeywordLookup: Awaited<ReturnType<typeof getSearchConsoleKeywordLookupForUser>> = null;
   let searchConsoleKeywordLookupError: string | null = null;
+  let liveSerpCheck: Awaited<ReturnType<typeof runLiveSerpCheck>> = null;
+  let liveSerpCheckError: string | null = null;
 
   if (selectedProperty?.siteUrl) {
     try {
@@ -145,6 +167,14 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
     }
   }
 
+  if (serpKeyword) {
+    try {
+      liveSerpCheck = await runLiveSerpCheck(serpKeyword, site.domain, selectedSerpCountry, selectedSerpLanguage);
+    } catch (error) {
+      liveSerpCheckError = error instanceof Error ? error.message : "Unable to run live SERP check.";
+    }
+  }
+
   if (gscDebugEnabled) {
     console.log(
       JSON.stringify(
@@ -158,6 +188,10 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
           debug: searchConsolePerformance?.debug ?? null,
           keywordLookup: searchConsoleKeywordLookup,
           keywordLookupError: searchConsoleKeywordLookupError,
+          liveSerpCheck,
+          liveSerpCheckError,
+          serpCountry: selectedSerpCountry,
+          serpLanguage: selectedSerpLanguage,
           performanceError: searchConsolePerformanceError,
           propertiesError: searchConsolePropertiesError
         },
@@ -363,6 +397,135 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
                 No Search Console data found for this keyword in the last 28 days.
               </p>
             )}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="rounded-3xl border border-line bg-white/90 p-5 shadow-panel">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Live SERP Check</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Check current Google organic position</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Manual first-page Google check via Serper for the site domain. This does not replace Search Console metrics.
+            </p>
+          </div>
+
+          <form method="GET" className="w-full max-w-2xl">
+            {gscDebugEnabled ? <input type="hidden" name="gscDebug" value="1" /> : null}
+            {searchedKeyword ? <input type="hidden" name="keyword" value={searchedKeyword} /> : null}
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_180px_auto]">
+              <input
+                type="search"
+                name="serpKeyword"
+                defaultValue={serpKeyword}
+                placeholder="Search keyword position..."
+                className="min-w-0 flex-1 rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-accent"
+              />
+              <select
+                name="serpCountry"
+                defaultValue={selectedSerpCountry}
+                className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-accent"
+              >
+                {SEARCH_COUNTRY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                name="serpLanguage"
+                defaultValue={selectedSerpLanguage}
+                className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-accent"
+              >
+                {SEARCH_LANGUAGE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label} ({option.value})
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Check Google position
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {serpKeyword ? (
+          <div className="mt-5 rounded-[1.5rem] border border-line bg-mist/60 p-5">
+            {liveSerpCheckError ? (
+              <p className="text-sm text-red-600">
+                {liveSerpCheckError === "SERPER_API_KEY is not configured."
+                  ? "Live SERP check is not configured. Add SERPER_API_KEY to enable this feature."
+                  : `Live SERP check failed. ${liveSerpCheckError}`}
+              </p>
+            ) : liveSerpCheck ? (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Live SERP Result</p>
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-2xl border border-line bg-white px-4 py-4">
+                    <p className="text-sm text-slate-500">Keyword</p>
+                    <p className="mt-2 break-words text-lg font-semibold text-ink">{liveSerpCheck.keyword}</p>
+                  </div>
+                  <div className="rounded-2xl border border-line bg-white px-4 py-4">
+                    <p className="text-sm text-slate-500">Checked domain</p>
+                    <p className="mt-2 break-words text-lg font-semibold text-ink">{liveSerpCheck.checkedDomain}</p>
+                  </div>
+                  <div className="rounded-2xl border border-line bg-white px-4 py-4">
+                    <p className="text-sm text-slate-500">Checked in</p>
+                    <p className="mt-2 text-lg font-semibold text-ink">
+                      {liveSerpCheck.countryLabel} ({liveSerpCheck.countryCode})
+                    </p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      {liveSerpCheck.languageLabel} ({liveSerpCheck.languageCode})
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-line bg-white px-4 py-4">
+                    <p className="text-sm text-slate-500">Position</p>
+                    <p className="mt-2 text-lg font-semibold text-ink">
+                      {liveSerpCheck.position ?? "Not found in first 10 results"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid gap-3 xl:grid-cols-[1.3fr_0.7fr]">
+                  <div className="rounded-2xl border border-line bg-white px-4 py-4">
+                    <p className="text-sm text-slate-500">Ranking URL</p>
+                    <p className="mt-2 break-all text-sm font-semibold text-ink">
+                      {liveSerpCheck.rankingUrl ?? "Not found in first 10 results"}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-line bg-white px-4 py-4">
+                    <p className="text-sm text-slate-500">Checked timestamp</p>
+                    <p className="mt-2 text-sm font-semibold text-ink">{formatCheckedAt(liveSerpCheck.checkedAt)}</p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Checked in: {liveSerpCheck.countryLabel} ({liveSerpCheck.countryCode})
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 rounded-2xl border border-line bg-white px-4 py-4">
+                  <p className="text-sm text-slate-500">Top 10 result domains</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {liveSerpCheck.topDomains.length === 0 ? (
+                      <p className="text-sm text-slate-600">No organic result domains were returned.</p>
+                    ) : (
+                      liveSerpCheck.topDomains.map((domain, index) => (
+                        <span
+                          key={`${domain}-${index}`}
+                          className="inline-flex rounded-full border border-line bg-mist px-3 py-1 text-xs font-semibold text-slate-700"
+                        >
+                          {index + 1}. {domain}
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : null}
           </div>
         ) : null}
       </section>

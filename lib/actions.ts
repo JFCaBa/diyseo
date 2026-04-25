@@ -20,6 +20,7 @@ import {
   TransferSiteSchema,
   ToggleArticleStatusSchema,
   UpdateAutoPublishSettingsSchema,
+  UpdateSearchLocaleDefaultsSchema,
   UpdateSearchConsolePropertySchema,
   UpdateWidgetThemeSchema,
   UpdateArticleDateSchema,
@@ -654,6 +655,40 @@ export async function updateAutoPublishSettings(
   revalidatePath(`/${siteId}/settings`);
 
   return { success: "Auto-publish settings updated." };
+}
+
+export async function updateSearchLocaleDefaults(
+  siteId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const parsed = UpdateSearchLocaleDefaultsSchema.safeParse({
+    defaultSearchCountry: formData.get("defaultSearchCountry"),
+    defaultSearchLanguage: formData.get("defaultSearchLanguage")
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid search locale defaults." };
+  }
+
+  try {
+    await requireOwnedSite(siteId);
+  } catch {
+    return { error: "Site not found." };
+  }
+
+  await prisma.siteProject.update({
+    where: { id: siteId },
+    data: {
+      defaultSearchCountry: parsed.data.defaultSearchCountry,
+      defaultSearchLanguage: parsed.data.defaultSearchLanguage
+    }
+  });
+
+  revalidatePath(`/${siteId}/settings`);
+  revalidatePath(`/${siteId}/analytics`);
+
+  return { success: "Search locale defaults updated." };
 }
 
 export async function updateWidgetInstalledState(

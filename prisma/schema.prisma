@@ -76,6 +76,8 @@ model SiteProject {
   widgetInstalledAt          DateTime?
   searchConsolePropertyUrl   String?
   searchConsoleConnectedAt   DateTime?
+  defaultSearchCountry       String       @default("es")
+  defaultSearchLanguage      String       @default("es")
   createdAt                  DateTime     @default(now())
   updatedAt                  DateTime     @updatedAt
 

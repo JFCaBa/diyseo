@@ -69,7 +69,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
     notFound();
   }
 
-  const [site, articleMetrics, keywordMetrics, recentActivity] = await Promise.all([
+  const [site, articleMetrics, keywordMetrics] = await Promise.all([
     prisma.siteProject.findUnique({
       where: { id: siteId },
       select: {
@@ -94,17 +94,6 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
       by: ["status"],
       where: { siteProjectId: siteId },
       _count: { id: true }
-    }),
-    prisma.article.findMany({
-      where: { siteProjectId: siteId },
-      orderBy: { updatedAt: "desc" },
-      take: 5,
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        updatedAt: true
-      }
     })
   ]);
 
@@ -448,7 +437,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
         </p>
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+      <div>
         {searchConsolePerformance && hasSearchConsoleData ? (
           <SeoPerformanceSection
             startDate={searchConsolePerformance.startDate}
@@ -489,46 +478,6 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
             </div>
           </section>
         )}
-
-        <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Recent Activity</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Editorial movement</h2>
-            <p className="mt-2 text-sm text-slate-600">The most recent article updates for this site.</p>
-          </div>
-
-          {recentActivity.length === 0 ? (
-            <p className="mt-6 rounded-2xl border border-dashed border-line px-4 py-6 text-sm text-slate-600">
-              No article activity yet.
-            </p>
-          ) : (
-            <div className="mt-6 space-y-3">
-              {recentActivity.map((article) => (
-                <Link
-                  key={article.id}
-                  href={`/${siteId}/articles/${article.id}`}
-                  className="block rounded-2xl border border-line px-4 py-4 transition hover:border-accent hover:bg-mist"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-ink">{article.title}</p>
-                      <p className="mt-1 text-sm text-slate-600">Updated {formatUpdatedAt(article.updatedAt)}</p>
-                    </div>
-                    <span
-                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                        article.status === "PUBLISHED"
-                          ? "bg-accent/10 text-accent"
-                          : "border border-dashed border-line bg-white text-slate-600"
-                      }`}
-                    >
-                      {article.status}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
       </div>
     </section>
   );

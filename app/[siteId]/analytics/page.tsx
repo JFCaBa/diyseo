@@ -21,36 +21,20 @@ type AnalyticsPageProps = {
   searchParams?: Promise<{ gscDebug?: string }>;
 };
 
-function formatUpdatedAt(date: Date) {
-  const now = Date.now();
-  const diffMs = now - date.getTime();
-  const diffMinutes = Math.floor(diffMs / 60000);
-
-  if (diffMinutes < 1) {
-    return "Just now";
+function formatPropertyDomain(propertyUrl: string | null | undefined) {
+  if (!propertyUrl) {
+    return "No property selected";
   }
 
-  if (diffMinutes < 60) {
-    return `${diffMinutes}m ago`;
+  if (propertyUrl.startsWith("sc-domain:")) {
+    return propertyUrl.replace(/^sc-domain:/, "");
   }
 
-  const diffHours = Math.floor(diffMinutes / 60);
-
-  if (diffHours < 24) {
-    return `${diffHours}h ago`;
+  try {
+    return new URL(propertyUrl).hostname;
+  } catch {
+    return propertyUrl;
   }
-
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffDays < 7) {
-    return `${diffDays}d ago`;
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric"
-  }).format(date);
 }
 
 export default async function AnalyticsPage({ params, searchParams }: AnalyticsPageProps) {
@@ -202,20 +186,16 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
     : storedPropertyUrl
       ? "reconnect-required"
       : "not-connected";
+  const shouldShowPropertySelection = hasSearchConsoleAccess && !selectedProperty;
+  const propertyDisplayDomain = formatPropertyDomain(selectedProperty?.siteUrl ?? storedPropertyUrl);
 
   return (
     <section className="space-y-8">
       <PageHeader
         title="Analytics"
-        description={`Track real internal product metrics for ${site.name} and, when connected, verified Google Search Console data.`}
+        description={`Track verified SEO performance for ${site.name} using live Google Search Console data.`}
         action={
           <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href={`/${siteId}/articles`}
-              className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
-            >
-              Open Articles
-            </Link>
             <Link
               href={`/${siteId}/keywords`}
               className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
@@ -226,71 +206,30 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
         }
       />
 
-      <section className="rounded-[2rem] border border-accent/20 bg-[linear-gradient(135deg,rgba(15,118,110,0.16),rgba(255,255,255,0.96)_45%,rgba(180,83,9,0.08))] p-6 shadow-panel">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Search Console</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">
-              {searchConsoleState === "connected-with-data"
-                ? "Google Search Console is connected and returning live search data."
-                : searchConsoleState === "connected-no-data"
-                  ? "Google Search Console is connected, but there is no search data yet for this range."
-                  : searchConsoleState === "reconnect-required"
-                    ? "Reconnect Google Search Console to restore live analytics."
-                    : searchConsoleState === "error"
-                      ? "Google Search Console is connected, but the live fetch failed."
-                      : "Connect Google Search Console to unlock real SEO performance data."}
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-slate-700">
-              Internal cards below always reflect real product data from DIYSEO. Search performance cards only render
-              verified Google Search Console data after a successful property connection and live query fetch.
-            </p>
+      <section className="rounded-3xl border border-line bg-white/90 px-5 py-4 shadow-panel">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span
+              className={`inline-flex rounded-full px-3 py-1 font-semibold ${
+                searchConsoleState === "connected-with-data" || searchConsoleState === "connected-no-data"
+                  ? "bg-accent/10 text-accent"
+                  : searchConsoleState === "error" || searchConsoleState === "reconnect-required"
+                    ? "bg-amber-100 text-amber-800"
+                    : "border border-dashed border-line bg-white text-slate-600"
+              }`}
+            >
+              {searchConsoleState === "connected-with-data" || searchConsoleState === "connected-no-data"
+                ? "Connected"
+                : "Not connected"}
+            </span>
+            <span className="text-slate-500">Property</span>
+            <span className="font-semibold text-ink">{propertyDisplayDomain}</span>
           </div>
 
-          <div className="rounded-3xl border border-white/70 bg-white/80 px-5 py-4 lg:max-w-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Integration Status</p>
-            <p className="mt-2 text-2xl font-semibold text-ink">
-              {searchConsoleState === "connected-with-data"
-                ? "Connected with data"
-                : searchConsoleState === "connected-no-data"
-                  ? "Connected, no data yet"
-                  : searchConsoleState === "reconnect-required"
-                    ? "Reconnect required"
-                    : searchConsoleState === "error"
-                      ? "Fetch error"
-                      : hasSearchConsoleAccess
-                        ? "Access granted"
-                        : "Not connected"}
-            </p>
-
-            {selectedProperty ? (
-              <>
-                <p className="mt-2 text-sm text-slate-600">Selected property</p>
-                <p className="mt-1 break-all text-sm font-semibold text-ink">{selectedProperty.siteUrl}</p>
-                <p className="mt-2 text-xs text-slate-500">
-                  Connected {site.searchConsoleConnectedAt ? formatUpdatedAt(site.searchConsoleConnectedAt) : "recently"}
-                </p>
-                <p className="mt-2 text-xs text-slate-500">Live GSC requests run on page load.</p>
-              </>
-            ) : storedPropertyUrl ? (
-              <>
-                <p className="mt-2 text-sm text-slate-600">Previously selected property</p>
-                <p className="mt-1 break-all text-sm font-semibold text-ink">{storedPropertyUrl}</p>
-                <p className="mt-2 text-sm text-slate-600">
-                  Google Search Console access needs to be refreshed before this property can be used again.
-                </p>
-              </>
-            ) : (
-              <p className="mt-2 text-sm text-slate-600">
-                Search metrics stay hidden until this site has an authorized Search Console property.
-              </p>
-            )}
-
-            {searchConsolePropertiesError ? (
-              <p className="mt-3 text-sm text-red-600">Property load failed. {searchConsolePropertiesError}</p>
-            ) : null}
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            {searchConsolePropertiesError ? <p className="text-red-600">Property load failed. {searchConsolePropertiesError}</p> : null}
             {searchConsolePerformanceError ? (
-              <p className="mt-3 text-sm text-red-600">Performance load failed. {searchConsolePerformanceError}</p>
+              <p className="text-red-600">Performance load failed. {searchConsolePerformanceError}</p>
             ) : null}
 
             {!hasSearchConsoleAccess ? (
@@ -311,7 +250,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
               >
                 <button
                   type="submit"
-                  className="mt-4 inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
                   Connect Google Search Console
                 </button>
@@ -321,7 +260,50 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
         </div>
       </section>
 
-      {hasSearchConsoleAccess ? (
+      <div>
+        {searchConsolePerformance && hasSearchConsoleData ? (
+          <SeoPerformanceSection
+            startDate={searchConsolePerformance.startDate}
+            endDate={searchConsolePerformance.endDate}
+            previousStartDate={searchConsolePerformance.previousStartDate}
+            previousEndDate={searchConsolePerformance.previousEndDate}
+            position={searchConsolePerformance.position}
+            previousPosition={searchConsolePerformance.previous.position}
+            positionChange={searchConsolePerformance.positionChange}
+            keywordRankings={searchConsolePerformance.keywordRankings}
+            keywordTrends={searchConsolePerformance.keywordTrends}
+            overallTrend={searchConsolePerformance.overallTrend}
+          />
+        ) : (
+          <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">SEO Performance</p>
+            <div className="mt-4">
+              <EmptyState
+                title={
+                  searchConsoleState === "reconnect-required"
+                    ? "Reconnect Search Console to restore rankings."
+                    : searchConsoleState === "error"
+                      ? "Live Search Console ranking data could not be loaded."
+                      : searchConsoleState === "connected-no-data"
+                        ? "No keyword ranking data yet."
+                        : "Connect Search Console to unlock keyword tracking."
+                }
+                description={
+                  searchConsoleState === "reconnect-required"
+                    ? "A property was previously selected for this site, but the current Google account no longer has valid access."
+                    : searchConsoleState === "error"
+                      ? "The connected property is valid, but the live Search Console request failed before keyword rankings could be rendered."
+                      : searchConsoleState === "connected-no-data"
+                        ? "Google Search Console returned no query rows for the current 28-day range, so SEO Performance stays empty instead of showing placeholders."
+                        : "This section renders only real Google Search Console query data from searchAnalytics.query. No estimates or mock ranking rows are shown."
+                }
+              />
+            </div>
+          </section>
+        )}
+      </div>
+
+      {shouldShowPropertySelection ? (
         <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
@@ -349,6 +331,33 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
           )}
         </section>
       ) : null}
+
+      <section className="rounded-3xl border border-line bg-white/80 p-5 shadow-panel">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Internal Product Data</p>
+            <p className="mt-2 text-sm text-slate-600">
+              Supporting site inventory from DIYSEO records. This is secondary to SEO data and does not use Google Search Console.
+            </p>
+          </div>
+          <Link
+            href={`/${siteId}/articles`}
+            className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-mist"
+          >
+            Open Articles
+          </Link>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          {internalMetrics.map((metric) => (
+            <div key={metric.label} className="rounded-2xl border border-line bg-mist/50 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{metric.label}</p>
+              <p className="mt-2 text-2xl font-semibold text-ink">{metric.value}</p>
+              <p className="mt-1 text-xs text-slate-600">{metric.detail}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {gscDebugEnabled ? (
         <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-panel">
@@ -418,67 +427,6 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
           </div>
         </section>
       ) : null}
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {internalMetrics.map((metric) => (
-          <div key={metric.label} className="rounded-3xl border border-line bg-white/90 p-5 shadow-panel">
-            <p className="text-sm text-slate-500">{metric.label}</p>
-            <p className="mt-2 text-3xl font-semibold text-ink">{metric.value}</p>
-            <p className="mt-2 text-sm text-slate-600">{metric.detail}</p>
-          </div>
-        ))}
-      </div>
-
-      <section className="rounded-3xl border border-line bg-white/90 p-5 shadow-panel">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Internal Product Data</p>
-        <p className="mt-2 text-sm text-slate-600">
-          These counts come directly from DIYSEO records for articles, keywords, and publishing activity. They do not
-          depend on Google Search Console.
-        </p>
-      </section>
-
-      <div>
-        {searchConsolePerformance && hasSearchConsoleData ? (
-          <SeoPerformanceSection
-            startDate={searchConsolePerformance.startDate}
-            endDate={searchConsolePerformance.endDate}
-            previousStartDate={searchConsolePerformance.previousStartDate}
-            previousEndDate={searchConsolePerformance.previousEndDate}
-            position={searchConsolePerformance.position}
-            previousPosition={searchConsolePerformance.previous.position}
-            positionChange={searchConsolePerformance.positionChange}
-            keywordRankings={searchConsolePerformance.keywordRankings}
-            keywordTrends={searchConsolePerformance.keywordTrends}
-            overallTrend={searchConsolePerformance.overallTrend}
-          />
-        ) : (
-          <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">SEO Performance</p>
-            <div className="mt-4">
-              <EmptyState
-                title={
-                  searchConsoleState === "reconnect-required"
-                    ? "Reconnect Search Console to restore rankings."
-                    : searchConsoleState === "error"
-                      ? "Live Search Console ranking data could not be loaded."
-                      : searchConsoleState === "connected-no-data"
-                        ? "No keyword ranking data yet."
-                        : "Connect Search Console to unlock keyword tracking."
-                }
-                description={
-                  searchConsoleState === "reconnect-required"
-                    ? "A property was previously selected for this site, but the current Google account no longer has valid access."
-                    : searchConsoleState === "error"
-                      ? "The connected property is valid, but the live Search Console request failed before keyword rankings could be rendered."
-                      : searchConsoleState === "connected-no-data"
-                        ? "Google Search Console returned no query rows for the current 28-day range, so SEO Performance stays empty instead of showing placeholders."
-                        : "This section renders only real Google Search Console query data from searchAnalytics.query. No estimates or mock ranking rows are shown."
-                }
-              />
-            </div>
-          </section>
-        )}
-      </div>
     </section>
   );
 }

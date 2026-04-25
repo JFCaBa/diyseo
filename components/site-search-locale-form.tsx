@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { type ActionState, updateSearchLocaleDefaults } from "@/lib/actions";
-import { SEARCH_COUNTRY_OPTIONS, SEARCH_LANGUAGE_OPTIONS } from "@/lib/search-locale";
+import { getSearchLocaleByValue, getSearchLocaleValue, SEARCH_LOCALE_OPTIONS } from "@/lib/search-locale";
 
 const initialState: ActionState = {};
 
@@ -35,12 +35,13 @@ export function SiteSearchLocaleForm({
 }: SiteSearchLocaleFormProps) {
   const updateSearchLocaleDefaultsForSite = updateSearchLocaleDefaults.bind(null, siteId);
   const [state, formAction] = useActionState(updateSearchLocaleDefaultsForSite, initialState);
-  const [defaultSearchCountry, setDefaultSearchCountry] = useState(initialDefaultSearchCountry);
-  const [defaultSearchLanguage, setDefaultSearchLanguage] = useState(initialDefaultSearchLanguage);
+  const [defaultSearchLocale, setDefaultSearchLocale] = useState<string>(
+    getSearchLocaleValue(initialDefaultSearchCountry, initialDefaultSearchLanguage)
+  );
+  const selectedLocale = getSearchLocaleByValue(defaultSearchLocale);
 
   useEffect(() => {
-    setDefaultSearchCountry(initialDefaultSearchCountry);
-    setDefaultSearchLanguage(initialDefaultSearchLanguage);
+    setDefaultSearchLocale(getSearchLocaleValue(initialDefaultSearchCountry, initialDefaultSearchLanguage));
   }, [initialDefaultSearchCountry, initialDefaultSearchLanguage]);
 
   return (
@@ -54,39 +55,22 @@ export function SiteSearchLocaleForm({
       </div>
 
       <form action={formAction} className="mt-6 grid gap-5 md:max-w-2xl">
-        <div className="grid gap-2">
-          <label htmlFor="defaultSearchCountry" className="text-sm font-semibold text-ink">
-            Default search country
-          </label>
-          <select
-            id="defaultSearchCountry"
-            name="defaultSearchCountry"
-            value={defaultSearchCountry}
-            onChange={(event) => setDefaultSearchCountry(event.target.value)}
-            className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-accent"
-          >
-            {SEARCH_COUNTRY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label} ({option.value})
-              </option>
-            ))}
-          </select>
-        </div>
+        <input type="hidden" name="defaultSearchCountry" value={selectedLocale.country} />
+        <input type="hidden" name="defaultSearchLanguage" value={selectedLocale.language} />
 
         <div className="grid gap-2">
-          <label htmlFor="defaultSearchLanguage" className="text-sm font-semibold text-ink">
-            Default search language
+          <label htmlFor="defaultSearchLocale" className="text-sm font-semibold text-ink">
+            Default search locale
           </label>
           <select
-            id="defaultSearchLanguage"
-            name="defaultSearchLanguage"
-            value={defaultSearchLanguage}
-            onChange={(event) => setDefaultSearchLanguage(event.target.value)}
+            id="defaultSearchLocale"
+            value={defaultSearchLocale}
+            onChange={(event) => setDefaultSearchLocale(event.target.value)}
             className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-accent"
           >
-            {SEARCH_LANGUAGE_OPTIONS.map((option) => (
+            {SEARCH_LOCALE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label} ({option.value})
+                {option.label} - gl={option.country}, hl={option.language}
               </option>
             ))}
           </select>
@@ -100,8 +84,7 @@ export function SiteSearchLocaleForm({
           <button
             type="button"
             onClick={() => {
-              setDefaultSearchCountry(initialDefaultSearchCountry);
-              setDefaultSearchLanguage(initialDefaultSearchLanguage);
+              setDefaultSearchLocale(getSearchLocaleValue(initialDefaultSearchCountry, initialDefaultSearchLanguage));
             }}
             className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
           >

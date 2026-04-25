@@ -14,10 +14,11 @@ import {
 } from "@/lib/google-search-console";
 import { prisma } from "@/lib/prisma";
 import {
+  getSearchLocaleByValue,
+  getSearchLocaleValue,
   normalizeSearchCountry,
   normalizeSearchLanguage,
-  SEARCH_COUNTRY_OPTIONS,
-  SEARCH_LANGUAGE_OPTIONS
+  SEARCH_LOCALE_OPTIONS
 } from "@/lib/search-locale";
 import { runLiveSerpCheck } from "@/lib/serper";
 import { AnalyticsRouteParamsSchema } from "@/lib/validations";
@@ -26,7 +27,15 @@ export const dynamic = "force-dynamic";
 
 type AnalyticsPageProps = {
   params: Promise<{ siteId: string }>;
-  searchParams?: Promise<{ gscDebug?: string; keyword?: string; serpCountry?: string; serpKeyword?: string; serpLanguage?: string }>;
+  searchParams?: Promise<{
+    gscDebug?: string;
+    keyword?: string;
+    serpCountry?: string;
+    serpDeep?: string;
+    serpKeyword?: string;
+    serpLanguage?: string;
+    serpLocale?: string;
+  }>;
 };
 
 function formatPropertyDomain(propertyUrl: string | null | undefined) {
@@ -83,6 +92,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
   const gscDebugEnabled = resolvedSearchParams?.gscDebug === "1";
   const searchedKeyword = resolvedSearchParams?.keyword?.trim() ?? "";
   const serpKeyword = resolvedSearchParams?.serpKeyword?.trim() ?? "";
+  const serpDeepCheckEnabled = resolvedSearchParams?.serpDeep === "1";
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -127,8 +137,12 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
     notFound();
   }
 
-  const selectedSerpCountry = normalizeSearchCountry(resolvedSearchParams?.serpCountry ?? site.defaultSearchCountry);
-  const selectedSerpLanguage = normalizeSearchLanguage(resolvedSearchParams?.serpLanguage ?? site.defaultSearchLanguage);
+  const requestedSerpLocale = resolvedSearchParams?.serpLocale;
+  const fallbackSerpLocale = getSearchLocaleValue(site.defaultSearchCountry, site.defaultSearchLanguage);
+  const resolvedSerpLocale = getSearchLocaleByValue(requestedSerpLocale ?? fallbackSerpLocale);
+  const selectedSerpCountry = normalizeSearchCountry(resolvedSerpLocale.country);
+  const selectedSerpLanguage = normalizeSearchLanguage(resolvedSerpLocale.language);
+  const selectedSerpLocale = resolvedSerpLocale.value;
 
   let searchConsoleProperties: Awaited<ReturnType<typeof listSearchConsolePropertiesForUser>> = null;
   let searchConsolePropertiesError: string | null = null;
@@ -169,7 +183,13 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
 
   if (serpKeyword) {
     try {
-      liveSerpCheck = await runLiveSerpCheck(serpKeyword, site.domain, selectedSerpCountry, selectedSerpLanguage);
+      liveSerpCheck = await runLiveSerpCheck(
+        serpKeyword,
+        site.domain,
+        selectedSerpCountry,
+        selectedSerpLanguage,
+        serpDeepCheckEnabled
+      );
     } catch (error) {
       liveSerpCheckError = error instanceof Error ? error.message : "Unable to run live SERP check.";
     }
@@ -190,6 +210,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
           keywordLookupError: searchConsoleKeywordLookupError,
           liveSerpCheck,
           liveSerpCheckError,
+          serpDeepCheckEnabled,
           serpCountry: selectedSerpCountry,
           serpLanguage: selectedSerpLanguage,
           performanceError: searchConsolePerformanceError,
@@ -414,7 +435,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
           <form method="GET" className="w-full max-w-2xl">
             {gscDebugEnabled ? <input type="hidden" name="gscDebug" value="1" /> : null}
             {searchedKeyword ? <input type="hidden" name="keyword" value={searchedKeyword} /> : null}
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_180px_auto]">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px_auto]">
               <input
                 type="search"
                 name="serpKeyword"
@@ -423,24 +444,13 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
                 className="min-w-0 flex-1 rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-accent"
               />
               <select
-                name="serpCountry"
-                defaultValue={selectedSerpCountry}
+                name="serpLocale"
+                defaultValue={selectedSerpLocale}
                 className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-accent"
               >
-                {SEARCH_COUNTRY_OPTIONS.map((option) => (
+                {SEARCH_LOCALE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                name="serpLanguage"
-                defaultValue={selectedSerpLanguage}
-                className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-accent"
-              >
-                {SEARCH_LANGUAGE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label} ({option.value})
+                    {option.label} - gl={option.country}, hl={option.language}
                   </option>
                 ))}
               </select>
@@ -451,6 +461,16 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
                 Check Google position
               </button>
             </div>
+            <label className="mt-3 inline-flex items-center gap-2 text-sm text-slate-600">
+              <input
+                type="checkbox"
+                name="serpDeep"
+                value="1"
+                defaultChecked={serpDeepCheckEnabled}
+                className="h-4 w-4 rounded border-line text-accent focus:ring-accent"
+              />
+              Deep check (up to top 50)
+            </label>
           </form>
         </div>
 
@@ -486,7 +506,13 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
                   <div className="rounded-2xl border border-line bg-white px-4 py-4">
                     <p className="text-sm text-slate-500">Position</p>
                     <p className="mt-2 text-lg font-semibold text-ink">
-                      {liveSerpCheck.position ?? "Not found in first 10 results"}
+                      {liveSerpCheck.position
+                        ? liveSerpCheck.pageNumber
+                          ? `Found on page ${liveSerpCheck.pageNumber} (#${liveSerpCheck.position})`
+                          : `#${liveSerpCheck.position}`
+                        : liveSerpCheck.deepCheckEnabled
+                          ? "Not found in top 50 results"
+                          : "Not found in first 10 results"}
                     </p>
                   </div>
                 </div>

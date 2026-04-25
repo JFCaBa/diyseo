@@ -1,28 +1,23 @@
 export const DEFAULT_SEARCH_COUNTRY = "es";
 export const DEFAULT_SEARCH_LANGUAGE = "es";
 
-export const SEARCH_COUNTRY_OPTIONS = [
-  { value: "es", label: "Spain" },
-  { value: "us", label: "United States" },
-  { value: "gb", label: "United Kingdom" },
-  { value: "fr", label: "France" },
-  { value: "de", label: "Germany" },
-  { value: "it", label: "Italy" },
-  { value: "pt", label: "Portugal" },
-  { value: "mx", label: "Mexico" },
-  { value: "ar", label: "Argentina" },
-  { value: "co", label: "Colombia" },
-  { value: "cl", label: "Chile" }
+export const SEARCH_LOCALE_OPTIONS = [
+  { value: "es-es", country: "es", language: "es", label: "Spain / Spanish" },
+  { value: "us-en", country: "us", language: "en", label: "United States / English" },
+  { value: "uk-en", country: "uk", language: "en", label: "United Kingdom / English" },
+  { value: "fr-fr", country: "fr", language: "fr", label: "France / French" },
+  { value: "de-de", country: "de", language: "de", label: "Germany / German" },
+  { value: "it-it", country: "it", language: "it", label: "Italy / Italian" },
+  { value: "pt-pt", country: "pt", language: "pt", label: "Portugal / Portuguese" }
 ] as const;
 
-export const SEARCH_LANGUAGE_OPTIONS = [
-  { value: "es", label: "Spanish" },
-  { value: "en", label: "English" },
-  { value: "fr", label: "French" },
-  { value: "de", label: "German" },
-  { value: "it", label: "Italian" },
-  { value: "pt", label: "Portuguese" }
-] as const;
+export const SEARCH_COUNTRY_OPTIONS = Array.from(
+  new Map(SEARCH_LOCALE_OPTIONS.map((option) => [option.country, { value: option.country, label: option.label.split(" / ")[0] }])).values()
+);
+
+export const SEARCH_LANGUAGE_OPTIONS = Array.from(
+  new Map(SEARCH_LOCALE_OPTIONS.map((option) => [option.language, { value: option.language, label: option.label.split(" / ")[1] }])).values()
+);
 
 export function normalizeSearchCountry(value: string | null | undefined) {
   const normalized = value?.trim().toLowerCase() ?? "";
@@ -40,4 +35,18 @@ export function getSearchCountryLabel(value: string) {
 
 export function getSearchLanguageLabel(value: string) {
   return SEARCH_LANGUAGE_OPTIONS.find((option) => option.value === value)?.label ?? value;
+}
+
+export function getSearchLocaleValue(country: string | null | undefined, language: string | null | undefined) {
+  const normalizedCountry = normalizeSearchCountry(country);
+  const normalizedLanguage = normalizeSearchLanguage(language);
+  return (
+    SEARCH_LOCALE_OPTIONS.find(
+      (option) => option.country === normalizedCountry && option.language === normalizedLanguage
+    )?.value ?? "es-es"
+  );
+}
+
+export function getSearchLocaleByValue(value: string | null | undefined) {
+  return SEARCH_LOCALE_OPTIONS.find((option) => option.value === value) ?? SEARCH_LOCALE_OPTIONS[0];
 }

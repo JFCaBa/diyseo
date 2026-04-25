@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { SeoPerformanceSection } from "@/components/seo-performance-section";
 import { SearchConsolePropertyPicker } from "@/components/search-console-property-picker";
 import { auth, signIn } from "@/lib/auth";
 import {
@@ -49,17 +51,6 @@ function formatUpdatedAt(date: Date) {
     day: "numeric",
     year: "numeric"
   }).format(date);
-}
-
-function formatCompactNumber(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    notation: "compact",
-    maximumFractionDigits: 1
-  }).format(value);
-}
-
-function formatPercent(value: number) {
-  return `${(value * 100).toFixed(1)}%`;
 }
 
 export default async function AnalyticsPage({ params, searchParams }: AnalyticsPageProps) {
@@ -207,7 +198,8 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
     searchConsolePerformance &&
       (searchConsolePerformance.clicks > 0 ||
         searchConsolePerformance.impressions > 0 ||
-        searchConsolePerformance.topQueries.length > 0)
+        searchConsolePerformance.topQueries.length > 0 ||
+        searchConsolePerformance.overallTrend.some((point) => point.position !== null))
   );
 
   const searchConsoleState = selectedProperty
@@ -456,207 +448,88 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
         </p>
       </section>
 
-      {searchConsolePerformance ? (
-        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+      <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        {searchConsolePerformance && hasSearchConsoleData ? (
+          <SeoPerformanceSection
+            startDate={searchConsolePerformance.startDate}
+            endDate={searchConsolePerformance.endDate}
+            previousStartDate={searchConsolePerformance.previousStartDate}
+            previousEndDate={searchConsolePerformance.previousEndDate}
+            position={searchConsolePerformance.position}
+            previousPosition={searchConsolePerformance.previous.position}
+            positionChange={searchConsolePerformance.positionChange}
+            keywordRankings={searchConsolePerformance.keywordRankings}
+            keywordTrends={searchConsolePerformance.keywordTrends}
+            overallTrend={searchConsolePerformance.overallTrend}
+          />
+        ) : (
           <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Google Search Console Data</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
-                  {hasSearchConsoleData ? "Real Google Search Console metrics" : "Connected, but no search data yet"}
-                </h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  Data below comes from `searchAnalytics.query` for the connected property over the last 28 days.
-                  {hasSearchConsoleData
-                    ? " These are verified GSC metrics, not product estimates."
-                    : " Google returned no clicks, impressions, or top-query rows for the current range yet."}
-                </p>
-              </div>
-              <span className="whitespace-nowrap rounded-full bg-accent/10 px-3 py-1 text-sm font-semibold text-accent">
-                {searchConsolePerformance.startDate} to {searchConsolePerformance.endDate}
-              </span>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">SEO Performance</p>
+            <div className="mt-4">
+              <EmptyState
+                title={
+                  searchConsoleState === "reconnect-required"
+                    ? "Reconnect Search Console to restore rankings."
+                    : searchConsoleState === "error"
+                      ? "Live Search Console ranking data could not be loaded."
+                      : searchConsoleState === "connected-no-data"
+                        ? "No keyword ranking data yet."
+                        : "Connect Search Console to unlock keyword tracking."
+                }
+                description={
+                  searchConsoleState === "reconnect-required"
+                    ? "A property was previously selected for this site, but the current Google account no longer has valid access."
+                    : searchConsoleState === "error"
+                      ? "The connected property is valid, but the live Search Console request failed before keyword rankings could be rendered."
+                      : searchConsoleState === "connected-no-data"
+                        ? "Google Search Console returned no query rows for the current 28-day range, so SEO Performance stays empty instead of showing placeholders."
+                        : "This section renders only real Google Search Console query data from searchAnalytics.query. No estimates or mock ranking rows are shown."
+                }
+              />
             </div>
+          </section>
+        )}
 
-            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl bg-mist px-4 py-4">
-                <p className="text-sm text-slate-500">Clicks</p>
-                <p className="mt-2 text-3xl font-semibold text-ink">{formatCompactNumber(searchConsolePerformance.clicks)}</p>
-              </div>
-              <div className="rounded-2xl bg-mist px-4 py-4">
-                <p className="text-sm text-slate-500">Impressions</p>
-                <p className="mt-2 text-3xl font-semibold text-ink">
-                  {formatCompactNumber(searchConsolePerformance.impressions)}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-mist px-4 py-4">
-                <p className="text-sm text-slate-500">CTR</p>
-                <p className="mt-2 text-3xl font-semibold text-ink">{formatPercent(searchConsolePerformance.ctr)}</p>
-              </div>
-              <div className="rounded-2xl bg-mist px-4 py-4">
-                <p className="text-sm text-slate-500">Average position</p>
-                <p className="mt-2 text-3xl font-semibold text-ink">{searchConsolePerformance.position.toFixed(1)}</p>
-              </div>
-            </div>
+        <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Recent Activity</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Editorial movement</h2>
+            <p className="mt-2 text-sm text-slate-600">The most recent article updates for this site.</p>
+          </div>
 
-            <div className="mt-8 overflow-hidden rounded-[1.5rem] border border-line">
-              <div className="grid grid-cols-[1.6fr_0.8fr_0.9fr_0.7fr_0.8fr] gap-3 bg-mist px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <p>Top query</p>
-                <p>Clicks</p>
-                <p>Impressions</p>
-                <p>CTR</p>
-                <p>Position</p>
-              </div>
-              <div className="divide-y divide-line">
-                {searchConsolePerformance.topQueries.length === 0 ? (
-                  <div className="px-4 py-6 text-sm text-slate-600">
-                    No top-query rows were returned by Google Search Console for this date range yet.
-                  </div>
-                ) : (
-                  searchConsolePerformance.topQueries.map((query) => (
-                    <div
-                      key={query.query}
-                      className="grid grid-cols-[1.6fr_0.8fr_0.9fr_0.7fr_0.8fr] gap-3 px-4 py-4 text-sm text-slate-700"
+          {recentActivity.length === 0 ? (
+            <p className="mt-6 rounded-2xl border border-dashed border-line px-4 py-6 text-sm text-slate-600">
+              No article activity yet.
+            </p>
+          ) : (
+            <div className="mt-6 space-y-3">
+              {recentActivity.map((article) => (
+                <Link
+                  key={article.id}
+                  href={`/${siteId}/articles/${article.id}`}
+                  className="block rounded-2xl border border-line px-4 py-4 transition hover:border-accent hover:bg-mist"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-ink">{article.title}</p>
+                      <p className="mt-1 text-sm text-slate-600">Updated {formatUpdatedAt(article.updatedAt)}</p>
+                    </div>
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                        article.status === "PUBLISHED"
+                          ? "bg-accent/10 text-accent"
+                          : "border border-dashed border-line bg-white text-slate-600"
+                      }`}
                     >
-                      <p className="font-semibold text-ink">{query.query}</p>
-                      <p>{formatCompactNumber(query.clicks)}</p>
-                      <p>{formatCompactNumber(query.impressions)}</p>
-                      <p>{formatPercent(query.ctr)}</p>
-                      <p>{query.position.toFixed(1)}</p>
-                    </div>
-                  ))
-                )}
-              </div>
+                      {article.status}
+                    </span>
+                  </div>
+                </Link>
+              ))}
             </div>
-          </section>
-
-          <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Recent Activity</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Editorial movement</h2>
-              <p className="mt-2 text-sm text-slate-600">The most recent article updates for this site.</p>
-            </div>
-
-            {recentActivity.length === 0 ? (
-              <p className="mt-6 rounded-2xl border border-dashed border-line px-4 py-6 text-sm text-slate-600">
-                No article activity yet.
-              </p>
-            ) : (
-              <div className="mt-6 space-y-3">
-                {recentActivity.map((article) => (
-                  <Link
-                    key={article.id}
-                    href={`/${siteId}/articles/${article.id}`}
-                    className="block rounded-2xl border border-line px-4 py-4 transition hover:border-accent hover:bg-mist"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-semibold text-ink">{article.title}</p>
-                        <p className="mt-1 text-sm text-slate-600">Updated {formatUpdatedAt(article.updatedAt)}</p>
-                      </div>
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                          article.status === "PUBLISHED"
-                            ? "bg-accent/10 text-accent"
-                            : "border border-dashed border-line bg-white text-slate-600"
-                        }`}
-                      >
-                        {article.status}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-      ) : (
-        <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-          <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Google Search Console Data</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
-                  {searchConsoleState === "reconnect-required"
-                    ? "Reconnect Search Console to resume live SEO metrics."
-                    : searchConsoleState === "error"
-                      ? "Search Console is connected, but live metrics could not be loaded."
-                      : "Search analytics will appear here once query access succeeds."}
-                </h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  {searchConsoleState === "reconnect-required"
-                    ? "A property was previously selected for this site, but the current Google account access is no longer valid."
-                    : searchConsoleState === "error"
-                      ? "The property is connected, but the live Search Console request failed. Try again or reconnect if the issue persists."
-                      : "Once a property is connected and query data is accessible, this section will render real clicks, impressions, CTR, average position, and top queries for the last 28 days."}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 grid gap-3 md:grid-cols-2">
-              <div className="rounded-2xl border border-dashed border-line bg-mist/70 px-4 py-4">
-                <p className="font-semibold text-ink">Impressions</p>
-                <p className="mt-1 text-sm text-slate-600">Requires Google Search Console query data.</p>
-              </div>
-              <div className="rounded-2xl border border-dashed border-line bg-mist/70 px-4 py-4">
-                <p className="font-semibold text-ink">Clicks</p>
-                <p className="mt-1 text-sm text-slate-600">Requires Google Search Console query data.</p>
-              </div>
-              <div className="rounded-2xl border border-dashed border-line bg-mist/70 px-4 py-4">
-                <p className="font-semibold text-ink">CTR</p>
-                <p className="mt-1 text-sm text-slate-600">Calculated from real GSC impressions and clicks.</p>
-              </div>
-              <div className="rounded-2xl border border-dashed border-line bg-mist/70 px-4 py-4">
-                <p className="font-semibold text-ink">Average position</p>
-                <p className="mt-1 text-sm text-slate-600">Requires query-level search ranking data from GSC.</p>
-              </div>
-              <div className="rounded-2xl border border-dashed border-line bg-mist/70 px-4 py-4 md:col-span-2">
-                <p className="font-semibold text-ink">Top queries</p>
-                <p className="mt-1 text-sm text-slate-600">Will populate once Google returns query rows for this site and range.</p>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Recent Activity</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Editorial movement</h2>
-              <p className="mt-2 text-sm text-slate-600">The most recent article updates for this site.</p>
-            </div>
-
-            {recentActivity.length === 0 ? (
-              <p className="mt-6 rounded-2xl border border-dashed border-line px-4 py-6 text-sm text-slate-600">
-                No article activity yet.
-              </p>
-            ) : (
-              <div className="mt-6 space-y-3">
-                {recentActivity.map((article) => (
-                  <Link
-                    key={article.id}
-                    href={`/${siteId}/articles/${article.id}`}
-                    className="block rounded-2xl border border-line px-4 py-4 transition hover:border-accent hover:bg-mist"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-semibold text-ink">{article.title}</p>
-                        <p className="mt-1 text-sm text-slate-600">Updated {formatUpdatedAt(article.updatedAt)}</p>
-                      </div>
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                          article.status === "PUBLISHED"
-                            ? "bg-accent/10 text-accent"
-                            : "border border-dashed border-line bg-white text-slate-600"
-                        }`}
-                      >
-                        {article.status}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-      )}
+          )}
+        </section>
+      </div>
     </section>
   );
 }

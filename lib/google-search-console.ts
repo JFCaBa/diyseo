@@ -45,10 +45,47 @@ export type SearchConsoleTopQuery = SearchConsoleQueryMetric & {
   query: string;
 };
 
+export type SearchConsoleTrendPoint = {
+  clicks: number;
+  ctr: number;
+  date: string;
+  impressions: number;
+  position: number | null;
+};
+
+export type SearchConsoleKeywordTrend = {
+  points: SearchConsoleTrendPoint[];
+  query: string;
+};
+
+export type SearchConsoleKeywordRanking = SearchConsoleTopQuery & {
+  previousPosition: number | null;
+  positionChange: number | null;
+  trend: "down" | "flat" | "new" | "up";
+};
+
 export type SearchConsolePerformanceSnapshot = SearchConsoleQueryMetric & {
   debug?: {
     endDate: string;
+    previousEndDate: string;
+    previousStartDate: string;
     propertyUrl: string;
+    queryBodyCurrentSummary: Record<string, unknown>;
+    queryBodyCurrentTopQueries: Record<string, unknown>;
+    queryBodyCurrentTrends: Record<string, unknown>;
+    queryBodyPreviousSummary: Record<string, unknown>;
+    queryBodyPreviousTopQueries: Record<string, unknown>;
+    rawCurrentSummaryAggregationType: string | null;
+    rawCurrentSummaryRowCount: number;
+    rawCurrentTopQueriesAggregationType: string | null;
+    rawCurrentTopQueriesRowCount: number;
+    rawCurrentTrendsAggregationType: string | null;
+    rawCurrentTrendsRowCount: number;
+    rawPreviousSummaryAggregationType: string | null;
+    rawPreviousSummaryRowCount: number;
+    rawPreviousTopQueriesAggregationType: string | null;
+    rawPreviousTopQueriesRowCount: number;
+    rawPreviousTotals: SearchConsoleQueryMetric;
     queryBodySummary: Record<string, unknown>;
     queryBodyTopQueries: Record<string, unknown>;
     rawSummaryAggregationType: string | null;
@@ -58,9 +95,184 @@ export type SearchConsolePerformanceSnapshot = SearchConsoleQueryMetric & {
     rawTopQueriesRowCount: number;
   };
   endDate: string;
+  keywordRankings: SearchConsoleKeywordRanking[];
+  keywordTrends: SearchConsoleKeywordTrend[];
+  overallTrend: SearchConsoleTrendPoint[];
+  positionChange: number | null;
+  previous: SearchConsoleQueryMetric;
+  previousEndDate: string;
+  previousStartDate: string;
   startDate: string;
   topQueries: SearchConsoleTopQuery[];
 };
+
+function normalizeMetricRow(row?: {
+  clicks?: number;
+  ctr?: number;
+  impressions?: number;
+  position?: number;
+}) {
+  return {
+    clicks: row?.clicks ?? 0,
+    impressions: row?.impressions ?? 0,
+    ctr: row?.ctr ?? 0,
+    position: row?.position ?? 0
+  } satisfies SearchConsoleQueryMetric;
+}
+
+function listDatesInclusive(startDate: string, endDate: string) {
+  const dates: string[] = [];
+  const cursor = new Date(`${startDate}T00:00:00.000Z`);
+  const end = new Date(`${endDate}T00:00:00.000Z`);
+
+  while (cursor <= end) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return dates;
+}
+
+function createTrendPoint(date: string, metrics?: Partial<SearchConsoleQueryMetric>) {
+  return {
+    date,
+    clicks: metrics?.clicks ?? 0,
+    impressions: metrics?.impressions ?? 0,
+    ctr: metrics?.ctr ?? 0,
+    position: typeof metrics?.position === "number" ? metrics.position : null
+  } satisfies SearchConsoleTrendPoint;
+}
+
+function buildOverallTrend(
+  rows: Array<{
+    clicks?: number;
+    ctr?: number;
+    impressions?: number;
+    keys?: string[];
+    position?: number;
+  }>,
+  startDate: string,
+  endDate: string
+) {
+  const byDate = new Map<
+    string,
+    {
+      clicks: number;
+      impressions: number;
+      positionRowCount: number;
+      positionWeight: number;
+      weightedPositionTotal: number;
+    }
+  >();
+
+  for (const row of rows) {
+    const date = row.keys?.[0];
+
+    if (!date) {
+      continue;
+    }
+
+    const impressions = row.impressions ?? 0;
+    const bucket = byDate.get(date) ?? {
+      clicks: 0,
+      impressions: 0,
+      positionWeight: 0,
+      weightedPositionTotal: 0,
+      positionRowCount: 0
+    };
+
+    bucket.clicks += row.clicks ?? 0;
+    bucket.impressions += impressions;
+
+    if (typeof row.position === "number") {
+      if (impressions > 0) {
+        bucket.weightedPositionTotal += row.position * impressions;
+        bucket.positionWeight += impressions;
+      } else {
+        bucket.weightedPositionTotal += row.position;
+        bucket.positionRowCount += 1;
+      }
+    }
+
+    byDate.set(date, bucket);
+  }
+
+  return listDatesInclusive(startDate, endDate).map((date) => {
+    const bucket = byDate.get(date);
+
+    if (!bucket) {
+      return createTrendPoint(date);
+    }
+
+    const position =
+      bucket.positionWeight > 0
+        ? bucket.weightedPositionTotal / bucket.positionWeight
+        : bucket.positionRowCount > 0
+          ? bucket.weightedPositionTotal / bucket.positionRowCount
+          : null;
+
+    return createTrendPoint(date, {
+      clicks: bucket.clicks,
+      impressions: bucket.impressions,
+      ctr: bucket.impressions > 0 ? bucket.clicks / bucket.impressions : 0,
+      position: position ?? undefined
+    });
+  });
+}
+
+function buildKeywordTrends(
+  rows: Array<{
+    clicks?: number;
+    ctr?: number;
+    impressions?: number;
+    keys?: string[];
+    position?: number;
+  }>,
+  queries: string[],
+  startDate: string,
+  endDate: string
+) {
+  const dateRange = listDatesInclusive(startDate, endDate);
+  const rowsByQuery = new Map<string, Map<string, SearchConsoleTrendPoint>>();
+
+  for (const row of rows) {
+    const date = row.keys?.[0];
+    const query = row.keys?.[1];
+
+    if (!date || !query) {
+      continue;
+    }
+
+    const byDate = rowsByQuery.get(query) ?? new Map<string, SearchConsoleTrendPoint>();
+    byDate.set(
+      date,
+      createTrendPoint(date, {
+        clicks: row.clicks ?? 0,
+        impressions: row.impressions ?? 0,
+        ctr: row.ctr ?? 0,
+        position: row.position
+      })
+    );
+    rowsByQuery.set(query, byDate);
+  }
+
+  return queries.map((query) => ({
+    query,
+    points: dateRange.map((date) => rowsByQuery.get(query)?.get(date) ?? createTrendPoint(date))
+  }));
+}
+
+function getRankingTrend(positionChange: number | null) {
+  if (positionChange === null) {
+    return "new";
+  }
+
+  if (Math.abs(positionChange) < 0.1) {
+    return "flat";
+  }
+
+  return positionChange < 0 ? "up" : "down";
+}
 
 function normalizeHost(value: string) {
   return value.toLowerCase().replace(/^www\./, "");
@@ -305,63 +517,140 @@ export async function getSearchConsolePerformanceForUser(userId: string, propert
 
   const startDate = formatUtcDateOffset(28);
   const endDate = formatUtcDateOffset(1);
+  const previousStartDate = formatUtcDateOffset(56);
+  const previousEndDate = formatUtcDateOffset(29);
 
-  const queryBodySummary = {
+  const queryBodyCurrentSummary = {
     startDate,
     endDate,
     rowLimit: 1
   } satisfies Record<string, unknown>;
 
-  const queryBodyTopQueries = {
+  const queryBodyPreviousSummary = {
+    startDate: previousStartDate,
+    endDate: previousEndDate,
+    rowLimit: 1
+  } satisfies Record<string, unknown>;
+
+  const queryBodyCurrentTopQueries = {
     startDate,
     endDate,
     dimensions: ["query"],
-    rowLimit: 10
+    rowLimit: 25
   } satisfies Record<string, unknown>;
 
-  const [summary, topQueries] = await Promise.all([
-    runSearchAnalyticsQuery(access.accessToken, propertyUrl, queryBodySummary),
-    runSearchAnalyticsQuery(access.accessToken, propertyUrl, queryBodyTopQueries)
+  const queryBodyPreviousTopQueries = {
+    startDate: previousStartDate,
+    endDate: previousEndDate,
+    dimensions: ["query"],
+    rowLimit: 25
+  } satisfies Record<string, unknown>;
+
+  const queryBodyCurrentTrends = {
+    startDate,
+    endDate,
+    dimensions: ["date", "query"],
+    rowLimit: 2500
+  } satisfies Record<string, unknown>;
+
+  const [currentSummary, previousSummary, currentTopQueries, previousTopQueries, currentTrends] = await Promise.all([
+    runSearchAnalyticsQuery(access.accessToken, propertyUrl, queryBodyCurrentSummary),
+    runSearchAnalyticsQuery(access.accessToken, propertyUrl, queryBodyPreviousSummary),
+    runSearchAnalyticsQuery(access.accessToken, propertyUrl, queryBodyCurrentTopQueries),
+    runSearchAnalyticsQuery(access.accessToken, propertyUrl, queryBodyPreviousTopQueries),
+    runSearchAnalyticsQuery(access.accessToken, propertyUrl, queryBodyCurrentTrends)
   ]);
 
-  if (!summary || !topQueries) {
+  if (!currentSummary || !previousSummary || !currentTopQueries || !previousTopQueries || !currentTrends) {
     return null;
   }
 
-  const summaryRow = summary.rows?.[0];
+  const currentMetrics = normalizeMetricRow(currentSummary.rows?.[0]);
+  const previousMetrics = normalizeMetricRow(previousSummary.rows?.[0]);
+  const previousPositionsByQuery = new Map<string, number>();
+
+  for (const row of previousTopQueries.rows ?? []) {
+    const query = row.keys?.[0];
+
+    if (!query) {
+      continue;
+    }
+
+    previousPositionsByQuery.set(query, row.position ?? 0);
+  }
+
+  const keywordRankings =
+    currentTopQueries.rows?.map((row) => {
+      const query = row.keys?.[0] ?? "Unknown query";
+      const previousPosition = previousPositionsByQuery.get(query) ?? null;
+      const positionChange = previousPosition === null ? null : (row.position ?? 0) - previousPosition;
+
+      return {
+        query,
+        clicks: row.clicks ?? 0,
+        impressions: row.impressions ?? 0,
+        ctr: row.ctr ?? 0,
+        position: row.position ?? 0,
+        previousPosition,
+        positionChange,
+        trend: getRankingTrend(positionChange)
+      } satisfies SearchConsoleKeywordRanking;
+    }) ?? [];
+
+  const keywordTrends = buildKeywordTrends(
+    currentTrends.rows ?? [],
+    keywordRankings.map((ranking) => ranking.query),
+    startDate,
+    endDate
+  );
+  const overallTrend = buildOverallTrend(currentTrends.rows ?? [], startDate, endDate);
   const debug = {
     propertyUrl,
     startDate,
     endDate,
-    queryBodySummary,
-    queryBodyTopQueries,
-    rawSummaryAggregationType: summary.responseAggregationType ?? null,
-    rawSummaryRowCount: summary.rows?.length ?? 0,
-    rawSummaryTotals: {
-      clicks: summaryRow?.clicks ?? 0,
-      impressions: summaryRow?.impressions ?? 0,
-      ctr: summaryRow?.ctr ?? 0,
-      position: summaryRow?.position ?? 0
-    },
-    rawTopQueriesAggregationType: topQueries.responseAggregationType ?? null,
-    rawTopQueriesRowCount: topQueries.rows?.length ?? 0
+    previousStartDate,
+    previousEndDate,
+    queryBodySummary: queryBodyCurrentSummary,
+    queryBodyTopQueries: queryBodyCurrentTopQueries,
+    queryBodyCurrentSummary,
+    queryBodyPreviousSummary,
+    queryBodyCurrentTopQueries,
+    queryBodyPreviousTopQueries,
+    queryBodyCurrentTrends,
+    rawSummaryAggregationType: currentSummary.responseAggregationType ?? null,
+    rawSummaryRowCount: currentSummary.rows?.length ?? 0,
+    rawSummaryTotals: currentMetrics,
+    rawTopQueriesAggregationType: currentTopQueries.responseAggregationType ?? null,
+    rawTopQueriesRowCount: currentTopQueries.rows?.length ?? 0,
+    rawCurrentSummaryAggregationType: currentSummary.responseAggregationType ?? null,
+    rawCurrentSummaryRowCount: currentSummary.rows?.length ?? 0,
+    rawCurrentTopQueriesAggregationType: currentTopQueries.responseAggregationType ?? null,
+    rawCurrentTopQueriesRowCount: currentTopQueries.rows?.length ?? 0,
+    rawCurrentTrendsAggregationType: currentTrends.responseAggregationType ?? null,
+    rawCurrentTrendsRowCount: currentTrends.rows?.length ?? 0,
+    rawPreviousSummaryAggregationType: previousSummary.responseAggregationType ?? null,
+    rawPreviousSummaryRowCount: previousSummary.rows?.length ?? 0,
+    rawPreviousTopQueriesAggregationType: previousTopQueries.responseAggregationType ?? null,
+    rawPreviousTopQueriesRowCount: previousTopQueries.rows?.length ?? 0,
+    rawPreviousTotals: previousMetrics
   };
 
   return {
-    clicks: summaryRow?.clicks ?? 0,
-    impressions: summaryRow?.impressions ?? 0,
-    ctr: summaryRow?.ctr ?? 0,
-    position: summaryRow?.position ?? 0,
+    clicks: currentMetrics.clicks,
+    impressions: currentMetrics.impressions,
+    ctr: currentMetrics.ctr,
+    position: currentMetrics.position,
+    previous: previousMetrics,
+    positionChange:
+      currentMetrics.position > 0 && previousMetrics.position > 0 ? currentMetrics.position - previousMetrics.position : null,
     startDate,
     endDate,
+    previousStartDate,
+    previousEndDate,
     debug,
-    topQueries:
-      topQueries.rows?.map((row) => ({
-        query: row.keys?.[0] ?? "Unknown query",
-        clicks: row.clicks ?? 0,
-        impressions: row.impressions ?? 0,
-        ctr: row.ctr ?? 0,
-        position: row.position ?? 0
-      })) ?? []
+    topQueries: keywordRankings.map(({ previousPosition: _previousPosition, positionChange: _positionChange, trend: _trend, ...row }) => row),
+    keywordRankings,
+    keywordTrends,
+    overallTrend
   } satisfies SearchConsolePerformanceSnapshot;
 }

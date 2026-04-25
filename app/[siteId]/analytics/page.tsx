@@ -435,18 +435,18 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
           <form method="GET" className="w-full max-w-2xl">
             {gscDebugEnabled ? <input type="hidden" name="gscDebug" value="1" /> : null}
             {searchedKeyword ? <input type="hidden" name="keyword" value={searchedKeyword} /> : null}
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px_auto]">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
               <input
                 type="search"
                 name="serpKeyword"
                 defaultValue={serpKeyword}
                 placeholder="Search keyword position..."
-                className="min-w-0 flex-1 rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-accent"
+                className="min-w-0 rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-accent md:min-w-[300px] md:flex-1"
               />
               <select
                 name="serpLocale"
                 defaultValue={selectedSerpLocale}
-                className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-accent"
+                className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-accent md:w-[240px] md:shrink-0"
               >
                 {SEARCH_LOCALE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -456,7 +456,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
               </select>
               <button
                 type="submit"
-                className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 md:shrink-0"
               >
                 Check Google position
               </button>

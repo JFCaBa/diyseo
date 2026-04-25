@@ -8,6 +8,7 @@ import { SearchConsolePropertyPicker } from "@/components/search-console-propert
 import { auth, signIn } from "@/lib/auth";
 import {
   GOOGLE_SEARCH_CONSOLE_READONLY_SCOPE,
+  getSearchConsoleKeywordLookupForUser,
   getSearchConsolePerformanceForUser,
   listSearchConsolePropertiesForUser
 } from "@/lib/google-search-console";
@@ -18,7 +19,7 @@ export const dynamic = "force-dynamic";
 
 type AnalyticsPageProps = {
   params: Promise<{ siteId: string }>;
-  searchParams?: Promise<{ gscDebug?: string }>;
+  searchParams?: Promise<{ gscDebug?: string; keyword?: string }>;
 };
 
 function formatPropertyDomain(propertyUrl: string | null | undefined) {
@@ -37,6 +38,25 @@ function formatPropertyDomain(propertyUrl: string | null | undefined) {
   }
 }
 
+function formatPercent(value: number) {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function formatPosition(value: number) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "—";
+  }
+
+  return value.toFixed(1);
+}
+
+function formatCompactNumber(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1
+  }).format(value);
+}
+
 export default async function AnalyticsPage({ params, searchParams }: AnalyticsPageProps) {
   const parsedParams = AnalyticsRouteParamsSchema.safeParse(await params);
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
@@ -47,6 +67,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
 
   const { siteId } = parsedParams.data;
   const gscDebugEnabled = resolvedSearchParams?.gscDebug === "1";
+  const searchedKeyword = resolvedSearchParams?.keyword?.trim() ?? "";
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -104,13 +125,23 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
 
   let searchConsolePerformance: Awaited<ReturnType<typeof getSearchConsolePerformanceForUser>> = null;
   let searchConsolePerformanceError: string | null = null;
+  let searchConsoleKeywordLookup: Awaited<ReturnType<typeof getSearchConsoleKeywordLookupForUser>> = null;
+  let searchConsoleKeywordLookupError: string | null = null;
 
   if (selectedProperty?.siteUrl) {
     try {
-      searchConsolePerformance = await getSearchConsolePerformanceForUser(session.user.id, selectedProperty.siteUrl);
+      [searchConsolePerformance, searchConsoleKeywordLookup] = await Promise.all([
+        getSearchConsolePerformanceForUser(session.user.id, selectedProperty.siteUrl),
+        searchedKeyword
+          ? getSearchConsoleKeywordLookupForUser(session.user.id, selectedProperty.siteUrl, searchedKeyword)
+          : Promise.resolve(null)
+      ]);
     } catch (error) {
-      searchConsolePerformanceError =
-        error instanceof Error ? error.message : "Unable to load Search Console performance data.";
+      const message = error instanceof Error ? error.message : "Unable to load Search Console performance data.";
+      searchConsolePerformanceError = message;
+      if (searchedKeyword) {
+        searchConsoleKeywordLookupError = message;
+      }
     }
   }
 
@@ -125,6 +156,8 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
           selectedPropertyUrl: selectedProperty?.siteUrl ?? null,
           searchConsoleStateHint: selectedProperty?.siteUrl ? "query-attempted" : "no-selected-property",
           debug: searchConsolePerformance?.debug ?? null,
+          keywordLookup: searchConsoleKeywordLookup,
+          keywordLookupError: searchConsoleKeywordLookupError,
           performanceError: searchConsolePerformanceError,
           propertiesError: searchConsolePropertiesError
         },
@@ -258,6 +291,80 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
             ) : null}
           </div>
         </div>
+      </section>
+
+      <section className="rounded-3xl border border-line bg-white/90 p-5 shadow-panel">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Keyword Lookup</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Search a keyword position in Search Console</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Runs an exact-query lookup against the connected property for the last 28 days.
+            </p>
+          </div>
+
+          <form method="GET" className="w-full max-w-2xl">
+            {gscDebugEnabled ? <input type="hidden" name="gscDebug" value="1" /> : null}
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                type="search"
+                name="keyword"
+                defaultValue={searchedKeyword}
+                placeholder="Search keyword position..."
+                className="min-w-0 flex-1 rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-accent"
+              />
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Search
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {searchedKeyword ? (
+          <div className="mt-5 rounded-[1.5rem] border border-line bg-mist/60 p-5">
+            {searchConsoleKeywordLookupError ? (
+              <p className="text-sm text-red-600">Keyword lookup failed. {searchConsoleKeywordLookupError}</p>
+            ) : searchConsoleKeywordLookup?.found ? (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Lookup Result</p>
+                <div className="mt-4 grid gap-3 md:grid-cols-5">
+                  <div className="rounded-2xl border border-line bg-white px-4 py-4 md:col-span-2">
+                    <p className="text-sm text-slate-500">Keyword</p>
+                    <p className="mt-2 break-words text-xl font-semibold text-ink">{searchConsoleKeywordLookup.query}</p>
+                  </div>
+                  <div className="rounded-2xl border border-line bg-white px-4 py-4">
+                    <p className="text-sm text-slate-500">Average position</p>
+                    <p className="mt-2 text-2xl font-semibold text-ink">{formatPosition(searchConsoleKeywordLookup.position)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-line bg-white px-4 py-4">
+                    <p className="text-sm text-slate-500">Clicks</p>
+                    <p className="mt-2 text-2xl font-semibold text-ink">{formatCompactNumber(searchConsoleKeywordLookup.clicks)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-line bg-white px-4 py-4">
+                    <p className="text-sm text-slate-500">Impressions</p>
+                    <p className="mt-2 text-2xl font-semibold text-ink">{formatCompactNumber(searchConsoleKeywordLookup.impressions)}</p>
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
+                  <div className="rounded-2xl border border-line bg-white px-4 py-4">
+                    <p className="text-sm text-slate-500">CTR</p>
+                    <p className="mt-2 text-2xl font-semibold text-ink">{formatPercent(searchConsoleKeywordLookup.ctr)}</p>
+                  </div>
+                  <div className="flex items-center rounded-2xl border border-line bg-white px-4 py-4 text-sm text-slate-600">
+                    {searchConsoleKeywordLookup.startDate} to {searchConsoleKeywordLookup.endDate}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-slate-700">
+                No Search Console data found for this keyword in the last 28 days.
+              </p>
+            )}
+          </div>
+        ) : null}
       </section>
 
       <div>

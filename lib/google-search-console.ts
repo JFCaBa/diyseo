@@ -45,6 +45,12 @@ export type SearchConsoleTopQuery = SearchConsoleQueryMetric & {
   query: string;
 };
 
+export type SearchConsoleKeywordLookupResult = SearchConsoleTopQuery & {
+  endDate: string;
+  found: boolean;
+  startDate: string;
+};
+
 export type SearchConsoleTrendPoint = {
   clicks: number;
   ctr: number;
@@ -653,4 +659,71 @@ export async function getSearchConsolePerformanceForUser(userId: string, propert
     keywordTrends,
     overallTrend
   } satisfies SearchConsolePerformanceSnapshot;
+}
+
+export async function getSearchConsoleKeywordLookupForUser(userId: string, propertyUrl: string, keyword: string) {
+  const access = await getGoogleSearchConsoleAccess(userId);
+
+  if (!access?.accessToken) {
+    return null;
+  }
+
+  const normalizedKeyword = keyword.trim();
+
+  if (!normalizedKeyword) {
+    return null;
+  }
+
+  const startDate = formatUtcDateOffset(28);
+  const endDate = formatUtcDateOffset(1);
+
+  const queryBody = {
+    startDate,
+    endDate,
+    dimensions: ["query"],
+    dimensionFilterGroups: [
+      {
+        filters: [
+          {
+            dimension: "query",
+            expression: normalizedKeyword,
+            operator: "equals"
+          }
+        ]
+      }
+    ],
+    rowLimit: 1
+  } satisfies Record<string, unknown>;
+
+  const response = await runSearchAnalyticsQuery(access.accessToken, propertyUrl, queryBody);
+
+  if (!response) {
+    return null;
+  }
+
+  const row = response.rows?.find((result) => (result.keys?.[0] ?? "").toLowerCase() === normalizedKeyword.toLowerCase()) ?? response.rows?.[0];
+
+  if (!row) {
+    return {
+      query: normalizedKeyword,
+      clicks: 0,
+      impressions: 0,
+      ctr: 0,
+      position: 0,
+      found: false,
+      startDate,
+      endDate
+    } satisfies SearchConsoleKeywordLookupResult;
+  }
+
+  return {
+    query: row.keys?.[0] ?? normalizedKeyword,
+    clicks: row.clicks ?? 0,
+    impressions: row.impressions ?? 0,
+    ctr: row.ctr ?? 0,
+    position: row.position ?? 0,
+    found: true,
+    startDate,
+    endDate
+  } satisfies SearchConsoleKeywordLookupResult;
 }

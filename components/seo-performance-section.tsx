@@ -174,8 +174,12 @@ export function SeoPerformanceSection({
   keywordTrends,
   overallTrend
 }: SeoPerformanceSectionProps) {
+  const pageSize = 10;
   const [selectedView, setSelectedView] = useState<string>("overall");
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const trendByQuery = useMemo(() => new Map(keywordTrends.map((trend) => [trend.query, trend] as const)), [keywordTrends]);
+  const totalPages = Math.max(1, Math.ceil(keywordRankings.length / pageSize));
+  const pagedRankings = keywordRankings.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const selectedTrend = selectedView === "overall" ? null : trendByQuery.get(selectedView) ?? null;
   const chartLabel = selectedTrend ? selectedTrend.query : "Overall average position";
@@ -228,7 +232,7 @@ export function SeoPerformanceSection({
                 Google Search Console returned no keyword rows for the current 28-day range.
               </div>
             ) : (
-              keywordRankings.map((ranking) => (
+              pagedRankings.map((ranking) => (
                 <button
                   key={ranking.query}
                   type="button"
@@ -251,6 +255,29 @@ export function SeoPerformanceSection({
               ))
             )}
           </div>
+          {keywordRankings.length > pageSize ? (
+            <div className="flex items-center justify-between border-t border-line bg-white px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage === 1}
+                className="inline-flex items-center justify-center rounded-2xl border border-line px-3 py-2 text-sm font-semibold text-ink transition hover:bg-mist disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <p className="text-sm text-slate-600">
+                Page {currentPage} of {totalPages}
+              </p>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={currentPage === totalPages}
+                className="inline-flex items-center justify-center rounded-2xl border border-line px-3 py-2 text-sm font-semibold text-ink transition hover:bg-mist disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="space-y-4">

@@ -9,6 +9,7 @@ import {
   getPublishedArticleBySlug,
   getPublishedArticles
 } from "@/lib/articles";
+import { getArticleRenderedHtml } from "@/lib/markdown";
 import { getPublicBlogTheme } from "@/lib/public-blog-theme";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +57,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
 
     const publishedDate = formatPublishedDate(article.publishedAt);
     const theme = getPublicBlogTheme(site.widgetTheme);
+    const renderedContentHtml = getArticleRenderedHtml(article.contentMarkdown, article.contentHtml);
 
     return (
       <section className="space-y-8">
@@ -110,7 +112,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
 
           <div
             className={cn("mt-10", theme.prose)}
-            dangerouslySetInnerHTML={{ __html: article.contentHtml }}
+            dangerouslySetInnerHTML={{ __html: renderedContentHtml }}
           />
 
           <nav className={cn("mt-10 border-t pt-6", theme.divider)} aria-label="Article navigation">

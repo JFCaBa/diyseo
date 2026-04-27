@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getAIGenerationService } from "@/lib/ai";
+import { renderMarkdownToHtml } from "@/lib/markdown";
 import { GenerateArticleRequestSchema } from "@/lib/validations";
 import type { ArticleGenerationSource, ArticleStatus } from "@prisma/client";
 
@@ -149,7 +150,8 @@ export async function saveGeneratedArticleForSite(siteId: string, input: SaveGen
         title: generated.title,
         slug,
         excerpt: generated.excerpt,
-        contentHtml: generated.contentHtml,
+        contentHtml: renderMarkdownToHtml(generated.contentMarkdown),
+        contentMarkdown: generated.contentMarkdown,
         seoTitle: generated.seoTitle,
         seoDescription: generated.seoDescription,
         status,

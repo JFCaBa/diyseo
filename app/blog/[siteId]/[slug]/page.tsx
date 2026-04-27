@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { PublicBlogMetaLinks } from "@/components/public-blog-meta-links";
 import { getCoverImageProxyPath, getCoverImageProxyUrl } from "@/lib/cover-image-url";
 import { getAdjacentPublishedArticles, getPublishedArticleBySlug } from "@/lib/articles";
+import { getArticleRenderedHtml } from "@/lib/markdown";
 import { getPublicBlogTheme } from "@/lib/public-blog-theme";
 import { getPublicUrls } from "@/lib/public-urls";
 import { cn } from "@/lib/utils";
@@ -91,6 +92,7 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
       }).format(new Date(article.publishedAt))
     : null;
   const theme = getPublicBlogTheme(article.siteProject?.widgetTheme);
+  const renderedContentHtml = getArticleRenderedHtml(article.contentMarkdown, article.contentHtml);
 
   return (
     <main className={cn("min-h-screen px-4 py-10 sm:px-6 sm:py-12", theme.page)}>
@@ -128,7 +130,7 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
 
         <div
           className={cn("mt-10", theme.prose)}
-          dangerouslySetInnerHTML={{ __html: article.contentHtml }}
+          dangerouslySetInnerHTML={{ __html: renderedContentHtml }}
         />
 
         <nav className={cn("mt-10 border-t pt-6", theme.divider)} aria-label="Article navigation">

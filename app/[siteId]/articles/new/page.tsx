@@ -43,7 +43,7 @@ export default async function NewArticlePage({ params, searchParams }: NewArticl
           title: "",
           excerpt: "",
           coverImageUrl: "",
-          contentHtml: "<h2>Article heading</h2><p>Start drafting here.</p>",
+          contentMarkdown: "## Article heading\n\nStart drafting here.",
           seoTitle: "",
           seoDescription: "",
           publishedDate: initialDate

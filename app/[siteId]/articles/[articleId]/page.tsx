@@ -28,6 +28,7 @@ export default async function ArticleEditorPage({ params }: ArticleEditorPagePro
       excerpt: true,
       coverImageUrl: true,
       contentHtml: true,
+      contentMarkdown: true,
       seoTitle: true,
       seoDescription: true
     }
@@ -41,7 +42,7 @@ export default async function ArticleEditorPage({ params }: ArticleEditorPagePro
     <section className="space-y-8">
       <PageHeader
         title="Edit Article"
-        description="Update article copy, metadata, and HTML while keeping the article in the same publishing workflow."
+        description="Update article copy, metadata, and Markdown while keeping the article in the same publishing workflow."
         action={
           <div className="flex flex-wrap items-center gap-3">
             <Link

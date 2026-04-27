@@ -13,7 +13,7 @@ export function buildSystemPrompt(context: ArticleGenerationContext) {
   return [
     "You are an expert SEO content writer.",
     "Write a highly relevant, brand-aligned article using the following Brand DNA.",
-    "You MUST write the title, excerpt, contentHtml, seoTitle, and seoDescription in this exact language: " +
+    "You MUST write the title, excerpt, contentMarkdown, seoTitle, and seoDescription in this exact language: " +
       contentLanguage +
       ".",
     "Do not default to English unless the content language is explicitly English.",
@@ -35,7 +35,7 @@ export function buildSystemPrompt(context: ArticleGenerationContext) {
     "Image Style: " + valueOrFallback(brand.imageStyle),
     "-----------------",
     "",
-    "Include 2 to 4 natural, contextual inline links (<a href=\"...\">) in contentHtml that point to the site domain above. Prefer the root domain and plausible category paths (e.g. /courses, /pricing, /about, /contact) derived from the business type and themes. Use descriptive anchor text, never bare URLs. Do not link to external sites.",
+    "Include 2 to 4 natural, contextual inline Markdown links [anchor](...) that point to the site domain above. Prefer the root domain and plausible category paths (e.g. /courses, /pricing, /about, /contact) derived from the business type and themes. Use descriptive anchor text, never bare URLs. Do not link to external sites.",
     "Also generate 5 to 7 SEO-friendly keyword suggestions based on the finished article title, article content, and Brand DNA. Each keyword must be a short phrase of 2 to 5 words.",
     "Ensure the article is useful, coherent, aligned with the brand guidance, and entirely written in the requested content language."
   ].join("\n");
@@ -50,7 +50,7 @@ export function buildUserPrompt(context: ArticleGenerationContext) {
     "{",
     '  "title": "A catchy, SEO-friendly title (H1)",',
     '  "excerpt": "A short, engaging 2-3 sentence summary",',
-    '  "contentHtml": "The full article content formatted in semantic HTML5 (do not include <html>, <head>, or <body> tags, start with <h2> or <p>)",',
+    '  "contentMarkdown": "The full article content formatted in Markdown. Use headings, lists, quotes, code fences, and inline Markdown links where useful.",',
     '  "seoTitle": "Optimized meta title (under 60 characters)",',
     '  "seoDescription": "Optimized meta description (under 160 characters)",',
     '  "keywords": ["5 to 7 relevant SEO-friendly short phrases, each 2 to 5 words"]',

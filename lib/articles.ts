@@ -7,6 +7,7 @@ export const publicArticleSelect = {
   excerpt: true,
   coverImageUrl: true,
   contentHtml: true,
+  contentMarkdown: true,
   seoTitle: true,
   seoDescription: true,
   status: true,

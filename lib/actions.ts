@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { generateNextAutoArticleForSite as runAutoPublishGenerationForSite } from "@/lib/auto-publish";
 import { auth } from "@/lib/auth";
 import { listSearchConsolePropertiesForUser } from "@/lib/google-search-console";
+import { renderMarkdownToHtml } from "@/lib/markdown";
 import { prisma } from "@/lib/prisma";
 import {
   AssignKeywordSchema,
@@ -831,7 +832,7 @@ export async function createArticle(
     title: typeof formData.get("title") === "string" ? formData.get("title")!.toString().trim() : "",
     excerpt: cleanNullableText(formData.get("excerpt")),
     coverImageUrl: cleanNullableText(formData.get("coverImageUrl")),
-    contentHtml: typeof formData.get("contentHtml") === "string" ? formData.get("contentHtml")!.toString() : "",
+    contentMarkdown: typeof formData.get("contentMarkdown") === "string" ? formData.get("contentMarkdown")!.toString() : "",
     seoTitle: cleanNullableText(formData.get("seoTitle")),
     seoDescription: cleanNullableText(formData.get("seoDescription")),
     publishedDate: typeof formData.get("publishedDate") === "string" ? formData.get("publishedDate")!.toString() : null,
@@ -859,7 +860,8 @@ export async function createArticle(
       slug,
       excerpt: parsed.data.excerpt,
       coverImageUrl: parsed.data.coverImageUrl,
-      contentHtml: parsed.data.contentHtml,
+      contentMarkdown: parsed.data.contentMarkdown,
+      contentHtml: renderMarkdownToHtml(parsed.data.contentMarkdown),
       seoTitle: parsed.data.seoTitle,
       seoDescription: parsed.data.seoDescription,
       status: "DRAFT",
@@ -883,7 +885,7 @@ export async function updateArticle(
     title: formData.get("title"),
     excerpt: cleanNullableText(formData.get("excerpt")),
     coverImageUrl: cleanNullableText(formData.get("coverImageUrl")),
-    contentHtml: formData.get("contentHtml"),
+    contentMarkdown: formData.get("contentMarkdown"),
     seoTitle: cleanNullableText(formData.get("seoTitle")),
     seoDescription: cleanNullableText(formData.get("seoDescription"))
   });
@@ -911,7 +913,10 @@ export async function updateArticle(
 
   await prisma.article.update({
     where: { id: article.id },
-    data: parsed.data
+    data: {
+      ...parsed.data,
+      contentHtml: renderMarkdownToHtml(parsed.data.contentMarkdown)
+    }
   });
 
   revalidatePath(`/${siteId}/articles`);

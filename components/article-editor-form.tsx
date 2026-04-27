@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 
 import { updateArticle, type ActionState } from "@/lib/actions";
 import { getCoverImageProxyPath } from "@/lib/cover-image-url";
+import { getArticleEditorValue } from "@/lib/markdown";
 
 type ArticleEditorFormProps = {
   article: {
@@ -14,6 +15,7 @@ type ArticleEditorFormProps = {
     excerpt: string | null;
     coverImageUrl: string | null;
     contentHtml: string;
+    contentMarkdown: string | null;
     seoTitle: string | null;
     seoDescription: string | null;
   };
@@ -125,17 +127,20 @@ export function ArticleEditorForm({ article, siteId }: ArticleEditorFormProps) {
       </div>
 
       <div className="grid gap-2">
-        <label htmlFor="contentHtml" className="text-sm font-medium text-ink">
-          Content HTML
+        <label htmlFor="contentMarkdown" className="text-sm font-medium text-ink">
+          Content Markdown
         </label>
         <textarea
-          id="contentHtml"
-          name="contentHtml"
-          defaultValue={article.contentHtml}
+          id="contentMarkdown"
+          name="contentMarkdown"
+          defaultValue={getArticleEditorValue(article.contentMarkdown, article.contentHtml)}
           rows={18}
           className="rounded-2xl border border-line px-4 py-3 font-mono text-sm outline-none transition focus:border-accent"
           required
         />
+        <p className="text-xs text-slate-500">
+          New and resaved articles use Markdown. Legacy HTML-only articles may show raw HTML here until they are resaved.
+        </p>
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

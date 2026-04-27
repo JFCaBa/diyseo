@@ -8,7 +8,7 @@ import { createArticle, type ActionState } from "@/lib/actions";
 
 type ArticleCreateFormProps = {
   initialValues: {
-    contentHtml: string;
+    contentMarkdown: string;
     coverImageUrl: string;
     excerpt: string;
     publishedDate: string;
@@ -128,17 +128,18 @@ export function ArticleCreateForm({ initialValues, returnTo, siteId }: ArticleCr
       </div>
 
       <div className="grid gap-2">
-        <label htmlFor="contentHtml" className="text-sm font-medium text-ink">
-          Content HTML
+        <label htmlFor="contentMarkdown" className="text-sm font-medium text-ink">
+          Content Markdown
         </label>
         <textarea
-          id="contentHtml"
-          name="contentHtml"
-          defaultValue={initialValues.contentHtml}
+          id="contentMarkdown"
+          name="contentMarkdown"
+          defaultValue={initialValues.contentMarkdown}
           rows={18}
           className="rounded-2xl border border-line px-4 py-3 font-mono text-sm outline-none transition focus:border-accent"
           required
         />
+        <p className="text-xs text-slate-500">New articles use Markdown.</p>
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

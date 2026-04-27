@@ -112,6 +112,7 @@ model Article {
   excerpt       String?
   coverImageUrl String?
   contentHtml   String
+  contentMarkdown String?
   seoTitle      String?
   seoDescription String?
   status        ArticleStatus @default(DRAFT)

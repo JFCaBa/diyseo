@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { SEARCH_COUNTRY_OPTIONS, SEARCH_LANGUAGE_OPTIONS } from "@/lib/search-locale";
+import { TRANSLATION_LANGUAGE_OPTIONS } from "@/lib/translations";
 
 function normalizeGeneratedText(value: string) {
   return value.trim().replace(/\s+/g, " ");
@@ -118,6 +119,37 @@ export const UpdateSearchLocaleDefaultsSchema = z.object({
   defaultSearchLanguage: z.enum(SEARCH_LANGUAGE_OPTIONS.map((option) => option.value) as [string, ...string[]])
 });
 
+export const UpdateTranslationSettingsSchema = z.object({
+  translationsEnabled: z.boolean(),
+  translationLanguages: z
+    .array(z.enum(TRANSLATION_LANGUAGE_OPTIONS.map((option) => option.code) as [string, ...string[]]))
+    .max(TRANSLATION_LANGUAGE_OPTIONS.length)
+});
+
+export const GenerateArticleTranslationSchema = z.object({
+  articleId: z.string().cuid("Invalid Article ID"),
+  language: z.enum(TRANSLATION_LANGUAGE_OPTIONS.map((option) => option.code) as [string, ...string[]])
+});
+
+export const GeneratedArticleTranslationSchema = z.object({
+  title: z.string().transform((value) => normalizeGeneratedText(value)).pipe(z.string().min(1).max(200)),
+  excerpt: z
+    .string()
+    .transform((value) => normalizeGeneratedText(value))
+    .pipe(z.string().min(1).max(2000))
+    .nullable()
+    .optional(),
+  contentMarkdown: z.string().transform((value) => value.trim()).pipe(z.string().min(1)),
+  seoTitle: z
+    .string()
+    .transform((value) => truncateGeneratedText(value, 60))
+    .pipe(z.string().min(1).max(60)),
+  seoDescription: z
+    .string()
+    .transform((value) => truncateGeneratedText(value, 160))
+    .pipe(z.string().min(1).max(160))
+});
+
 export const TransferSiteSchema = z.object({
   email: z.string().email("Enter a valid user email.")
 });
@@ -193,7 +225,10 @@ export type UpdateSearchConsolePropertyInput = z.infer<typeof UpdateSearchConsol
 export type UpdateWidgetThemeInput = z.infer<typeof UpdateWidgetThemeSchema>;
 export type UpdateAutoPublishSettingsInput = z.infer<typeof UpdateAutoPublishSettingsSchema>;
 export type UpdateSearchLocaleDefaultsInput = z.infer<typeof UpdateSearchLocaleDefaultsSchema>;
+export type UpdateTranslationSettingsInput = z.infer<typeof UpdateTranslationSettingsSchema>;
 export type TransferSiteInput = z.infer<typeof TransferSiteSchema>;
 export type DeleteSiteInput = z.infer<typeof DeleteSiteSchema>;
 export type UpdateArticleInput = z.infer<typeof UpdateArticleSchema>;
 export type CreateArticleInput = z.infer<typeof CreateArticleSchema>;
+export type GenerateArticleTranslationInput = z.infer<typeof GenerateArticleTranslationSchema>;
+export type GeneratedArticleTranslationInput = z.infer<typeof GeneratedArticleTranslationSchema>;

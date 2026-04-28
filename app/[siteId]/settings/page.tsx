@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { SiteAutoPublishForm } from "@/components/site-auto-publish-form";
 import { SiteDeleteForm } from "@/components/site-delete-form";
 import { SiteSearchLocaleForm } from "@/components/site-search-locale-form";
+import { SiteTranslationSettingsForm } from "@/components/site-translation-settings-form";
 import { SiteTransferForm } from "@/components/site-transfer-form";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -46,7 +47,9 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
         articlesPerWeek: true,
         requireReview: true,
         defaultSearchCountry: true,
-        defaultSearchLanguage: true
+        defaultSearchLanguage: true,
+        translationsEnabled: true,
+        translationLanguages: true
       }
     }),
     prisma.workspace.findUnique({
@@ -159,6 +162,12 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
         siteId={currentSite.id}
         initialDefaultSearchCountry={currentSite.defaultSearchCountry}
         initialDefaultSearchLanguage={currentSite.defaultSearchLanguage}
+      />
+
+      <SiteTranslationSettingsForm
+        siteId={currentSite.id}
+        initialTranslationsEnabled={currentSite.translationsEnabled}
+        initialTranslationLanguages={currentSite.translationLanguages}
       />
     </section>
   );

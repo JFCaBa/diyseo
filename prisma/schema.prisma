@@ -78,6 +78,8 @@ model SiteProject {
   searchConsoleConnectedAt   DateTime?
   defaultSearchCountry       String       @default("es")
   defaultSearchLanguage      String       @default("es")
+  translationsEnabled        Boolean      @default(false)
+  translationLanguages       String[]     @default([])
   createdAt                  DateTime     @default(now())
   updatedAt                  DateTime     @updatedAt
 
@@ -125,9 +127,28 @@ model Article {
 
   siteProject   SiteProject   @relation(fields: [siteProjectId], references: [id], onDelete: Cascade)
   keyword       Keyword?      @relation(fields: [keywordId], references: [id], onDelete: SetNull)
+  translations  ArticleTranslation[]
 
   @@unique([siteProjectId, slug])
   @@index([siteProjectId, status, publishedAt])
+}
+
+model ArticleTranslation {
+  id             String   @id @default(cuid())
+  articleId       String
+  language        String
+  title           String
+  excerpt         String?
+  contentMarkdown String
+  seoTitle        String?
+  seoDescription  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  article         Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, language])
+  @@index([language])
 }
 
 enum ArticleStatus {

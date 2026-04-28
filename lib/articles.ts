@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getRequestedTranslationLanguage } from "@/lib/translations";
 
 export const publicArticleSelect = {
   id: true,
@@ -42,6 +43,37 @@ export async function getPublishedArticleBySlug(siteId: string, slug: string) {
       status: "PUBLISHED"
     },
     select: publicArticleSelect
+  });
+}
+
+export async function getPublishedArticleBySlugWithTranslation(siteId: string, slug: string, language?: string | null) {
+  const requestedLanguage = getRequestedTranslationLanguage(language);
+
+  return prisma.article.findFirst({
+    where: {
+      siteProjectId: siteId,
+      slug,
+      status: "PUBLISHED"
+    },
+    select: {
+      ...publicArticleSelect,
+      translations: requestedLanguage
+        ? {
+            where: {
+              language: requestedLanguage
+            },
+            take: 1,
+            select: {
+              language: true,
+              title: true,
+              excerpt: true,
+              contentMarkdown: true,
+              seoTitle: true,
+              seoDescription: true
+            }
+          }
+        : false
+    }
   });
 }
 

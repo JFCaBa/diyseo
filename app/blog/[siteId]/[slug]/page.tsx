@@ -4,10 +4,11 @@ import { notFound } from "next/navigation";
 
 import { PublicBlogMetaLinks } from "@/components/public-blog-meta-links";
 import { getCoverImageProxyPath, getCoverImageProxyUrl } from "@/lib/cover-image-url";
-import { getAdjacentPublishedArticles, getPublishedArticleBySlug } from "@/lib/articles";
+import { getAdjacentPublishedArticles, getPublishedArticleBySlugWithTranslation } from "@/lib/articles";
 import { getArticleRenderedHtml } from "@/lib/markdown";
 import { getPublicBlogTheme } from "@/lib/public-blog-theme";
 import { getPublicUrls } from "@/lib/public-urls";
+import { getRequestedTranslationLanguage, getTranslationQuerySuffix, pickArticleTranslation } from "@/lib/translations";
 import { cn } from "@/lib/utils";
 import { PublicArticleRouteParamsSchema } from "@/lib/validations";
 
@@ -15,35 +16,42 @@ export const dynamic = "force-dynamic";
 
 type PublicArticlePageProps = {
   params: Promise<{ siteId: string; slug: string }>;
+  searchParams?: Promise<{ lang?: string }>;
 };
 
-async function getArticleFromParams(params: PublicArticlePageProps["params"]) {
+async function getArticleFromParams(params: PublicArticlePageProps["params"], searchParams?: PublicArticlePageProps["searchParams"]) {
   const parsed = PublicArticleRouteParamsSchema.safeParse(await params);
 
   if (!parsed.success) {
     return null;
   }
 
-  return getPublishedArticleBySlug(parsed.data.siteId, parsed.data.slug);
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const language = getRequestedTranslationLanguage(typeof resolvedSearchParams?.lang === "string" ? resolvedSearchParams.lang : null);
+
+  return getPublishedArticleBySlugWithTranslation(parsed.data.siteId, parsed.data.slug, language);
 }
 
-export async function generateMetadata({ params }: PublicArticlePageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PublicArticlePageProps): Promise<Metadata> {
   const parsed = PublicArticleRouteParamsSchema.safeParse(await params);
 
   if (!parsed.success) {
     return {};
   }
 
-  const article = await getPublishedArticleBySlug(parsed.data.siteId, parsed.data.slug);
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const language = getRequestedTranslationLanguage(typeof resolvedSearchParams?.lang === "string" ? resolvedSearchParams.lang : null);
+  const article = await getPublishedArticleBySlugWithTranslation(parsed.data.siteId, parsed.data.slug, language);
 
   if (!article) {
     return {};
   }
 
-  const title = article.seoTitle || article.title;
-  const description = article.seoDescription || article.excerpt || undefined;
+  const translation = pickArticleTranslation(article);
+  const title = translation?.seoTitle || article.seoTitle || article.title;
+  const description = translation?.seoDescription || article.seoDescription || article.excerpt || undefined;
   const urls = await getPublicUrls(parsed.data.siteId);
-  const url = urls.articleUrl(parsed.data.slug);
+  const url = `${urls.articleUrl(parsed.data.slug)}${getTranslationQuerySuffix(language)}`;
 
   return {
     title,
@@ -70,12 +78,17 @@ export async function generateMetadata({ params }: PublicArticlePageProps): Prom
   };
 }
 
-export default async function PublicArticlePage({ params }: PublicArticlePageProps) {
-  const article = await getArticleFromParams(params);
+export default async function PublicArticlePage({ params, searchParams }: PublicArticlePageProps) {
+  const article = await getArticleFromParams(params, searchParams);
 
   if (!article) {
     notFound();
   }
+
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const language = getRequestedTranslationLanguage(typeof resolvedSearchParams?.lang === "string" ? resolvedSearchParams.lang : null);
+  const languageQuerySuffix = getTranslationQuerySuffix(language);
+  const translation = pickArticleTranslation(article);
 
   const urls = await getPublicUrls(article.siteProjectId);
 
@@ -92,7 +105,11 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
       }).format(new Date(article.publishedAt))
     : null;
   const theme = getPublicBlogTheme(article.siteProject?.widgetTheme);
-  const renderedContentHtml = getArticleRenderedHtml(article.contentMarkdown, article.contentHtml);
+  const displayTitle = translation?.title || article.title;
+  const displayExcerpt = translation?.excerpt || article.excerpt;
+  const renderedContentHtml = translation
+    ? getArticleRenderedHtml(translation.contentMarkdown, article.contentHtml)
+    : getArticleRenderedHtml(article.contentMarkdown, article.contentHtml);
 
   return (
     <main className={cn("min-h-screen px-4 py-10 sm:px-6 sm:py-12", theme.page)}>
@@ -121,8 +138,13 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
               className={cn("h-auto w-full rounded-[1.75rem] border object-cover", theme.imageBorder)}
             />
           ) : null}
-          <h1 className={cn("text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl", theme.title)}>{article.title}</h1>
-          {article.excerpt ? <p className={cn("max-w-2xl text-lg leading-8 sm:text-xl", theme.body)}>{article.excerpt}</p> : null}
+          <h1 className={cn("text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl", theme.title)}>{displayTitle}</h1>
+          {displayExcerpt ? <p className={cn("max-w-2xl text-lg leading-8 sm:text-xl", theme.body)}>{displayExcerpt}</p> : null}
+          {language ? (
+            <p className={cn("text-[11px] font-semibold uppercase tracking-[0.22em]", theme.muted)}>
+              Viewing translation: {language}
+            </p>
+          ) : null}
           {publishedDate ? (
             <p className={cn("text-[11px] font-semibold uppercase tracking-[0.22em]", theme.muted)}>Published {publishedDate}</p>
           ) : null}
@@ -138,7 +160,7 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
             <div className="sm:max-w-[32%]">
               {previousArticle ? (
                 <Link
-                  href={urls.articlePath(previousArticle.slug)}
+                  href={`${urls.articlePath(previousArticle.slug)}${languageQuerySuffix}`}
                   className={cn("block text-sm transition", theme.navText)}
                 >
                   <span className={cn("block text-[11px] font-semibold uppercase tracking-[0.22em]", theme.eyebrow)}>Previous</span>
@@ -161,7 +183,7 @@ export default async function PublicArticlePage({ params }: PublicArticlePagePro
             <div className="sm:max-w-[32%] sm:text-right">
               {nextArticle ? (
                 <Link
-                  href={urls.articlePath(nextArticle.slug)}
+                  href={`${urls.articlePath(nextArticle.slug)}${languageQuerySuffix}`}
                   className={cn("block text-sm transition", theme.navText)}
                 >
                   <span className={cn("block text-[11px] font-semibold uppercase tracking-[0.22em]", theme.eyebrow)}>Next</span>

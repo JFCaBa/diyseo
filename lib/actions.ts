@@ -8,6 +8,8 @@ import { auth } from "@/lib/auth";
 import { listSearchConsolePropertiesForUser } from "@/lib/google-search-console";
 import { renderMarkdownToHtml } from "@/lib/markdown";
 import { prisma } from "@/lib/prisma";
+import { generateArticleTranslation as runArticleTranslation } from "@/lib/translate-article";
+import { parseTranslationLanguagesFromFormData } from "@/lib/translations";
 import {
   AssignKeywordSchema,
   CreateArticleInput,
@@ -23,10 +25,12 @@ import {
   UpdateAutoPublishSettingsSchema,
   UpdateSearchLocaleDefaultsSchema,
   UpdateSearchConsolePropertySchema,
+  UpdateTranslationSettingsSchema,
   UpdateWidgetThemeSchema,
   UpdateArticleDateSchema,
   UpdateArticleSchema,
-  UpdateBrandDNASchema
+  UpdateBrandDNASchema,
+  GenerateArticleTranslationSchema
 } from "@/lib/validations";
 
 export type ActionState = {
@@ -692,6 +696,46 @@ export async function updateSearchLocaleDefaults(
   return { success: "Search locale defaults updated." };
 }
 
+export async function updateTranslationSettings(
+  siteId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const translationsEnabled = formData.get("translationsEnabled") === "true";
+  const translationLanguages = parseTranslationLanguagesFromFormData(formData.getAll("translationLanguages"));
+  const parsed = UpdateTranslationSettingsSchema.safeParse({
+    translationsEnabled,
+    translationLanguages
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid translation settings." };
+  }
+
+  try {
+    await requireOwnedSite(siteId);
+  } catch {
+    return { error: "Site not found." };
+  }
+
+  if (parsed.data.translationsEnabled && parsed.data.translationLanguages.length === 0) {
+    return { error: "Select at least one target language when translations are enabled." };
+  }
+
+  await prisma.siteProject.update({
+    where: { id: siteId },
+    data: {
+      translationsEnabled: parsed.data.translationsEnabled,
+      translationLanguages: parsed.data.translationsEnabled ? parsed.data.translationLanguages : []
+    }
+  });
+
+  revalidatePath(`/${siteId}/settings`);
+  revalidatePath(`/${siteId}/articles`);
+
+  return { success: "Translation settings updated." };
+}
+
 export async function updateWidgetInstalledState(
   siteId: string,
   _prevState: ActionState,
@@ -924,6 +968,113 @@ export async function updateArticle(
   revalidatePath(`/api/public/sites/${siteId}/articles`);
 
   return { success: "Article updated." };
+}
+
+export async function generateArticleTranslation(
+  siteId: string,
+  articleId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const parsed = GenerateArticleTranslationSchema.safeParse({
+    articleId,
+    language: formData.get("language")
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid translation request." };
+  }
+
+  const userId = await getCurrentUserId();
+  const article = await prisma.article.findFirst({
+    where: {
+      id: parsed.data.articleId,
+      siteProjectId: siteId,
+      siteProject: {
+        workspace: {
+          ownerId: userId
+        }
+      }
+    },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      excerpt: true,
+      contentMarkdown: true,
+      seoTitle: true,
+      seoDescription: true,
+      siteProject: {
+        select: {
+          translationsEnabled: true,
+          translationLanguages: true
+        }
+      }
+    }
+  });
+
+  if (!article) {
+    return { error: "Article not found." };
+  }
+
+  if (!article.siteProject.translationsEnabled) {
+    return { error: "Translations are disabled for this site." };
+  }
+
+  if (!article.siteProject.translationLanguages.includes(parsed.data.language)) {
+    return { error: "This language is not enabled for the site." };
+  }
+
+  if (!article.contentMarkdown?.trim()) {
+    return { error: "Resave this article in Markdown before generating translations." };
+  }
+
+  try {
+    const translated = await runArticleTranslation({
+      title: article.title,
+      excerpt: article.excerpt,
+      seoTitle: article.seoTitle,
+      seoDescription: article.seoDescription,
+      contentMarkdown: article.contentMarkdown,
+      language: parsed.data.language
+    });
+
+    await prisma.articleTranslation.upsert({
+      where: {
+        articleId_language: {
+          articleId: article.id,
+          language: parsed.data.language
+        }
+      },
+      update: {
+        title: translated.title,
+        excerpt: translated.excerpt ?? null,
+        contentMarkdown: translated.contentMarkdown,
+        seoTitle: translated.seoTitle,
+        seoDescription: translated.seoDescription
+      },
+      create: {
+        articleId: article.id,
+        language: parsed.data.language,
+        title: translated.title,
+        excerpt: translated.excerpt ?? null,
+        contentMarkdown: translated.contentMarkdown,
+        seoTitle: translated.seoTitle,
+        seoDescription: translated.seoDescription
+      }
+    });
+
+    revalidatePath(`/${siteId}/articles/${articleId}`);
+    revalidatePath(`/${siteId}/preview`);
+    revalidatePath(`/blog/${siteId}/${article.slug}`);
+    revalidatePath(`/api/public/sites/${siteId}/articles/${article.slug}`);
+
+    return { success: "Translation generated." };
+  } catch (error) {
+    return {
+      error: normalizeActionErrorMessage(error, "Article translation failed.")
+    };
+  }
 }
 
 export async function updateArticleDate(siteId: string, formData: FormData) {

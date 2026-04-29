@@ -20,6 +20,7 @@ import {
   BrandDNAInput,
   CreateKeywordInput,
   CreateKeywordSchema,
+  DeleteArticleSchema,
   CreateSiteInput,
   CreateSiteSchema,
   DeleteSiteSchema,
@@ -470,6 +471,54 @@ export async function toggleArticleStatus(
   return {
     success: parsed.data.status === "PUBLISHED" ? "Article published." : "Article unpublished."
   };
+}
+
+export async function deleteArticle(
+  siteId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const parsed = DeleteArticleSchema.safeParse({
+    articleId: formData.get("articleId")
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid article delete request." };
+  }
+
+  const article = await prisma.article.findFirst({
+    where: {
+      id: parsed.data.articleId,
+      siteProjectId: siteId,
+      siteProject: {
+        workspace: {
+          ownerId: await getCurrentUserId()
+        }
+      }
+    },
+    select: { id: true, slug: true, status: true }
+  });
+
+  if (!article) {
+    return { error: "Article not found." };
+  }
+
+  await prisma.article.delete({
+    where: { id: article.id }
+  });
+
+  revalidatePath(`/${siteId}/articles`);
+  revalidatePath(`/${siteId}/calendar`);
+  revalidatePath(`/${siteId}/preview`);
+  revalidatePath(`/api/public/sites/${siteId}/articles`);
+  revalidatePath(`/api/public/sites/${siteId}/articles/${article.slug}`);
+
+  if (article.status === "PUBLISHED") {
+    revalidatePath(`/blog/${siteId}`);
+    revalidatePath(`/blog/${siteId}/${article.slug}`);
+  }
+
+  return { success: "Article deleted." };
 }
 
 export async function createKeyword(

@@ -1,3 +1,4 @@
+import { ArticleDeleteButton } from "@/components/article-delete-button";
 import { ArticleGenerationForm } from "@/components/article-generation-form";
 import { ArticleKeywordAssignment } from "@/components/article-keyword-assignment";
 import { ArticleStatusToggle } from "@/components/article-status-toggle";
@@ -238,6 +239,7 @@ export default async function ArticlesPage({ params, searchParams }: ArticlesPag
                           View Public
                         </Link>
                       ) : null}
+                      <ArticleDeleteButton articleId={article.id} articleTitle={article.title} siteId={siteId} />
                     </div>
                     <ArticleStatusToggle articleId={article.id} siteId={siteId} status={article.status} />
                   </div>

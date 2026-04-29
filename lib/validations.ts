@@ -87,6 +87,10 @@ export const ToggleArticleStatusSchema = z.object({
   status: z.enum(["DRAFT", "PUBLISHED"])
 });
 
+export const DeleteArticleSchema = z.object({
+  articleId: z.string().cuid("Invalid Article ID")
+});
+
 export const CreateKeywordSchema = z.object({
   term: z.string().min(1, "Keyword term is required").max(100)
 });
@@ -244,6 +248,7 @@ export type GeneratedArticleInput = z.infer<typeof GeneratedArticleSchema>;
 export type GenerateBrandDNARequestInput = z.infer<typeof GenerateBrandDNARequestSchema>;
 export type GeneratedBrandDNAInput = z.infer<typeof GeneratedBrandDNASchema>;
 export type ToggleArticleStatusInput = z.infer<typeof ToggleArticleStatusSchema>;
+export type DeleteArticleInput = z.infer<typeof DeleteArticleSchema>;
 export type CreateKeywordInput = z.infer<typeof CreateKeywordSchema>;
 export type UpdateSearchConsolePropertyInput = z.infer<typeof UpdateSearchConsolePropertySchema>;
 export type UpdateWidgetThemeInput = z.infer<typeof UpdateWidgetThemeSchema>;

@@ -107,6 +107,8 @@ export function CalendarMonthView({ articles, month, returnToBase, siteId }: Cal
       <div className="grid grid-cols-1 gap-2 md:grid-cols-7">
         {buildGridDays(month).map((day) => {
           const dayArticles = articleMap.get(day.dayKey) ?? [];
+          const visibleArticle = dayArticles[0] ?? null;
+          const remainingArticleCount = Math.max(0, dayArticles.length - 1);
 
           return (
             <div
@@ -128,21 +130,21 @@ export function CalendarMonthView({ articles, month, returnToBase, siteId }: Cal
               </div>
 
               <div className="space-y-3">
-                {dayArticles.map((article) => (
+                {visibleArticle ? (
                   <div
-                    key={article.id}
+                    key={visibleArticle.id}
                     className={`rounded-2xl border px-3 py-3 text-sm ${
-                      article.status === "PUBLISHED"
+                      visibleArticle.status === "PUBLISHED"
                         ? "border-accent bg-accent/10"
                         : "border-dashed border-line bg-mist/70"
                     }`}
                   >
-                    <Link href={`/${siteId}/articles/${article.id}`} className="font-semibold text-ink hover:text-accent">
-                      {article.title}
+                    <Link href={`/${siteId}/articles/${visibleArticle.id}`} className="font-semibold text-ink hover:text-accent">
+                      {visibleArticle.title}
                     </Link>
-                    <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{article.status}</p>
+                    <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{visibleArticle.status}</p>
                     <form action={updateDateForSite} className="mt-3 grid gap-2">
-                      <input type="hidden" name="articleId" value={article.id} />
+                      <input type="hidden" name="articleId" value={visibleArticle.id} />
                       <input type="hidden" name="returnTo" value={returnTo} />
                       <input
                         type="date"
@@ -158,7 +160,7 @@ export function CalendarMonthView({ articles, month, returnToBase, siteId }: Cal
                       </button>
                     </form>
                     <form action={updateDateForSite} className="mt-2">
-                      <input type="hidden" name="articleId" value={article.id} />
+                      <input type="hidden" name="articleId" value={visibleArticle.id} />
                       <input type="hidden" name="returnTo" value={returnTo} />
                       <input type="hidden" name="newDate" value="" />
                       <div className="flex items-center gap-2">
@@ -171,7 +173,13 @@ export function CalendarMonthView({ articles, month, returnToBase, siteId }: Cal
                       </div>
                     </form>
                   </div>
-                ))}
+                ) : null}
+
+                {remainingArticleCount > 0 ? (
+                  <p className="rounded-2xl border border-dashed border-line px-3 py-3 text-xs font-semibold text-slate-500">
+                    +{remainingArticleCount} more
+                  </p>
+                ) : null}
 
                 {day.inMonth && dayArticles.length === 0 ? (
                   <p className="rounded-2xl border border-dashed border-line px-3 py-4 text-xs text-slate-500">

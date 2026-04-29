@@ -1,42 +1,9 @@
+import { createUniqueArticleSlug } from "@/lib/article-slug";
 import { prisma } from "@/lib/prisma";
 import { getAIGenerationService } from "@/lib/ai";
 import { renderMarkdownToHtml } from "@/lib/markdown";
 import { GenerateArticleRequestSchema } from "@/lib/validations";
 import type { ArticleGenerationSource, ArticleStatus } from "@prisma/client";
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-")
-    .slice(0, 100);
-}
-
-async function createUniqueSlug(siteProjectId: string, title: string) {
-  const baseSlug = slugify(title) || "generated-article";
-  let slug = baseSlug;
-  let suffix = 2;
-
-  while (true) {
-    const existing = await prisma.article.findUnique({
-      where: {
-        siteProjectId_slug: {
-          siteProjectId,
-          slug
-        }
-      },
-      select: { id: true }
-    });
-
-    if (!existing) {
-      return slug;
-    }
-
-    slug = `${baseSlug}-${suffix}`;
-    suffix += 1;
-  }
-}
 
 function normalizeKeywordTerm(value: string) {
   return value
@@ -137,7 +104,7 @@ export async function saveGeneratedArticleForSite(siteId: string, input: SaveGen
     brandProfile: site.brandProfile
   });
 
-  const slug = await createUniqueSlug(site.id, generated.title);
+  const slug = await createUniqueArticleSlug(site.id, generated.title, "generated-article");
   const keywordTerms = Array.from(new Set(generated.keywords.map((keyword) => normalizeKeywordTerm(keyword)))).slice(0, 7);
   const status = input.status ?? "DRAFT";
   const publishedAt = status === "PUBLISHED" ? (input.publishedAt ?? new Date()) : null;

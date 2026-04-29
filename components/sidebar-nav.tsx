@@ -11,7 +11,8 @@ const navItems = [
   { label: "Calendar", href: "/calendar" },
   { label: "Articles", href: "/articles" },
   { label: "Analytics", href: "/analytics" },
-  { label: "Keywords", href: "/keywords" }
+  { label: "Keywords", href: "/keywords" },
+  { label: "API", href: "/api" }
 ];
 
 type SidebarNavProps = {

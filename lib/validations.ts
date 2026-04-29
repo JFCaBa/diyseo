@@ -154,6 +154,14 @@ export const TransferSiteSchema = z.object({
   email: z.string().email("Enter a valid user email.")
 });
 
+export const CreatePublishingApiKeySchema = z.object({
+  label: z.string().trim().min(1, "Key label is required.").max(80, "Key label must be 80 characters or less.")
+});
+
+export const RevokePublishingApiKeySchema = z.object({
+  keyId: z.string().cuid("Invalid key ID")
+});
+
 export const DeleteSiteSchema = z.object({
   confirmName: z.string().min(1, "Type the site name to confirm deletion.")
 });
@@ -176,6 +184,22 @@ export const CreateArticleSchema = z.object({
   seoDescription: z.string().max(160, "SEO Description should be under 160 characters").optional().nullable(),
   publishedDate: z.union([z.string().date(), z.literal(""), z.null()]).transform((value) => value || null),
   returnTo: z.string().optional()
+});
+
+export const PublishArticleApiPayloadSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(200, "Title must be 200 characters or less."),
+  slug: z.string().trim().max(120, "Slug must be 120 characters or less.").optional(),
+  excerpt: z.string().max(2000, "Excerpt must be 2000 characters or less.").optional().nullable(),
+  coverImageUrl: z.string().url("Cover image must be a valid URL").max(2000).optional().nullable(),
+  contentMarkdown: z
+    .string()
+    .trim()
+    .min(1, "contentMarkdown is required")
+    .max(100_000, "contentMarkdown is too large."),
+  seoTitle: z.string().max(60, "SEO Title should be under 60 characters").optional().nullable(),
+  seoDescription: z.string().max(160, "SEO Description should be under 160 characters").optional().nullable(),
+  status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT"),
+  publishedAt: z.string().datetime({ offset: true }).optional().nullable()
 });
 
 export const UpdateArticleDateSchema = z.object({
@@ -227,8 +251,11 @@ export type UpdateAutoPublishSettingsInput = z.infer<typeof UpdateAutoPublishSet
 export type UpdateSearchLocaleDefaultsInput = z.infer<typeof UpdateSearchLocaleDefaultsSchema>;
 export type UpdateTranslationSettingsInput = z.infer<typeof UpdateTranslationSettingsSchema>;
 export type TransferSiteInput = z.infer<typeof TransferSiteSchema>;
+export type CreatePublishingApiKeyInput = z.infer<typeof CreatePublishingApiKeySchema>;
+export type RevokePublishingApiKeyInput = z.infer<typeof RevokePublishingApiKeySchema>;
 export type DeleteSiteInput = z.infer<typeof DeleteSiteSchema>;
 export type UpdateArticleInput = z.infer<typeof UpdateArticleSchema>;
 export type CreateArticleInput = z.infer<typeof CreateArticleSchema>;
 export type GenerateArticleTranslationInput = z.infer<typeof GenerateArticleTranslationSchema>;
 export type GeneratedArticleTranslationInput = z.infer<typeof GeneratedArticleTranslationSchema>;
+export type PublishArticleApiPayloadInput = z.infer<typeof PublishArticleApiPayloadSchema>;

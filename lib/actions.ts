@@ -3,17 +3,20 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { createUniqueArticleSlug } from "@/lib/article-slug";
 import { generateNextAutoArticleForSite as runAutoPublishGenerationForSite } from "@/lib/auto-publish";
 import { auth } from "@/lib/auth";
 import { listSearchConsolePropertiesForUser } from "@/lib/google-search-console";
 import { renderMarkdownToHtml } from "@/lib/markdown";
 import { prisma } from "@/lib/prisma";
+import { generatePublishingApiKey } from "@/lib/site-publishing-api";
 import { generateArticleTranslation as runArticleTranslation } from "@/lib/translate-article";
 import { parseTranslationLanguagesFromFormData } from "@/lib/translations";
 import {
   AssignKeywordSchema,
   CreateArticleInput,
   CreateArticleSchema,
+  CreatePublishingApiKeySchema,
   BrandDNAInput,
   CreateKeywordInput,
   CreateKeywordSchema,
@@ -30,12 +33,14 @@ import {
   UpdateArticleDateSchema,
   UpdateArticleSchema,
   UpdateBrandDNASchema,
-  GenerateArticleTranslationSchema
+  GenerateArticleTranslationSchema,
+  RevokePublishingApiKeySchema
 } from "@/lib/validations";
 
 export type ActionState = {
   error?: string;
   success?: string;
+  apiKeySecret?: string;
   generatedArticle?: {
     id: string;
     title: string;
@@ -100,40 +105,6 @@ function cleanNullableText(value: FormDataEntryValue | null) {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
-}
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-")
-    .slice(0, 100);
-}
-
-async function createUniqueSlug(siteProjectId: string, title: string) {
-  const baseSlug = slugify(title) || "article";
-  let slug = baseSlug;
-  let suffix = 2;
-
-  while (true) {
-    const existing = await prisma.article.findUnique({
-      where: {
-        siteProjectId_slug: {
-          siteProjectId,
-          slug
-        }
-      },
-      select: { id: true }
-    });
-
-    if (!existing) {
-      return slug;
-    }
-
-    slug = `${baseSlug}-${suffix}`;
-    suffix += 1;
-  }
 }
 
 function toUtcIsoFromDateInput(value: FormDataEntryValue | null) {
@@ -736,6 +707,92 @@ export async function updateTranslationSettings(
   return { success: "Translation settings updated." };
 }
 
+export async function createPublishingApiKey(
+  siteId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const parsed = CreatePublishingApiKeySchema.safeParse({
+    label: formData.get("label")
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid API key label." };
+  }
+
+  try {
+    await requireOwnedSite(siteId);
+  } catch {
+    return { error: "Site not found." };
+  }
+
+  const { rawKey, keyHash, keyPrefix } = generatePublishingApiKey();
+
+  await prisma.sitePublishingApiKey.create({
+    data: {
+      siteProjectId: siteId,
+      label: parsed.data.label,
+      keyHash,
+      keyPrefix
+    }
+  });
+
+  revalidatePath(`/${siteId}/settings`);
+
+  return {
+    success: "Publishing API key created. Store it now because it will not be shown again.",
+    apiKeySecret: rawKey
+  };
+}
+
+export async function revokePublishingApiKey(
+  siteId: string,
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const parsed = RevokePublishingApiKeySchema.safeParse({
+    keyId: formData.get("keyId")
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid API key." };
+  }
+
+  const userId = await getCurrentUserId();
+  const apiKey = await prisma.sitePublishingApiKey.findFirst({
+    where: {
+      id: parsed.data.keyId,
+      siteProjectId: siteId,
+      siteProject: {
+        workspace: {
+          ownerId: userId
+        }
+      }
+    },
+    select: {
+      id: true,
+      revokedAt: true
+    }
+  });
+
+  if (!apiKey) {
+    return { error: "API key not found." };
+  }
+
+  if (!apiKey.revokedAt) {
+    await prisma.sitePublishingApiKey.update({
+      where: { id: apiKey.id },
+      data: {
+        revokedAt: new Date()
+      }
+    });
+  }
+
+  revalidatePath(`/${siteId}/settings`);
+
+  return { success: "Publishing API key revoked." };
+}
+
 export async function updateWidgetInstalledState(
   siteId: string,
   _prevState: ActionState,
@@ -895,7 +952,7 @@ export async function createArticle(
     return { error: "Site not found." };
   }
 
-  const slug = await createUniqueSlug(siteId, parsed.data.title);
+  const slug = await createUniqueArticleSlug(siteId, parsed.data.title);
 
   await prisma.article.create({
     data: {

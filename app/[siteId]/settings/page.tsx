@@ -169,6 +169,25 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
         initialTranslationsEnabled={currentSite.translationsEnabled}
         initialTranslationLanguages={currentSite.translationLanguages}
       />
+
+      <section className="rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
+        <div className="max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Publishing API</p>
+          <h2 className="mt-2 text-2xl font-semibold text-ink">API access</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Manage site publishing API keys and use the stable article creation endpoint from the dedicated API page.
+          </p>
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <Link
+            href={`/${siteId}/api`}
+            className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+          >
+            Open API page
+          </Link>
+        </div>
+      </section>
     </section>
   );
 }

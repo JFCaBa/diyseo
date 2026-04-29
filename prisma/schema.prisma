@@ -87,6 +87,23 @@ model SiteProject {
   brandProfile               BrandProfile?
   articles                   Article[]
   keywords                   Keyword[]
+  publishingApiKeys          SitePublishingApiKey[]
+}
+
+model SitePublishingApiKey {
+  id            String      @id @default(cuid())
+  siteProjectId String
+  label         String
+  keyHash       String      @unique
+  keyPrefix     String
+  revokedAt     DateTime?
+  lastUsedAt    DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  siteProject   SiteProject @relation(fields: [siteProjectId], references: [id], onDelete: Cascade)
+
+  @@index([siteProjectId, revokedAt])
 }
 
 model BrandProfile {

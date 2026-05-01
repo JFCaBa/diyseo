@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ?? "";
-
 const nextConfig: NextConfig = {
-  assetPrefix: appUrl || undefined,
   async rewrites() {
     return [
       {

@@ -27,7 +27,7 @@ function normalizeBaseUrl(value: string) {
 export class QwenImageGenerator implements AIImageGenerationService {
   private getConfig() {
     const apiKey = process.env.QWEN_API_KEY?.trim();
-    const model = process.env.QWEN_IMAGE_MODEL?.trim() || "qwen-image-2.0-pro";
+    const model = process.env.QWEN_IMAGE_MODEL?.trim() || "wan2.7-image";
     const baseUrl = normalizeBaseUrl(process.env.DASHSCOPE_BASE_URL?.trim() || "https://dashscope-intl.aliyuncs.com/api/v1");
 
     if (!apiKey) {
@@ -91,7 +91,7 @@ export class QwenImageGenerator implements AIImageGenerationService {
           negative_prompt: buildArticleCoverImageNegativePrompt(),
           prompt_extend: true,
           watermark: false,
-          size: "2368*1728",
+          size: "1024*1024",
           n: 1
         }
       })

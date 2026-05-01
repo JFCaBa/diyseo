@@ -1,6 +1,7 @@
 import type { ArticleStatus, KeywordStatus } from "@prisma/client";
 
 import { generateKeywordSuggestionsForSite, saveGeneratedArticleForSite } from "@/lib/generate-article";
+import { generateAndSaveArticleCoverImage } from "@/lib/generate-cover-image";
 import { prisma } from "@/lib/prisma";
 
 type KeywordCandidate = {
@@ -125,6 +126,18 @@ export async function generateNextAutoArticleForSite(siteId: string) {
     publishedAt: status === "PUBLISHED" ? new Date() : null,
     generationSource: "AUTO"
   });
+
+  try {
+    await generateAndSaveArticleCoverImage({
+      siteId: site.id,
+      articleId: result.article.id
+    });
+  } catch (error) {
+    console.error(
+      `Auto-publish: cover image generation failed for article ${result.article.id}:`,
+      error instanceof Error ? error.message : error
+    );
+  }
 
   return {
     ...result,

@@ -2,9 +2,8 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
-import { generateArticleCoverImage } from "@/lib/ai/image-generator";
+import { generateAndSaveArticleCoverImage } from "@/lib/generate-cover-image";
 import { prisma } from "@/lib/prisma";
-import { saveArticleCoverImageLocally } from "@/lib/storage/local";
 
 type RouteContext = {
   params: Promise<{ siteId: string; articleId: string }>;
@@ -41,72 +40,19 @@ export async function POST(request: Request, context: RouteContext) {
         }
       }
     },
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-      excerpt: true,
-      status: true,
-      siteProjectId: true,
-      siteProject: {
-        select: {
-          id: true,
-          name: true,
-          domain: true,
-          brandProfile: {
-            select: {
-              contentLanguage: true,
-              businessType: true,
-              brandVoiceTone: true,
-              targetAudience: true,
-              serviceArea: true,
-              topicsToAvoid: true,
-              keyThemes: true,
-              customImageInstructions: true,
-              imageStyle: true
-            }
-          }
-        }
-      }
-    }
+    select: { id: true, slug: true }
   });
 
   if (!article) {
     return NextResponse.json({ error: "Article not found." }, { status: 404 });
   }
 
-  if (!article.siteProject.brandProfile) {
-    return NextResponse.json({ error: "Brand profile is missing for this site." }, { status: 400 });
-  }
-
   try {
-    const image = await generateArticleCoverImage({
-      article: {
-        id: article.id,
-        title: titleOverride || article.title,
-        excerpt: excerptOverride ?? article.excerpt
-      },
-      site: {
-        id: article.siteProject.id,
-        name: article.siteProject.name,
-        domain: article.siteProject.domain
-      },
-      brandProfile: article.siteProject.brandProfile
-    });
-
-    const saved = await saveArticleCoverImageLocally({
-      siteId: article.siteProjectId,
+    const { coverImageUrl } = await generateAndSaveArticleCoverImage({
+      siteId,
       articleId: article.id,
-      image
-    });
-
-    await prisma.article.update({
-      where: {
-        id: article.id
-      },
-      data: {
-        coverImageUrl: saved.publicUrl
-      }
+      titleOverride,
+      excerptOverride
     });
 
     revalidatePath(`/${siteId}/articles`);
@@ -117,9 +63,7 @@ export async function POST(request: Request, context: RouteContext) {
     revalidatePath(`/api/public/sites/${siteId}/articles`);
     revalidatePath(`/api/public/sites/${siteId}/articles/${article.slug}`);
 
-    return NextResponse.json({
-      coverImageUrl: saved.publicUrl
-    });
+    return NextResponse.json({ coverImageUrl });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Cover image generation failed.";
     const status =

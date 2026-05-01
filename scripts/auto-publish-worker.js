@@ -19,12 +19,6 @@ function resolveBaseUrl() {
     return explicitBaseUrl.replace(/\/$/, "");
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
-
-  if (appUrl) {
-    return appUrl.replace(/\/$/, "");
-  }
-
   const port = process.env.PORT?.trim() || DEFAULT_PORT;
   return `http://127.0.0.1:${port}`;
 }

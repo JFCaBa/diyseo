@@ -66,14 +66,18 @@ export async function generateMetadata({ params, searchParams }: PublicArticlePa
       url,
       type: "article",
       siteName: article.siteProject?.name || "DIYSEO",
-      images: article.coverImageUrl ? [{ url: getCoverImageProxyUrl(article.coverImageUrl, urls.origin || undefined) }] : undefined,
+      images: article.coverImageUrl
+        ? [{ url: getCoverImageProxyUrl(article.coverImageUrl, urls.imageProxyOrigin || undefined) }]
+        : undefined,
       publishedTime: article.publishedAt ? new Date(article.publishedAt).toISOString() : undefined
     },
     twitter: {
       card: article.coverImageUrl ? "summary_large_image" : "summary",
       title,
       description,
-      images: article.coverImageUrl ? [getCoverImageProxyUrl(article.coverImageUrl, urls.origin || undefined)] : undefined
+      images: article.coverImageUrl
+        ? [getCoverImageProxyUrl(article.coverImageUrl, urls.imageProxyOrigin || undefined)]
+        : undefined
     }
   };
 }

@@ -90,12 +90,12 @@ export function ArticleCreateForm({ initialValues, returnTo, siteId }: ArticleCr
         <input
           id="coverImageUrl"
           name="coverImageUrl"
-          type="url"
+          type="text"
           defaultValue={initialValues.coverImageUrl}
           placeholder="https://example.com/cover.jpg"
           className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
         />
-        <p className="text-xs text-slate-500">Optional. Use a publicly reachable image URL.</p>
+        <p className="text-xs text-slate-500">Optional. Use a public URL or a site-relative path like `/uploads/...`.</p>
       </div>
 
       <div className="grid gap-2">

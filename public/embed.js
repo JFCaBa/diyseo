@@ -272,6 +272,10 @@
   }
 
   function getCoverImageProxyPath(url) {
+    if (typeof url === "string" && url.slice(0, 1) === "/" && url.slice(0, 2) !== "//") {
+      return apiOrigin + url;
+    }
+
     return apiOrigin + "/api/public/image?url=" + encodeURIComponent(url);
   }
 

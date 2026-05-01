@@ -65,12 +65,17 @@ export async function generateMetadata({ params }: PublicBlogIndexPageProps): Pr
       url: urls.indexUrl,
       type: "website",
       siteName: data.site.name,
-      images: data.articles[0]?.coverImageUrl ? [{ url: data.articles[0].coverImageUrl }] : undefined
+      images: data.articles[0]?.coverImageUrl
+        ? [{ url: getCoverImageProxyUrl(data.articles[0].coverImageUrl, urls.imageProxyOrigin || undefined) }]
+        : undefined
     },
     twitter: {
-      card: "summary",
+      card: data.articles[0]?.coverImageUrl ? "summary_large_image" : "summary",
       title,
-      description
+      description,
+      images: data.articles[0]?.coverImageUrl
+        ? [getCoverImageProxyUrl(data.articles[0].coverImageUrl, urls.imageProxyOrigin || undefined)]
+        : undefined
     }
   };
 }

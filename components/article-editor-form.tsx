@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { updateArticle, type ActionState } from "@/lib/actions";
@@ -38,12 +38,65 @@ function SaveButton() {
   );
 }
 
+function GenerateCoverImageButton({ pending, onClick }: { pending: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={pending}
+      className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist disabled:cursor-not-allowed disabled:opacity-70"
+    >
+      {pending ? "Generating..." : "Generate AI cover image"}
+    </button>
+  );
+}
+
 export function ArticleEditorForm({ article, siteId }: ArticleEditorFormProps) {
   const updateArticleForSite = updateArticle.bind(null, siteId, article.id);
   const [state, formAction] = useActionState(updateArticleForSite, initialState);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [coverImageGenerationError, setCoverImageGenerationError] = useState<string | null>(null);
+  const [generatedCoverImageUrl, setGeneratedCoverImageUrl] = useState<string | null>(article.coverImageUrl);
+  const [coverImageGenerationSuccess, setCoverImageGenerationSuccess] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const coverImageInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleGenerateCoverImage() {
+    if (!formRef.current) {
+      return;
+    }
+
+    setIsGeneratingImage(true);
+    setCoverImageGenerationError(null);
+    setCoverImageGenerationSuccess(null);
+
+    try {
+      const response = await fetch(`/api/internal/sites/${siteId}/articles/${article.id}/cover-image`, {
+        method: "POST",
+        body: new FormData(formRef.current)
+      });
+
+      const payload = (await response.json().catch(() => null)) as { coverImageUrl?: string; error?: string } | null;
+
+      if (!response.ok || !payload?.coverImageUrl) {
+        throw new Error(payload?.error || "Cover image generation failed.");
+      }
+
+      setGeneratedCoverImageUrl(payload.coverImageUrl);
+      setCoverImageGenerationSuccess("AI cover image generated and saved locally.");
+
+      if (coverImageInputRef.current) {
+        coverImageInputRef.current.value = payload.coverImageUrl;
+      }
+    } catch (error) {
+      setCoverImageGenerationError(error instanceof Error ? error.message : "Cover image generation failed.");
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  }
 
   return (
-    <form action={formAction} className="grid gap-6 rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
+    <form ref={formRef} action={formAction} className="grid gap-6 rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
       <div className="rounded-2xl border border-line bg-mist/70 px-4 py-4 text-sm text-slate-600">
         Update the article content and metadata here, then return to Articles to publish it, assign a keyword, or review it in the calendar.
       </div>
@@ -79,17 +132,23 @@ export function ArticleEditorForm({ article, siteId }: ArticleEditorFormProps) {
           Cover Image URL
         </label>
         <input
+          ref={coverImageInputRef}
           id="coverImageUrl"
           name="coverImageUrl"
-          type="url"
+          type="text"
           defaultValue={article.coverImageUrl ?? ""}
           placeholder="https://example.com/cover.jpg"
           className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
         />
-        <p className="text-xs text-slate-500">Optional. Use a publicly reachable image URL.</p>
-        {article.coverImageUrl ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <GenerateCoverImageButton pending={isGeneratingImage} onClick={handleGenerateCoverImage} />
+        </div>
+        <p className="text-xs text-slate-500">Optional. Use a public URL, or generate and store a local `/uploads/...` image.</p>
+        {coverImageGenerationError ? <p className="text-sm text-red-600">{coverImageGenerationError}</p> : null}
+        {coverImageGenerationSuccess ? <p className="text-sm text-accent">{coverImageGenerationSuccess}</p> : null}
+        {generatedCoverImageUrl ? (
           <img
-            src={getCoverImageProxyPath(article.coverImageUrl)}
+            src={getCoverImageProxyPath(generatedCoverImageUrl)}
             alt=""
             referrerPolicy="no-referrer"
             className="mt-2 h-40 w-full rounded-2xl border border-line object-cover"

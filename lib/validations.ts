@@ -14,6 +14,19 @@ function normalizeGeneratedKeyword(value: string) {
   return normalizeGeneratedText(value).toLocaleLowerCase();
 }
 
+function isValidCoverImageUrl(value: string) {
+  if (value.startsWith("/") && !value.startsWith("//")) {
+    return true;
+  }
+
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 const GeneratedKeywordSchema = z
   .string()
   .transform((value) => normalizeGeneratedKeyword(value))
@@ -108,6 +121,15 @@ export const UpdateWidgetThemeSchema = z.object({
   widgetTheme: z.enum(["light", "dark"])
 });
 
+const CoverImageUrlSchema = z
+  .string()
+  .trim()
+  .min(1, "Cover image must not be empty.")
+  .max(2000, "Cover image must be 2000 characters or less.")
+  .refine(isValidCoverImageUrl, {
+    message: "Cover image must be a valid URL or a site-relative path."
+  });
+
 export const UpdateAutoPublishSettingsSchema = z.object({
   autoPublishEnabled: z.boolean(),
   articlesPerWeek: z.coerce
@@ -173,7 +195,7 @@ export const DeleteSiteSchema = z.object({
 export const UpdateArticleSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   excerpt: z.string().max(2000).optional().nullable(),
-  coverImageUrl: z.string().url("Cover image must be a valid URL").max(2000).optional().nullable(),
+  coverImageUrl: CoverImageUrlSchema.optional().nullable(),
   contentMarkdown: z.string().min(1, "Content is required"),
   seoTitle: z.string().max(60, "SEO Title should be under 60 characters").optional().nullable(),
   seoDescription: z.string().max(160, "SEO Description should be under 160 characters").optional().nullable()
@@ -182,7 +204,7 @@ export const UpdateArticleSchema = z.object({
 export const CreateArticleSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   excerpt: z.string().max(2000).optional().nullable(),
-  coverImageUrl: z.string().url("Cover image must be a valid URL").max(2000).optional().nullable(),
+  coverImageUrl: CoverImageUrlSchema.optional().nullable(),
   contentMarkdown: z.string().min(1, "Content is required"),
   seoTitle: z.string().max(60, "SEO Title should be under 60 characters").optional().nullable(),
   seoDescription: z.string().max(160, "SEO Description should be under 160 characters").optional().nullable(),
@@ -194,7 +216,7 @@ export const PublishArticleApiPayloadSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200, "Title must be 200 characters or less."),
   slug: z.string().trim().max(120, "Slug must be 120 characters or less.").optional(),
   excerpt: z.string().max(2000, "Excerpt must be 2000 characters or less.").optional().nullable(),
-  coverImageUrl: z.string().url("Cover image must be a valid URL").max(2000).optional().nullable(),
+  coverImageUrl: CoverImageUrlSchema.optional().nullable(),
   contentMarkdown: z
     .string()
     .trim()

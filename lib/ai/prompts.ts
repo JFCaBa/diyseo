@@ -1,4 +1,8 @@
-import type { ArticleGenerationContext, BrandDNAGenerationContext } from "@/lib/ai/types";
+import type {
+  ArticleCoverImageGenerationContext,
+  ArticleGenerationContext,
+  BrandDNAGenerationContext
+} from "@/lib/ai/types";
 import { getTranslationLanguageLabel } from "@/lib/translations";
 
 function valueOrFallback(value: string | null | undefined, fallback = "Not provided") {
@@ -135,4 +139,48 @@ export function buildArticleTranslationUserPrompt(input: {
     '  "seoDescription": "Translated SEO description under 160 characters"',
     "}"
   ].join("\n");
+}
+
+function truncateImagePrompt(value: string, maxLength: number) {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 3).trimEnd()}...` : value;
+}
+
+export function buildArticleCoverImagePrompt(context: ArticleCoverImageGenerationContext) {
+  const brand = context.brandProfile;
+  const contentLanguage = valueOrFallback(brand.contentLanguage, "English");
+  const title = valueOrFallback(context.article.title, "Untitled article");
+  const excerpt = valueOrFallback(context.article.excerpt, "No excerpt provided");
+  const siteName = valueOrFallback(context.site.name, "the site");
+  const siteDomain = valueOrFallback(context.site.domain, "the site domain");
+
+  const prompt = [
+    "Create a professional editorial blog cover image.",
+    `Language context: ${contentLanguage}.`,
+    `Site: ${siteName} (${siteDomain}).`,
+    `Article title: ${title}.`,
+    `Article excerpt: ${excerpt}.`,
+    `Business type: ${valueOrFallback(brand.businessType)}.`,
+    `Brand voice and tone: ${valueOrFallback(brand.brandVoiceTone)}.`,
+    `Target audience: ${valueOrFallback(brand.targetAudience)}.`,
+    `Service area: ${valueOrFallback(brand.serviceArea)}.`,
+    `Key themes: ${valueOrFallback(brand.keyThemes)}.`,
+    `Topics to avoid: ${valueOrFallback(brand.topicsToAvoid)}.`,
+    `Preferred image style: ${valueOrFallback(brand.imageStyle, "Professional editorial photography or illustration aligned to the article topic")}.`,
+    `Custom image instructions: ${valueOrFallback(brand.customImageInstructions, "None")}.`,
+    "Use a clean, modern composition with a strong focal subject and enough negative space for a blog hero image crop.",
+    "Do not include any text, letters, logos, UI, captions, watermarks, or typographic elements in the image.",
+    "The result should feel polished, on-brand, realistic or editorially illustrated depending on the requested style, and suitable as a website article cover."
+  ].join(" ");
+
+  return truncateImagePrompt(prompt, 800);
+}
+
+export function buildArticleCoverImageNegativePrompt() {
+  return truncateImagePrompt(
+    [
+      "No text, letters, words, captions, logos, watermark, signature, UI, screenshot, collage.",
+      "Avoid low resolution, blur, distorted anatomy, warped hands, duplicate elements, chaotic composition, oversaturation, uncanny faces, generic AI artifacts."
+    ].join(" "),
+    500
+  );
 }

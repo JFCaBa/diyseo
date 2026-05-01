@@ -90,6 +90,7 @@ Required for most setups:
 - `DATABASE_URL`
 - `NEXT_PUBLIC_APP_URL`
 - `AI_PROVIDER`
+- `IMAGE_PROVIDER`
 - `CRON_SECRET`
 - `AUTO_PUBLISH_INTERVAL_MINUTES` if you want the bundled worker to run on a custom cadence
 
@@ -102,6 +103,11 @@ AI provider credentials:
   - `DEEPSEEK_API_KEY`
   - `DEEPSEEK_BASE_URL` optional
   - `DEEPSEEK_MODEL` optional
+- Qwen image generation:
+  - `QWEN_API_KEY`
+  - `QWEN_IMAGE_MODEL`
+  - `LOCAL_UPLOAD_DIR`
+  - `PUBLIC_UPLOAD_BASE_URL`
 
 SEO provider credentials:
 
@@ -116,10 +122,16 @@ CRON_SECRET="replace-with-a-long-random-string"
 AUTO_PUBLISH_INTERVAL_MINUTES="15"
 
 AI_PROVIDER="deepseek"
+IMAGE_PROVIDER="qwen"
 
 DEEPSEEK_API_KEY="your-deepseek-key"
 DEEPSEEK_BASE_URL="https://api.deepseek.com"
 DEEPSEEK_MODEL="deepseek-chat"
+
+QWEN_API_KEY="your-qwen-key"
+QWEN_IMAGE_MODEL="qwen-image-2.0-pro"
+LOCAL_UPLOAD_DIR="public/uploads"
+PUBLIC_UPLOAD_BASE_URL="/uploads"
 
 GEMINI_API_KEY=""
 GEMINI_MODEL="gemini-1.5-flash"

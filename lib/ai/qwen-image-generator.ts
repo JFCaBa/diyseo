@@ -1,3 +1,5 @@
+import sharp from "sharp";
+
 import { buildArticleCoverImageNegativePrompt, buildArticleCoverImagePrompt } from "@/lib/ai/prompts";
 import type {
   AIImageGenerationService,
@@ -56,11 +58,12 @@ export class QwenImageGenerator implements AIImageGenerationService {
     }
 
     const arrayBuffer = await response.arrayBuffer();
+    const compressed = await sharp(Buffer.from(arrayBuffer)).webp({ quality: 80 }).toBuffer();
 
     return {
-      data: Buffer.from(arrayBuffer),
-      mimeType,
-      extension: "png"
+      data: compressed,
+      mimeType: "image/webp",
+      extension: "webp"
     };
   }
 
@@ -91,7 +94,7 @@ export class QwenImageGenerator implements AIImageGenerationService {
           negative_prompt: buildArticleCoverImageNegativePrompt(),
           prompt_extend: true,
           watermark: false,
-          size: "1024*1024",
+          size: "768*768",
           n: 1
         }
       })

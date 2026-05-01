@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "auto-publish:worker": "node scripts/auto-publish-worker.js",
+    "auto-publish:worker": "node --env-file=.env scripts/auto-publish-worker.js",
     "lint": "next lint",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",

@@ -91,6 +91,7 @@ Required for most setups:
 - `NEXT_PUBLIC_APP_URL`
 - `AI_PROVIDER`
 - `CRON_SECRET`
+- `AUTO_PUBLISH_INTERVAL_MINUTES` if you want the bundled worker to run on a custom cadence
 
 AI provider credentials:
 
@@ -111,6 +112,8 @@ SEO provider credentials:
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/diyseo"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
+CRON_SECRET="replace-with-a-long-random-string"
+AUTO_PUBLISH_INTERVAL_MINUTES="15"
 
 AI_PROVIDER="deepseek"
 
@@ -381,6 +384,10 @@ curl -X POST https://yourdomain.com/api/internal/cron/auto-publish \
 ```
 
 The scheduler only processes sites with `autoPublishEnabled=true`, counts this week's `AUTO` articles against each site's `articlesPerWeek` target, and caps each run to 5 generated articles total.
+
+For the PM2 deployment included in this repo, `autoPublishEnabled` does nothing by itself unless the scheduler is running. The bundled `diyseo-auto-publish-worker` PM2 process calls this internal route every `AUTO_PUBLISH_INTERVAL_MINUTES` minutes and requires `CRON_SECRET` to be configured.
+
+If you deploy without PM2, you must provide an equivalent external cron job or background worker yourself.
 
 ## Release Notes Guidance
 

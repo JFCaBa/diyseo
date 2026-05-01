@@ -72,6 +72,9 @@ export function SiteAutoPublishForm({
           Configure automation per site. Changes here apply to future article generation and publishing behavior, not
           existing articles.
         </p>
+        <p className="mt-2 text-xs text-slate-500">
+          Saved settings only take effect when the auto-publish scheduler is running with `CRON_SECRET` configured.
+        </p>
       </div>
 
       <form action={formAction} className="mt-6 grid gap-5 md:max-w-2xl">

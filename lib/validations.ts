@@ -225,8 +225,12 @@ export const PublishArticleApiPayloadSchema = z.object({
   seoTitle: z.string().max(60, "SEO Title should be under 60 characters").optional().nullable(),
   seoDescription: z.string().max(160, "SEO Description should be under 160 characters").optional().nullable(),
   status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT"),
-  publishedAt: z.string().datetime({ offset: true }).optional().nullable()
-});
+  publishedAt: z.string().datetime({ offset: true }).optional().nullable(),
+  generateCoverImage: z.boolean().optional().default(false)
+}).refine(
+  (data) => !(data.generateCoverImage && data.coverImageUrl),
+  { message: "Cannot set both coverImageUrl and generateCoverImage. Provide one or the other.", path: ["generateCoverImage"] }
+);
 
 export const UpdateArticleDateSchema = z.object({
   articleId: z.string().cuid("Invalid Article ID"),

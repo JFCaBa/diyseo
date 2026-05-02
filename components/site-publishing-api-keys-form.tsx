@@ -105,7 +105,8 @@ export function SitePublishingApiKeysForm({
     "title": "Published article from API",
     "slug": "published-article-from-api",
     "contentMarkdown": "# Published article\\n\\nThis article was published via the publishing API.",
-    "status": "PUBLISHED"
+    "status": "PUBLISHED",
+    "generateCoverImage": true
   }'`,
     [endpointUrl]
   );
@@ -252,6 +253,7 @@ application/json
                 <p>`publishedAt`</p>
                 <p>`seoTitle`</p>
                 <p>`seoDescription`</p>
+                <p>`generateCoverImage`</p>
               </div>
             </div>
 
@@ -266,6 +268,13 @@ application/json
                 <p className="mt-2">If `slug` is missing, it is generated from `title`.</p>
                 <p>Existing slugs are made unique with `-2`, `-3`, and so on.</p>
               </div>
+            </div>
+
+            <div className="rounded-2xl border border-line bg-white px-4 py-4 text-sm text-slate-700">
+              <p className="font-semibold text-ink">Cover image generation</p>
+              <p className="mt-2">Set `generateCoverImage` to `true` to generate a cover image with AI after the article is created.</p>
+              <p>The response is returned immediately; the image is generated in the background and attached when ready.</p>
+              <p>`coverImageUrl` and `generateCoverImage` are mutually exclusive — sending both returns a `400`.</p>
             </div>
           </section>
 

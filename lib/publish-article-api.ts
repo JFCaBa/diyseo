@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 
 import { createUniqueArticleSlug, normalizeArticleSlug } from "@/lib/article-slug";
 import { buildAdminArticleUrl, buildPublicArticleUrl } from "@/lib/app-origin";
+import { generateAndSaveArticleCoverImage } from "@/lib/generate-cover-image";
 import { renderMarkdownToHtml } from "@/lib/markdown";
 import { prisma } from "@/lib/prisma";
 import { extractPublishingApiKey, findActivePublishingApiKeyForSite } from "@/lib/site-publishing-api";
@@ -84,6 +85,26 @@ export async function handlePublishArticleRequest(request: Request, siteId: stri
       revalidatePath(`/blog/${siteId}`);
       revalidatePath(`/blog/${siteId}/${article.slug}`);
       revalidatePath(`/api/public/sites/${siteId}/articles/${article.slug}`);
+    }
+
+    if (parsed.generateCoverImage) {
+      void generateAndSaveArticleCoverImage({ siteId, articleId: article.id })
+        .then(() => {
+          revalidatePath(`/${siteId}/articles`);
+          revalidatePath(`/${siteId}/articles/${article.id}`);
+          revalidatePath(`/api/public/sites/${siteId}/articles`);
+          if (article.status === "PUBLISHED") {
+            revalidatePath(`/blog/${siteId}`);
+            revalidatePath(`/blog/${siteId}/${article.slug}`);
+            revalidatePath(`/api/public/sites/${siteId}/articles/${article.slug}`);
+          }
+        })
+        .catch((error) => {
+          console.error(
+            `publish-article-api: cover image generation failed for article ${article.id}:`,
+            error instanceof Error ? error.message : error
+          );
+        });
     }
 
     return NextResponse.json(

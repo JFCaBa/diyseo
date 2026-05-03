@@ -159,8 +159,15 @@ function getStartOfCurrentUtcWeek(referenceDate = new Date()) {
   return date;
 }
 
+function getStartOfCurrentUtcDay(referenceDate = new Date()) {
+  const date = new Date(referenceDate);
+  date.setUTCHours(0, 0, 0, 0);
+  return date;
+}
+
 export async function runAutoPublishScheduler(maxArticlesPerRun = AUTO_PUBLISH_MAX_ARTICLES_PER_RUN) {
   const weekStart = getStartOfCurrentUtcWeek();
+  const dayStart = getStartOfCurrentUtcDay();
   const sites = await prisma.siteProject.findMany({
     where: {
       autoPublishEnabled: true
@@ -188,7 +195,21 @@ export async function runAutoPublishScheduler(maxArticlesPerRun = AUTO_PUBLISH_M
     }
   });
 
+  const dailyAutoCounts = await prisma.article.groupBy({
+    by: ["siteProjectId"],
+    where: {
+      generationSource: "AUTO",
+      createdAt: {
+        gte: dayStart
+      }
+    },
+    _count: {
+      id: true
+    }
+  });
+
   const weeklyAutoCountBySiteId = new Map(weeklyAutoCounts.map((entry) => [entry.siteProjectId, entry._count.id]));
+  const dailyAutoCountBySiteId = new Map(dailyAutoCounts.map((entry) => [entry.siteProjectId, entry._count.id]));
   const generated: Array<{
     siteId: string;
     siteName: string;
@@ -216,13 +237,17 @@ export async function runAutoPublishScheduler(maxArticlesPerRun = AUTO_PUBLISH_M
     }
 
     const alreadyGeneratedThisWeek = weeklyAutoCountBySiteId.get(site.id) ?? 0;
-    const missingArticles = Math.max(site.articlesPerWeek - alreadyGeneratedThisWeek, 0);
+    const alreadyGeneratedToday = dailyAutoCountBySiteId.get(site.id) ?? 0;
+    const weeklyMissing = Math.max(site.articlesPerWeek - alreadyGeneratedThisWeek, 0);
+    const dailyTarget = Math.max(Math.ceil(site.articlesPerWeek / 7), 1);
+    const dailyMissing = Math.max(dailyTarget - alreadyGeneratedToday, 0);
+    const missingArticles = Math.min(weeklyMissing, dailyMissing);
 
     if (missingArticles === 0) {
       skipped.push({
         siteId: site.id,
         siteName: site.name,
-        reason: "Weekly target already met."
+        reason: weeklyMissing === 0 ? "Weekly target already met." : "Daily target already met."
       });
       continue;
     }

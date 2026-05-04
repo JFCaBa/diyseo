@@ -87,6 +87,7 @@ export function SitePublishingApiKeysForm({
   const createPublishingApiKeyForSite = createPublishingApiKey.bind(null, siteId);
   const [state, formAction] = useActionState(createPublishingApiKeyForSite, initialState);
   const [label, setLabel] = useState("Primary publishing key");
+  const singleEndpointUrl = useMemo(() => `${endpointUrl}/<idOrSlug>`, [endpointUrl]);
   const draftExample = useMemo(
     () => `curl -X POST '${endpointUrl}' \\
   -H 'Authorization: Bearer <SITE_PUBLISHING_KEY>' \\
@@ -121,6 +122,61 @@ export function SitePublishingApiKeysForm({
   "editorUrl": "https://your-app.example.com/${siteId}/articles/clx123example"
 }`,
     [siteId]
+  );
+  const listExample = useMemo(
+    () => `curl '${endpointUrl}?status=PUBLISHED&limit=20' \\
+  -H 'Authorization: Bearer <SITE_PUBLISHING_KEY>'`,
+    [endpointUrl]
+  );
+  const listResponseExample = useMemo(
+    () => `{
+  "siteId": "${siteId}",
+  "articles": [
+    {
+      "id": "clx123example",
+      "title": "Published article from API",
+      "slug": "published-article-from-api",
+      "excerpt": null,
+      "coverImageUrl": null,
+      "seoTitle": null,
+      "seoDescription": null,
+      "status": "PUBLISHED",
+      "publishedAt": "2026-04-29T10:30:00.000Z",
+      "createdAt": "2026-04-29T10:30:00.000Z",
+      "updatedAt": "2026-04-29T10:30:00.000Z",
+      "publicUrl": "https://your-app.example.com/blog/${siteId}/published-article-from-api",
+      "editorUrl": "https://your-app.example.com/${siteId}/articles/clx123example"
+    }
+  ],
+  "nextCursor": "MjAyNi0wNC0yOVQxMDozMDowMC4wMDBafGNseDEyM2V4YW1wbGU"
+}`,
+    [siteId]
+  );
+  const getSingleExample = useMemo(
+    () => `curl '${endpointUrl}/published-article-from-api' \\
+  -H 'Authorization: Bearer <SITE_PUBLISHING_KEY>'`,
+    [endpointUrl]
+  );
+  const patchExample = useMemo(
+    () => `curl -X PATCH '${endpointUrl}/published-article-from-api' \\
+  -H 'Authorization: Bearer <SITE_PUBLISHING_KEY>' \\
+  -H 'Content-Type: application/json' \\
+  --data '{
+    "title": "Updated title",
+    "status": "PUBLISHED"
+  }'`,
+    [endpointUrl]
+  );
+  const putExample = useMemo(
+    () => `curl -X PUT '${endpointUrl}/published-article-from-api' \\
+  -H 'Authorization: Bearer <SITE_PUBLISHING_KEY>' \\
+  -H 'Content-Type: application/json' \\
+  --data '{
+    "title": "Replacement title",
+    "contentMarkdown": "# Replacement content\\n\\nFull replace via PUT.",
+    "status": "PUBLISHED"
+  }'`,
+    [endpointUrl]
   );
 
   return (
@@ -208,15 +264,15 @@ export function SitePublishingApiKeysForm({
             <div>
               <h3 className="text-lg font-semibold text-ink">API documentation</h3>
               <p className="mt-1 text-sm text-slate-600">
-                Use this endpoint to create draft or published articles directly inside this site.
+                Manage articles inside this site programmatically. All endpoints share the same authentication and base URL.
               </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="grid gap-2">
-                <p className="text-sm font-semibold text-ink">Endpoint</p>
+                <p className="text-sm font-semibold text-ink">Base URL</p>
                 <pre className="overflow-x-auto rounded-2xl border border-line bg-white px-4 py-3 text-xs text-ink">
-POST {endpointUrl}
+{endpointUrl}
                 </pre>
               </div>
               <div className="grid gap-2">
@@ -227,13 +283,25 @@ Authorization: Bearer &lt;SITE_PUBLISHING_KEY&gt;
               </div>
             </div>
 
+            <div className="grid gap-2">
+              <p className="text-sm font-semibold text-ink">Endpoints</p>
+              <pre className="overflow-x-auto rounded-2xl border border-line bg-white px-4 py-3 text-xs text-ink">
+{`POST   ${endpointUrl}                Create an article
+GET    ${endpointUrl}                List articles
+GET    ${singleEndpointUrl}    Fetch one article (by id or slug)
+PATCH  ${singleEndpointUrl}    Partial update (only sent fields)
+PUT    ${singleEndpointUrl}    Full replace`}
+              </pre>
+            </div>
+          </section>
+
+          <section className="grid gap-4 rounded-3xl border border-line bg-mist/30 p-6">
+            <div>
+              <h3 className="text-base font-semibold text-ink">POST {endpointUrl}</h3>
+              <p className="mt-1 text-sm text-slate-600">Create a draft or published article.</p>
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="grid gap-2">
-                <p className="text-sm font-semibold text-ink">Content type</p>
-                <pre className="overflow-x-auto rounded-2xl border border-line bg-white px-4 py-3 text-xs text-ink">
-application/json
-                </pre>
-              </div>
               <div className="grid gap-2">
                 <p className="text-sm font-semibold text-ink">Required fields</p>
                 <div className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-slate-700">
@@ -241,19 +309,14 @@ application/json
                   <p>`contentMarkdown`</p>
                 </div>
               </div>
-            </div>
-
-            <div className="grid gap-2">
-              <p className="text-sm font-semibold text-ink">Optional fields</p>
-              <div className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-slate-700">
-                <p>`slug`</p>
-                <p>`excerpt`</p>
-                <p>`coverImageUrl`</p>
-                <p>`status`</p>
-                <p>`publishedAt`</p>
-                <p>`seoTitle`</p>
-                <p>`seoDescription`</p>
-                <p>`generateCoverImage`</p>
+              <div className="grid gap-2">
+                <p className="text-sm font-semibold text-ink">Optional fields</p>
+                <div className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-slate-700">
+                  <p>`slug`, `excerpt`, `coverImageUrl`</p>
+                  <p>`status`, `publishedAt`</p>
+                  <p>`seoTitle`, `seoDescription`</p>
+                  <p>`generateCoverImage`</p>
+                </div>
               </div>
             </div>
 
@@ -276,20 +339,124 @@ application/json
               <p>The response is returned immediately; the image is generated in the background and attached when ready.</p>
               <p>`coverImageUrl` and `generateCoverImage` are mutually exclusive — sending both returns a `400`.</p>
             </div>
+
+            <div className="grid gap-4">
+              <div>
+                <p className="text-sm font-semibold text-ink">Create draft article</p>
+                <pre className="mt-2 overflow-x-auto rounded-2xl border border-line bg-white px-4 py-4 text-xs text-ink">{draftExample}</pre>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-ink">Create published article</p>
+                <pre className="mt-2 overflow-x-auto rounded-2xl border border-line bg-white px-4 py-4 text-xs text-ink">{publishedExample}</pre>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-ink">Response (201 Created)</p>
+                <pre className="mt-2 overflow-x-auto rounded-2xl border border-line bg-white px-4 py-4 text-xs text-ink">{responseExample}</pre>
+              </div>
+            </div>
           </section>
 
-          <section className="grid gap-5">
+          <section className="grid gap-4 rounded-3xl border border-line bg-mist/30 p-6">
             <div>
-              <h3 className="text-sm font-semibold text-ink">Create draft article</h3>
-              <pre className="mt-2 overflow-x-auto rounded-2xl border border-line bg-mist/50 px-4 py-4 text-xs text-ink">{draftExample}</pre>
+              <h3 className="text-base font-semibold text-ink">GET {endpointUrl}</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                List articles for this site, ordered by `createdAt` descending. Cursor-based pagination.
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              <p className="text-sm font-semibold text-ink">Query parameters</p>
+              <div className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-slate-700">
+                <p>`status` — `DRAFT` or `PUBLISHED` (optional)</p>
+                <p>`limit` — 1 to 100, default `20`</p>
+                <p>`cursor` — opaque cursor returned as `nextCursor` from a previous call</p>
+                <p>`include=content` — also return `contentMarkdown` and `contentHtml` for each article</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-line bg-white px-4 py-4 text-sm text-slate-700">
+              <p className="font-semibold text-ink">Pagination</p>
+              <p className="mt-2">When more articles are available, the response includes a `nextCursor`. Pass it back as the `cursor` query parameter to fetch the next page. When `nextCursor` is `null`, you have reached the end.</p>
+            </div>
+
+            <div className="grid gap-4">
+              <div>
+                <p className="text-sm font-semibold text-ink">Example request</p>
+                <pre className="mt-2 overflow-x-auto rounded-2xl border border-line bg-white px-4 py-4 text-xs text-ink">{listExample}</pre>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-ink">Example response</p>
+                <pre className="mt-2 overflow-x-auto rounded-2xl border border-line bg-white px-4 py-4 text-xs text-ink">{listResponseExample}</pre>
+              </div>
+            </div>
+          </section>
+
+          <section className="grid gap-4 rounded-3xl border border-line bg-mist/30 p-6">
+            <div>
+              <h3 className="text-base font-semibold text-ink">GET {singleEndpointUrl}</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Fetch a single article. The path segment accepts either the article `id` or its `slug`. Always returns
+                full content (`contentMarkdown` and `contentHtml`).
+              </p>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-ink">Create published article</h3>
-              <pre className="mt-2 overflow-x-auto rounded-2xl border border-line bg-mist/50 px-4 py-4 text-xs text-ink">{publishedExample}</pre>
+              <p className="text-sm font-semibold text-ink">Example request</p>
+              <pre className="mt-2 overflow-x-auto rounded-2xl border border-line bg-white px-4 py-4 text-xs text-ink">{getSingleExample}</pre>
+            </div>
+            <div className="rounded-2xl border border-line bg-white px-4 py-4 text-sm text-slate-700">
+              <p>Returns `404` if no article matches the id or slug in this site.</p>
+            </div>
+          </section>
+
+          <section className="grid gap-4 rounded-3xl border border-line bg-mist/30 p-6">
+            <div>
+              <h3 className="text-base font-semibold text-ink">PATCH {singleEndpointUrl}</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Partial update. Only the fields you send are changed; everything else is left as-is. The body must contain at
+                least one updatable field.
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              <p className="text-sm font-semibold text-ink">Updatable fields</p>
+              <div className="rounded-2xl border border-line bg-white px-4 py-3 text-sm text-slate-700">
+                <p>`title`, `excerpt`, `coverImageUrl`</p>
+                <p>`contentMarkdown` — re-renders `contentHtml` automatically</p>
+                <p>`seoTitle`, `seoDescription`</p>
+                <p>`status`, `publishedAt`</p>
+                <p>`generateCoverImage` — triggers background AI cover generation</p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-line bg-white px-4 py-4 text-sm text-slate-700">
+                <p className="font-semibold text-ink">Slug is immutable</p>
+                <p className="mt-2">The `slug` cannot be changed after the article is created. Sending it is ignored.</p>
+              </div>
+              <div className="rounded-2xl border border-line bg-white px-4 py-4 text-sm text-slate-700">
+                <p className="font-semibold text-ink">Status transitions</p>
+                <p className="mt-2">Flipping to `PUBLISHED` auto-fills `publishedAt` if it was empty.</p>
+                <p>Flipping to `DRAFT` clears `publishedAt` unless you send one explicitly.</p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold text-ink">Example request</p>
+              <pre className="mt-2 overflow-x-auto rounded-2xl border border-line bg-white px-4 py-4 text-xs text-ink">{patchExample}</pre>
+            </div>
+          </section>
+
+          <section className="grid gap-4 rounded-3xl border border-line bg-mist/30 p-6">
+            <div>
+              <h3 className="text-base font-semibold text-ink">PUT {singleEndpointUrl}</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Full replace. The body shape is the same as `POST` (minus `slug`, which is immutable). Required fields are
+                `title` and `contentMarkdown`; omitted optional fields are reset.
+              </p>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-ink">Minimal response example</h3>
-              <pre className="mt-2 overflow-x-auto rounded-2xl border border-line bg-mist/50 px-4 py-4 text-xs text-ink">{responseExample}</pre>
+              <p className="text-sm font-semibold text-ink">Example request</p>
+              <pre className="mt-2 overflow-x-auto rounded-2xl border border-line bg-white px-4 py-4 text-xs text-ink">{putExample}</pre>
             </div>
           </section>
         </div>

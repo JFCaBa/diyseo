@@ -232,6 +232,76 @@ export const PublishArticleApiPayloadSchema = z.object({
   { message: "Cannot set both coverImageUrl and generateCoverImage. Provide one or the other.", path: ["generateCoverImage"] }
 );
 
+const ArticleApiUpdatableFields = {
+  title: z.string().trim().min(1, "Title is required").max(200, "Title must be 200 characters or less."),
+  excerpt: z.string().max(2000, "Excerpt must be 2000 characters or less.").nullable(),
+  coverImageUrl: CoverImageUrlSchema.nullable(),
+  contentMarkdown: z
+    .string()
+    .trim()
+    .min(1, "contentMarkdown is required")
+    .max(100_000, "contentMarkdown is too large."),
+  seoTitle: z.string().max(60, "SEO Title should be under 60 characters").nullable(),
+  seoDescription: z.string().max(160, "SEO Description should be under 160 characters").nullable(),
+  status: z.enum(["DRAFT", "PUBLISHED"]),
+  publishedAt: z.string().datetime({ offset: true }).nullable(),
+  generateCoverImage: z.boolean()
+} as const;
+
+export const PatchArticleApiPayloadSchema = z
+  .object({
+    title: ArticleApiUpdatableFields.title.optional(),
+    excerpt: ArticleApiUpdatableFields.excerpt.optional(),
+    coverImageUrl: ArticleApiUpdatableFields.coverImageUrl.optional(),
+    contentMarkdown: ArticleApiUpdatableFields.contentMarkdown.optional(),
+    seoTitle: ArticleApiUpdatableFields.seoTitle.optional(),
+    seoDescription: ArticleApiUpdatableFields.seoDescription.optional(),
+    status: ArticleApiUpdatableFields.status.optional(),
+    publishedAt: ArticleApiUpdatableFields.publishedAt.optional(),
+    generateCoverImage: ArticleApiUpdatableFields.generateCoverImage.optional()
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "Request body must include at least one field to update."
+  })
+  .refine((data) => !(data.generateCoverImage && data.coverImageUrl), {
+    message: "Cannot set both coverImageUrl and generateCoverImage. Provide one or the other.",
+    path: ["generateCoverImage"]
+  });
+
+export const PutArticleApiPayloadSchema = z
+  .object({
+    title: ArticleApiUpdatableFields.title,
+    excerpt: ArticleApiUpdatableFields.excerpt.optional(),
+    coverImageUrl: ArticleApiUpdatableFields.coverImageUrl.optional(),
+    contentMarkdown: ArticleApiUpdatableFields.contentMarkdown,
+    seoTitle: ArticleApiUpdatableFields.seoTitle.optional(),
+    seoDescription: ArticleApiUpdatableFields.seoDescription.optional(),
+    status: ArticleApiUpdatableFields.status.default("DRAFT"),
+    publishedAt: ArticleApiUpdatableFields.publishedAt.optional(),
+    generateCoverImage: ArticleApiUpdatableFields.generateCoverImage.optional().default(false)
+  })
+  .refine((data) => !(data.generateCoverImage && data.coverImageUrl), {
+    message: "Cannot set both coverImageUrl and generateCoverImage. Provide one or the other.",
+    path: ["generateCoverImage"]
+  });
+
+export const ListArticlesApiQuerySchema = z.object({
+  status: z.enum(["DRAFT", "PUBLISHED"]).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  cursor: z.string().min(1).max(200).optional(),
+  include: z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (!value) return [] as string[];
+      return value
+        .split(",")
+        .map((part) => part.trim().toLowerCase())
+        .filter(Boolean);
+    })
+    .pipe(z.array(z.enum(["content"])))
+});
+
 export const UpdateArticleDateSchema = z.object({
   articleId: z.string().cuid("Invalid Article ID"),
   newDate: z.string().datetime({ offset: true }).nullable(),

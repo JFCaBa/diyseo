@@ -22,6 +22,10 @@
 - Unpublish behavior: a previously-synced post whose article is no longer in the current `PUBLISHED` set is set to `draft`. Posts are never deleted by the plugin.
 - Sync interval options exposed in settings: `15min`, `30min`, `hourly`, `6hours`, `daily`.
 - The API key is stored in `wp_options` as plain text (documented, accepted limitation — standard WP plugin convention).
+- Pagination is capped at `DIYSEO_Sync_Client::MAX_PAGES` (50 pages) per run as a safety net against a runaway cursor loop or pathologically large catalog.
+- The unpublish-to-draft pass never runs when the current fetch returned zero articles — this is a deliberate safeguard against a transient API failure or misconfiguration mass-drafting every previously synced post.
+- Looking up whether a post already exists for a DIYSEO article considers all post statuses, including `trash` (WordPress's `post_status => 'any'` query excludes trash by default), to avoid creating a duplicate post when a synced post was moved to the trash.
+- The plugin never deletes WordPress media/attachments; a stale featured image left over after `coverImageUrl` changes is an accepted limitation, documented in the readme, not auto-cleaned.
 
 ---
 
@@ -35,9 +39,9 @@
 - Consumes: nothing (first task).
 - Produces:
   - `class DIYSEO_Sync_Api_Exception extends Exception {}`
-  - `class DIYSEO_Sync_Client { public function __construct($base_url, $site_id, $api_key, callable $http_get = null); public function list_published_articles($limit = 50): array; public function test_connection(): array; public function build_url($path, array $query): string; public function build_headers(): array; }`
-  - `list_published_articles()` returns a flat array of article associative arrays (merged across all pages), each shaped like the DIYSEO API's `articles[]` entries (`id`, `title`, `slug`, `excerpt`, `coverImageUrl`, `seoTitle`, `seoDescription`, `status`, `publishedAt`, `createdAt`, `updatedAt`, `contentHtml`, ...). Throws `DIYSEO_Sync_Api_Exception` on transport/HTTP/parse errors.
-  - `test_connection()` returns `['ok' => bool, 'message' => string]` and never throws.
+  - `class DIYSEO_Sync_Client { const MAX_PAGES = 50; public function __construct($base_url, $site_id, $api_key, ?callable $http_get = null); public function list_published_articles($limit = 50): array; public function test_connection(): array; public function build_url($path, array $query): string; public function build_headers(): array; }`
+  - `list_published_articles()` returns a flat array of article associative arrays (merged across all pages), each shaped like the DIYSEO API's `articles[]` entries (`id`, `title`, `slug`, `excerpt`, `coverImageUrl`, `seoTitle`, `seoDescription`, `status`, `publishedAt`, `createdAt`, `updatedAt`, `contentHtml`, ...). Throws `DIYSEO_Sync_Api_Exception` on transport/HTTP/parse errors. Stops after `MAX_PAGES` pages even if `nextCursor` keeps returning a value, so a misbehaving cursor can never hang the run indefinitely.
+  - `test_connection()` sends the same `status=PUBLISHED&include=content` filters as `list_published_articles()` (with `limit=1`), so a successful test reflects the exact request the real sync will make. Returns `['ok' => bool, 'message' => string]` and never throws.
   - The optional `$http_get` constructor argument is `function(string $url, array $headers): array` returning `['status' => int, 'body' => string]`. When omitted, it defaults to a private method that calls `wp_remote_get()` (only reachable inside WordPress).
 
 - [ ] **Step 1: Write the failing test**
@@ -103,6 +107,28 @@ try {
 $result = $error_client->test_connection();
 assert_true($result['ok'] === false, 'test_connection returns ok=false on failure instead of throwing');
 
+$page_calls = 0;
+$never_ending_transport = function ($url, $headers) use (&$page_calls) {
+    $page_calls++;
+    return array(
+        'status' => 200,
+        'body' => json_encode(array('siteId' => 'site_1', 'articles' => array(), 'nextCursor' => 'always-more'))
+    );
+};
+$capped_client = new DIYSEO_Sync_Client('https://example.com', 'site_1', 'diyseo_spk_test', $never_ending_transport);
+$capped_client->list_published_articles();
+assert_true($page_calls === DIYSEO_Sync_Client::MAX_PAGES, 'list_published_articles stops after MAX_PAGES to avoid an unbounded loop');
+
+$test_connection_calls = array();
+$test_connection_transport = function ($url, $headers) use (&$test_connection_calls) {
+    $test_connection_calls[] = $url;
+    return array('status' => 200, 'body' => json_encode(array('siteId' => 'site_1', 'articles' => array(), 'nextCursor' => null)));
+};
+$tc_client = new DIYSEO_Sync_Client('https://example.com', 'site_1', 'diyseo_spk_test', $test_connection_transport);
+$tc_client->test_connection();
+assert_true(strpos($test_connection_calls[0], 'status=PUBLISHED') !== false, 'test_connection includes status=PUBLISHED filter for consistency with list requests');
+assert_true(strpos($test_connection_calls[0], 'limit=1') !== false, 'test_connection requests only a single article');
+
 echo "All client tests passed.\n";
 ```
 
@@ -124,12 +150,14 @@ if (!defined('ABSPATH') && !defined('DIYSEO_SYNC_TESTING')) {
 class DIYSEO_Sync_Api_Exception extends Exception {}
 
 class DIYSEO_Sync_Client {
+    const MAX_PAGES = 50;
+
     private $base_url;
     private $site_id;
     private $api_key;
     private $http_get;
 
-    public function __construct($base_url, $site_id, $api_key, callable $http_get = null) {
+    public function __construct($base_url, $site_id, $api_key, ?callable $http_get = null) {
         $this->base_url = rtrim($base_url, '/');
         $this->site_id = $site_id;
         $this->api_key = $api_key;
@@ -139,6 +167,7 @@ class DIYSEO_Sync_Client {
     public function list_published_articles($limit = 50) {
         $articles = array();
         $cursor = null;
+        $page_count = 0;
 
         do {
             $query = array(
@@ -159,14 +188,19 @@ class DIYSEO_Sync_Client {
             }
 
             $cursor = isset($decoded['nextCursor']) ? $decoded['nextCursor'] : null;
-        } while ($cursor);
+            $page_count++;
+        } while ($cursor && $page_count < self::MAX_PAGES);
 
         return $articles;
     }
 
     public function test_connection() {
         try {
-            $url = $this->build_url('/api/v1/sites/' . rawurlencode($this->site_id) . '/articles', array('limit' => 1));
+            $url = $this->build_url('/api/v1/sites/' . rawurlencode($this->site_id) . '/articles', array(
+                'status' => 'PUBLISHED',
+                'include' => 'content',
+                'limit' => 1
+            ));
             $response = call_user_func($this->http_get, $url, $this->build_headers());
             $this->decode_response($response);
             return array('ok' => true, 'message' => 'Connected successfully.');
@@ -213,7 +247,7 @@ class DIYSEO_Sync_Client {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `php wordpress-plugin/diyseo-sync/tests/client-test.php`
-Expected: six `PASS:` lines followed by `All client tests passed.`, exit code 0.
+Expected: all `PASS:` lines followed by `All client tests passed.`, exit code 0.
 
 - [ ] **Step 5: Commit**
 
@@ -233,9 +267,11 @@ git commit -m "Add DIYSEO Sync API client with pagination and injectable transpo
 **Interfaces:**
 - Consumes: nothing (pure logic, no dependency on Task 1's class).
 - Produces:
-  - `class DIYSEO_Sync_Mapper { const ACTION_CREATE = 'create'; const ACTION_UPDATE = 'update'; const ACTION_SKIP = 'skip'; public static function decide_action(array $article, $existing_updated_at): string; public static function map_to_post_array(array $article, $author_id, $existing_post_id = null): array; public static function find_stale_post_ids(array $synced_post_ids_by_article_id, array $seen_article_ids): array; }`
+  - `class DIYSEO_Sync_Mapper { const ACTION_CREATE = 'create'; const ACTION_UPDATE = 'update'; const ACTION_SKIP = 'skip'; public static function decide_action(array $article, $existing_updated_at): string; public static function map_to_post_array(array $article, $author_id, $existing_post_id = null): array; public static function find_stale_post_ids(array $synced_post_ids_by_article_id, array $seen_article_ids): array; public static function is_valid_article(array $article): bool; public static function should_run_unpublish_pass(array $seen_article_ids): bool; }`
   - `map_to_post_array()` returns an array with keys `post_title`, `post_content`, `post_excerpt`, `post_name`, `post_status`, `post_type`, `post_author`, and `ID` (only when `$existing_post_id` is truthy) — this is the exact shape later tasks pass to `wp_insert_post()`.
   - `find_stale_post_ids()` takes `[$article_id => $post_id]` for all currently-published synced posts and the array of article ids seen in the current run; returns the list of `$post_id` values whose article id was not seen.
+  - `is_valid_article()` returns `true` only when `id`, `title`, `slug` are non-empty and `updatedAt` is set and non-empty. The Engine (Task 6) must call this before touching an article and skip (with a logged error) anything that fails it, instead of trusting the API response shape blindly.
+  - `should_run_unpublish_pass()` returns `true` only when `$seen_article_ids` is non-empty. This is the guard against the case where the DIYSEO API call succeeds but returns zero articles (transient failure, misconfiguration) — without it, every previously synced post would be mass-drafted.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -292,6 +328,36 @@ $stale = DIYSEO_Sync_Mapper::find_stale_post_ids(
     array('a1', 'a3')
 );
 assert_true($stale === array(102), 'find_stale_post_ids returns post ids no longer in the seen set');
+
+assert_true(
+    DIYSEO_Sync_Mapper::is_valid_article($article) === true,
+    'is_valid_article accepts an article with all required fields'
+);
+assert_true(
+    DIYSEO_Sync_Mapper::is_valid_article(array('title' => 'X', 'slug' => 'x', 'updatedAt' => '2026-01-01T00:00:00.000Z')) === false,
+    'is_valid_article rejects an article missing id'
+);
+assert_true(
+    DIYSEO_Sync_Mapper::is_valid_article(array('id' => 'a1', 'slug' => 'x', 'updatedAt' => '2026-01-01T00:00:00.000Z')) === false,
+    'is_valid_article rejects an article missing title'
+);
+assert_true(
+    DIYSEO_Sync_Mapper::is_valid_article(array('id' => 'a1', 'title' => 'X', 'updatedAt' => '2026-01-01T00:00:00.000Z')) === false,
+    'is_valid_article rejects an article missing slug'
+);
+assert_true(
+    DIYSEO_Sync_Mapper::is_valid_article(array('id' => 'a1', 'title' => 'X', 'slug' => 'x')) === false,
+    'is_valid_article rejects an article missing updatedAt'
+);
+
+assert_true(
+    DIYSEO_Sync_Mapper::should_run_unpublish_pass(array('a1')) === true,
+    'should_run_unpublish_pass returns true when at least one article was seen'
+);
+assert_true(
+    DIYSEO_Sync_Mapper::should_run_unpublish_pass(array()) === false,
+    'should_run_unpublish_pass returns false when zero articles were seen, to avoid mass-unpublishing on an empty/failed fetch'
+);
 
 echo "All mapper tests passed.\n";
 ```
@@ -352,6 +418,18 @@ class DIYSEO_Sync_Mapper {
         }
 
         return $stale;
+    }
+
+    public static function is_valid_article(array $article) {
+        return !empty($article['id'])
+            && !empty($article['title'])
+            && !empty($article['slug'])
+            && isset($article['updatedAt'])
+            && $article['updatedAt'] !== '';
+    }
+
+    public static function should_run_unpublish_pass(array $seen_article_ids) {
+        return count($seen_article_ids) > 0;
     }
 }
 ```
@@ -729,6 +807,8 @@ class DIYSEO_Sync_Settings {
             return;
         }
 
+        $previous = self::get_settings();
+
         $settings = array(
             'base_url' => isset($_POST['diyseo_base_url']) ? esc_url_raw(wp_unslash($_POST['diyseo_base_url'])) : '',
             'site_id' => isset($_POST['diyseo_site_id']) ? sanitize_text_field(wp_unslash($_POST['diyseo_site_id'])) : '',
@@ -739,7 +819,10 @@ class DIYSEO_Sync_Settings {
         );
 
         update_option(self::OPTION_KEY, $settings);
-        DIYSEO_Sync_Cron::reschedule($settings['enabled'], $settings['interval']);
+
+        if ($settings['enabled'] !== $previous['enabled'] || $settings['interval'] !== $previous['interval']) {
+            DIYSEO_Sync_Cron::reschedule($settings['enabled'], $settings['interval']);
+        }
 
         add_settings_error('diyseo_sync', 'diyseo_sync_saved', 'Settings saved.', 'success');
     }
@@ -925,7 +1008,7 @@ git commit -m "Add DIYSEO Sync settings storage and admin screen"
 - Consumes:
   - `DIYSEO_Sync_Settings::get_settings(): array` (Task 5) — keys `base_url`, `site_id`, `api_key`, `author_id`.
   - `DIYSEO_Sync_Client` (Task 1) — `list_published_articles()`.
-  - `DIYSEO_Sync_Mapper` (Task 2) — `decide_action()`, `map_to_post_array()`, `find_stale_post_ids()`.
+  - `DIYSEO_Sync_Mapper` (Task 2) — `decide_action()`, `map_to_post_array()`, `find_stale_post_ids()`, `is_valid_article()`, `should_run_unpublish_pass()`.
   - `DIYSEO_Sync_Seo` (Task 3) — `detect_provider()`, `build_meta_for_provider()`.
 - Produces:
   - `class DIYSEO_Sync_Engine { public static function run_scheduled(): void; public function run(): array; }`
@@ -933,6 +1016,13 @@ git commit -m "Add DIYSEO Sync settings storage and admin screen"
   - `run()` also persists `update_option('diyseo_sync_last_run', ['timestamp' => int, 'summary' => <above array>])` and appends to the `diyseo_sync_log` option (used by the settings view).
 
 This task is WordPress-runtime glue (`wp_insert_post`, `get_posts`, `update_post_meta`, `media_sideload_image`) and cannot run outside WordPress, so it is verified with a syntax lint plus a manual check in Task 8's end-to-end verification.
+
+**Consenso review fixes folded into this task** (multi-agent review of the plan, 2026-08-10 — see `run_dir` under `.consenso/` for the raw findings):
+- The old design ran a separate `get_posts()` query per article to check whether it already existed (N+1). `run()` now calls `load_synced_posts()` **once** per run to build an in-memory `[article_id => ['post_id' => int, 'status' => string]]` map, priming the post-meta cache with `update_meta_cache()` so the per-article `get_post_meta()` calls that follow don't each hit the database either.
+- That map's `get_posts()` query includes `trash` explicitly — WordPress's `post_status => 'any'` silently excludes trashed posts, which would otherwise make the plugin create a duplicate post for an article whose WordPress post a site admin had trashed.
+- Every article from the API is validated with `DIYSEO_Sync_Mapper::is_valid_article()` before it's touched; anything missing `id`/`title`/`slug`/`updatedAt` is skipped and recorded in `errors` instead of triggering a PHP warning or being silently mismapped.
+- The unpublish-to-draft pass only runs when `DIYSEO_Sync_Mapper::should_run_unpublish_pass($seen_article_ids)` is true (i.e. at least one valid article was seen this run) — this is the fix for the most serious finding: without it, an API call that succeeds but returns zero articles (outage, misconfigured site id, etc.) would silently draft every previously published post.
+- `unpublish_stale_posts()` now checks `is_wp_error()` on each `wp_update_post()` call and only counts a post as unpublished when it actually succeeded, instead of unconditionally trusting the attempt.
 
 - [ ] **Step 1: Write the (lint) verification script**
 
@@ -975,11 +1065,6 @@ class DIYSEO_Sync_Engine {
 
         $client = new DIYSEO_Sync_Client($settings['base_url'], $settings['site_id'], $settings['api_key']);
 
-        $created = 0;
-        $updated = 0;
-        $errors = array();
-        $seen_article_ids = array();
-
         try {
             $articles = $client->list_published_articles();
         } catch (DIYSEO_Sync_Api_Exception $e) {
@@ -987,11 +1072,24 @@ class DIYSEO_Sync_Engine {
             return $this->finish($this->summary(0, 0, 0, array($e->getMessage())));
         }
 
+        $synced = $this->load_synced_posts();
+
+        $created = 0;
+        $updated = 0;
+        $errors = array();
+        $seen_article_ids = array();
+
         foreach ($articles as $article) {
+            if (!DIYSEO_Sync_Mapper::is_valid_article($article)) {
+                $errors[] = 'Skipped article with missing required fields (id: ' . (isset($article['id']) ? $article['id'] : 'unknown') . ').';
+                continue;
+            }
+
             $seen_article_ids[] = $article['id'];
+            $existing_post_id = isset($synced[$article['id']]) ? $synced[$article['id']]['post_id'] : null;
 
             try {
-                $result = $this->sync_article($article, (int) $settings['author_id']);
+                $result = $this->sync_article($article, (int) $settings['author_id'], $existing_post_id);
                 if ($result === DIYSEO_Sync_Mapper::ACTION_CREATE) {
                     $created++;
                 } elseif ($result === DIYSEO_Sync_Mapper::ACTION_UPDATE) {
@@ -1002,7 +1100,19 @@ class DIYSEO_Sync_Engine {
             }
         }
 
-        $unpublished = $this->unpublish_stale_posts($seen_article_ids);
+        $unpublished = 0;
+        if (DIYSEO_Sync_Mapper::should_run_unpublish_pass($seen_article_ids)) {
+            $published_post_ids_by_article_id = array();
+            foreach ($synced as $article_id => $entry) {
+                if ($entry['status'] === 'publish') {
+                    $published_post_ids_by_article_id[$article_id] = $entry['post_id'];
+                }
+            }
+            $unpublished = $this->unpublish_stale_posts($published_post_ids_by_article_id, $seen_article_ids, $errors);
+        } else {
+            $this->log('Unpublish pass skipped: DIYSEO returned zero published articles this run.');
+        }
+
         $summary = $this->summary($created, $updated, $unpublished, $errors);
 
         $this->log(sprintf(
@@ -1024,8 +1134,32 @@ class DIYSEO_Sync_Engine {
         return $summary;
     }
 
-    private function sync_article(array $article, $author_id) {
-        $existing_post_id = $this->find_post_id_for_article($article['id']);
+    private function load_synced_posts() {
+        $posts = get_posts(array(
+            'post_type' => 'post',
+            'post_status' => array('publish', 'draft', 'pending', 'private', 'future', 'trash'),
+            'meta_key' => '_diyseo_article_id',
+            'numberposts' => -1,
+            'fields' => 'ids'
+        ));
+
+        update_meta_cache('post', $posts);
+
+        $synced = array();
+        foreach ($posts as $post_id) {
+            $article_id = get_post_meta($post_id, '_diyseo_article_id', true);
+            if ($article_id) {
+                $synced[$article_id] = array(
+                    'post_id' => (int) $post_id,
+                    'status' => get_post_status($post_id)
+                );
+            }
+        }
+
+        return $synced;
+    }
+
+    private function sync_article(array $article, $author_id, $existing_post_id) {
         $existing_updated_at = $existing_post_id ? get_post_meta($existing_post_id, '_diyseo_updated_at', true) : null;
 
         $action = DIYSEO_Sync_Mapper::decide_action($article, $existing_updated_at ?: null);
@@ -1061,19 +1195,6 @@ class DIYSEO_Sync_Engine {
         return $action;
     }
 
-    private function find_post_id_for_article($article_id) {
-        $posts = get_posts(array(
-            'post_type' => 'post',
-            'post_status' => 'any',
-            'meta_key' => '_diyseo_article_id',
-            'meta_value' => $article_id,
-            'numberposts' => 1,
-            'fields' => 'ids'
-        ));
-
-        return !empty($posts) ? (int) $posts[0] : null;
-    }
-
     private function maybe_sideload_cover_image($post_id, $cover_image_url) {
         $cached_source = get_post_meta($post_id, '_diyseo_cover_image_source', true);
 
@@ -1095,30 +1216,20 @@ class DIYSEO_Sync_Engine {
         update_post_meta($post_id, '_diyseo_cover_image_source', $cover_image_url);
     }
 
-    private function unpublish_stale_posts(array $seen_article_ids) {
-        $published_posts = get_posts(array(
-            'post_type' => 'post',
-            'post_status' => 'publish',
-            'meta_key' => '_diyseo_article_id',
-            'numberposts' => -1,
-            'fields' => 'ids'
-        ));
-
-        $synced_map = array();
-        foreach ($published_posts as $post_id) {
-            $article_id = get_post_meta($post_id, '_diyseo_article_id', true);
-            if ($article_id) {
-                $synced_map[$article_id] = $post_id;
-            }
-        }
-
-        $stale_post_ids = DIYSEO_Sync_Mapper::find_stale_post_ids($synced_map, $seen_article_ids);
+    private function unpublish_stale_posts(array $published_post_ids_by_article_id, array $seen_article_ids, array &$errors) {
+        $stale_post_ids = DIYSEO_Sync_Mapper::find_stale_post_ids($published_post_ids_by_article_id, $seen_article_ids);
+        $unpublished = 0;
 
         foreach ($stale_post_ids as $post_id) {
-            wp_update_post(array('ID' => $post_id, 'post_status' => 'draft'));
+            $result = wp_update_post(array('ID' => $post_id, 'post_status' => 'draft'), true);
+            if (is_wp_error($result)) {
+                $errors[] = 'Failed to unpublish post ' . $post_id . ': ' . $result->get_error_message();
+                continue;
+            }
+            $unpublished++;
         }
 
-        return count($stale_post_ids);
+        return $unpublished;
     }
 
     private function summary($created, $updated, $unpublished, array $errors) {
@@ -1329,10 +1440,7 @@ function diyseo_sync_activate() {
 register_activation_hook(__FILE__, 'diyseo_sync_activate');
 
 function diyseo_sync_deactivate() {
-    $timestamp = wp_next_scheduled(DIYSEO_Sync_Cron::HOOK);
-    if ($timestamp) {
-        wp_unschedule_event($timestamp, DIYSEO_Sync_Cron::HOOK);
-    }
+    wp_clear_scheduled_hook(DIYSEO_Sync_Cron::HOOK);
 }
 register_deactivation_hook(__FILE__, 'diyseo_sync_deactivate');
 ```
@@ -1345,9 +1453,15 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
     exit;
 }
 
+global $wpdb;
+
 delete_option('diyseo_sync_settings');
 delete_option('diyseo_sync_last_run');
 delete_option('diyseo_sync_log');
+
+$wpdb->delete($wpdb->postmeta, array('meta_key' => '_diyseo_article_id'));
+$wpdb->delete($wpdb->postmeta, array('meta_key' => '_diyseo_updated_at'));
+$wpdb->delete($wpdb->postmeta, array('meta_key' => '_diyseo_cover_image_source'));
 ```
 
 Create `wordpress-plugin/diyseo-sync/readme.txt`:
@@ -1397,6 +1511,12 @@ Features:
   WordPress plugin convention.
 * Each sync run re-lists the site's full PUBLISHED article set (the DIYSEO Publishing API has no
   "updated since" filter) and only touches WordPress posts whose content actually changed.
+* If a synced article's cover image URL changes, the plugin uploads the new image and sets it as
+  the Featured Image, but does not delete the previous attachment from the Media Library — it is
+  left in place rather than risk deleting an image you may have replaced intentionally.
+* If DIYSEO returns zero published articles for a run (outage, wrong Site ID, etc.), the plugin
+  skips moving any previously synced post to Draft rather than risk mass-unpublishing your site;
+  check the sync log if you expect articles that aren't appearing.
 
 == Changelog ==
 
@@ -1446,10 +1566,18 @@ plan from `docs/superpowers/specs/2026-08-10-wordpress-plugin-design.md`:
    created/updated (skip path working, no redundant image re-download).
 6. In DIYSEO, set the article's status to Draft, click "Sync now" — expect the WordPress post to
    flip to Draft, not be deleted.
-7. Confirm the scheduled WP-Cron event fires on its own (check `wp_next_scheduled` or wait out a
-   short interval) and produces the same result as the manual button.
-8. Enter an invalid API key and click "Test connection" — expect a clear error message, no PHP
-   fatal error or warning in the WordPress debug log.
+7. Re-publish that article in DIYSEO, "Sync now" — expect the WordPress post to come back as
+   Published (not a duplicate).
+8. Move a synced WordPress post to the Trash manually, then "Sync now" again with the matching
+   article still Published in DIYSEO — expect the plugin to find and update the trashed post
+   rather than creating a duplicate.
+9. Temporarily set the Site ID in settings to a nonexistent value (so the API returns zero
+   articles) and click "Sync now" — expect the summary to show 0 unpublished and the log to record
+   "Unpublish pass skipped", and confirm no previously-synced post was moved to Draft.
+10. Confirm the scheduled WP-Cron event fires on its own (check `wp_next_scheduled` or wait out a
+    short interval) and produces the same result as the manual button.
+11. Enter an invalid API key and click "Test connection" — expect a clear error message, no PHP
+    fatal error or warning in the WordPress debug log.
 
 - [ ] **Step 7: Commit**
 

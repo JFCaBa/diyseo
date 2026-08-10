@@ -13,3 +13,6 @@ prisma/dev.db
 
 # Database backups
 /backups/
+
+# Consenso multi-agent review scratch output
+.consenso/

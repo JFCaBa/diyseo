@@ -2,12 +2,34 @@
 
 class DIYSEO_Sync_Engine {
 
+    const LOCK_KEY = 'diyseo_sync_lock';
+    const LOCK_TTL = 300;
+
     public static function run_scheduled() {
         $engine = new self();
         $engine->run();
     }
 
     public function run() {
+        if (get_transient(self::LOCK_KEY)) {
+            $this->log('Sync skipped: another sync run is already in progress.');
+            return $this->summary(0, 0, 0, array('Another sync is already running.'));
+        }
+
+        set_transient(self::LOCK_KEY, true, self::LOCK_TTL);
+
+        try {
+            return $this->run_locked();
+        } finally {
+            delete_transient(self::LOCK_KEY);
+        }
+    }
+
+    private function run_locked() {
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(0);
+        }
+
         $settings = DIYSEO_Sync_Settings::get_settings();
 
         if (empty($settings['base_url']) || empty($settings['site_id']) || empty($settings['api_key'])) {
@@ -32,12 +54,17 @@ class DIYSEO_Sync_Engine {
         $seen_article_ids = array();
 
         foreach ($articles as $article) {
+            if (!empty($article['id'])) {
+                // Mark as seen even if invalid below, so a transient data glitch on one field
+                // never causes a live post to be mistaken for "no longer published" and drafted.
+                $seen_article_ids[] = $article['id'];
+            }
+
             if (!DIYSEO_Sync_Mapper::is_valid_article($article)) {
                 $errors[] = 'Skipped article with missing required fields (id: ' . (isset($article['id']) ? $article['id'] : 'unknown') . ').';
                 continue;
             }
 
-            $seen_article_ids[] = $article['id'];
             $existing_post_id = isset($synced[$article['id']]) ? $synced[$article['id']]['post_id'] : null;
 
             try {
@@ -95,7 +122,7 @@ class DIYSEO_Sync_Engine {
             'fields' => 'ids'
         ));
 
-        update_meta_cache('post', $posts);
+        _prime_post_caches($posts, false, true);
 
         $synced = array();
         foreach ($posts as $post_id) {
@@ -119,6 +146,10 @@ class DIYSEO_Sync_Engine {
         if ($action === DIYSEO_Sync_Mapper::ACTION_SKIP) {
             return $action;
         }
+
+        $article['title'] = sanitize_text_field($article['title']);
+        $article['excerpt'] = isset($article['excerpt']) ? sanitize_textarea_field((string) $article['excerpt']) : $article['excerpt'];
+        $article['contentHtml'] = isset($article['contentHtml']) ? wp_kses_post($article['contentHtml']) : $article['contentHtml'];
 
         $post_array = DIYSEO_Sync_Mapper::map_to_post_array($article, $author_id, $existing_post_id);
         $post_id = wp_insert_post($post_array, true);

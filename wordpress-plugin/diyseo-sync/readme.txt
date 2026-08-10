@@ -48,6 +48,15 @@ Features:
 * If DIYSEO returns zero published articles for a run (outage, wrong Site ID, etc.), the plugin
   skips moving any previously synced post to Draft rather than risk mass-unpublishing your site;
   check the sync log if you expect articles that aren't appearing.
+* If a DIYSEO article's SEO title/description is cleared at the source, the plugin does not clear
+  the corresponding Yoast/RankMath fields on the WordPress side — it only ever writes a value when
+  DIYSEO actually has one, so it never overwrites SEO fields you may have customized directly in
+  WordPress.
+* Only one sync (scheduled or manual) can run at a time — a second attempt while one is already in
+  progress is skipped and logged rather than run concurrently. On very large article catalogs with
+  many new cover images to download, a manual "Sync now" click can take a while to respond; each
+  article is saved as it's processed, so a slow or interrupted run simply picks up the rest on the
+  next scheduled sync rather than losing progress.
 
 == Changelog ==
 

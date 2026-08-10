@@ -36,6 +36,12 @@ function diyseo_sync_bootstrap() {
 add_action('plugins_loaded', 'diyseo_sync_bootstrap');
 
 function diyseo_sync_activate() {
+    // On first activation 'plugins_loaded' hasn't fired yet for this plugin, so the custom
+    // schedules from DIYSEO_Sync_Cron::build_schedules() aren't registered — register them
+    // explicitly here before rescheduling, or wp_schedule_event() would silently no-op for
+    // a previously-saved custom interval (15min/30min/6hours).
+    add_filter('cron_schedules', array('DIYSEO_Sync_Cron', 'build_schedules'));
+
     $settings = DIYSEO_Sync_Settings::get_settings();
     DIYSEO_Sync_Cron::reschedule($settings['enabled'], $settings['interval']);
 }

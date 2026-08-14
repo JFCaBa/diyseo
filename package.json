@@ -13,6 +13,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
+    "mint:api-key": "tsx scripts/mint-publishing-api-key.ts",
     "backup:database": "tsx scripts/backup-database.ts"
   },
   "dependencies": {

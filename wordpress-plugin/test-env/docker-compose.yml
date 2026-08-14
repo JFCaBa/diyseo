@@ -1,0 +1,79 @@
+# Local integration test harness for the DIYSEO Sync WordPress plugin.
+#
+# Brings up a throwaway WordPress + MariaDB on OrbStack/Docker with the plugin
+# under wordpress-plugin/diyseo-sync/ bind-mounted straight from the git
+# checkout, so edits to the PHP show up on the next request with no rebuild.
+#
+# The plugin talks to the DIYSEO Next app, which you run on the host with
+# `npm run dev` (:3000). From inside the WordPress container the host is
+# reachable as `host.docker.internal`, so the plugin Base URL is
+# `http://host.docker.internal:3000`.
+#
+# Quick start (from repo root):
+#   npm run dev                                   # terminal 1 — DIYSEO app on :3000
+#   npm run prisma:seed                           # once — creates PUBLISHED demo articles
+#   npm run mint:api-key                          # prints Site ID + API key
+#   docker compose -f wordpress-plugin/test-env/docker-compose.yml up -d
+#   open http://localhost:8090                    # finish the WP install wizard
+#   WP Admin → Plugins → activate "DIYSEO Sync"
+#   WP Admin → Settings → DIYSEO Sync → paste Base URL / Site ID / API key
+#   → "Test connection" → Save → "Sync now" → check Posts
+#
+# Tear down (add -v to also wipe the WP + DB volumes for a clean slate):
+#   docker compose -f wordpress-plugin/test-env/docker-compose.yml down -v
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: wordpress
+      MARIADB_ROOT_PASSWORD: wordpress
+    volumes:
+      - db_data:/var/lib/mysql
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 20s
+      interval: 10s
+      retries: 5
+
+  wordpress:
+    image: wordpress:6.7-apache
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DEBUG: "1"
+      # WP_DEBUG_LOG so plugin sync errors land in wp-content/debug.log.
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_DEBUG_LOG', true);
+        define('WP_DEBUG_DISPLAY', false);
+    ports:
+      - "8090:80"
+    volumes:
+      - wp_data:/var/www/html
+      # Live mount of the plugin straight from the checkout (read-only).
+      - ../diyseo-sync:/var/www/html/wp-content/plugins/diyseo-sync:ro
+      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
+    # OrbStack/Docker Desktop map host.docker.internal to the host, which is
+    # where `npm run dev` serves the DIYSEO app on :3000. On plain Linux this
+    # extra_hosts line makes the same name resolve to the host gateway.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: [internal]
+
+volumes:
+  db_data:
+  wp_data:
+
+networks:
+  internal:
+    driver: bridge

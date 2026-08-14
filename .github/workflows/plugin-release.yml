@@ -1,0 +1,76 @@
+name: Plugin Release
+
+# Packages the DIYSEO Sync WordPress plugin into an installable .zip and
+# publishes it as a GitHub Release. This is intentionally SEPARATE from the app
+# deploy (deploy.yml): the plugin does not run on our infrastructure — site
+# owners download the zip and upload it to their own WordPress under
+# WP Admin → Plugins → Add New → Upload Plugin.
+#
+# Trigger either by pushing a tag like `diyseo-sync-v1.0.0`, or manually from
+# the Actions tab (workflow_dispatch) by typing the version.
+
+on:
+  push:
+    tags:
+      - "diyseo-sync-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. 1.0.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Package and publish plugin
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version and tag
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            TAG="diyseo-sync-v${VERSION}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            VERSION="${TAG#diyseo-sync-v}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Releasing version $VERSION (tag $TAG)"
+
+      - name: Check plugin header matches version
+        run: |
+          HEADER=$(grep -oiP 'Version:\s*\K[0-9.]+' wordpress-plugin/diyseo-sync/diyseo-sync.php)
+          if [ "$HEADER" != "${{ steps.meta.outputs.version }}" ]; then
+            echo "::warning::Plugin header version ($HEADER) does not match release version (${{ steps.meta.outputs.version }}). Bump the 'Version:' header in diyseo-sync.php."
+          fi
+
+      - name: Build installable zip
+        run: |
+          # Zip from wordpress-plugin/ so the archive's top-level folder is
+          # `diyseo-sync/` (what WordPress expects). Dev-only files are excluded.
+          cd wordpress-plugin
+          zip -r "../diyseo-sync-${{ steps.meta.outputs.version }}.zip" diyseo-sync \
+            -x 'diyseo-sync/tests/*'
+          cd ..
+          unzip -l "diyseo-sync-${{ steps.meta.outputs.version }}.zip"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.meta.outputs.tag }}" \
+            "diyseo-sync-${{ steps.meta.outputs.version }}.zip" \
+            --target "$GITHUB_SHA" \
+            --title "DIYSEO Sync ${{ steps.meta.outputs.version }}" \
+            --notes "Installable WordPress plugin package for DIYSEO Sync ${{ steps.meta.outputs.version }}.
+
+          **Install:** download \`diyseo-sync-${{ steps.meta.outputs.version }}.zip\` below, then in WordPress go to **Plugins → Add New → Upload Plugin**, upload the zip, activate, and configure under **Settings → DIYSEO Sync**." \
+          || gh release upload "${{ steps.meta.outputs.tag }}" \
+            "diyseo-sync-${{ steps.meta.outputs.version }}.zip" --clobber

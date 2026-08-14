@@ -1,10 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import { updateWidgetInstalledState, updateWidgetTheme, type ActionState } from "@/lib/actions";
 
 type WidgetTheme = "light" | "dark";
+
+// Latest-release asset published by .github/workflows/plugin-release.yml. The
+// default points at this public repo; override with NEXT_PUBLIC_PLUGIN_DOWNLOAD_URL
+// for forks, org migrations, or self-hosted deployments.
+const PLUGIN_DOWNLOAD_URL =
+  process.env.NEXT_PUBLIC_PLUGIN_DOWNLOAD_URL ??
+  "https://github.com/JFCaBa/diyseo/releases/latest/download/diyseo-sync.zip";
 
 type WidgetInstallCardProps = {
   baseUrl: string;
@@ -30,8 +38,7 @@ function formatRouteDomain(value?: string | null) {
 }
 
 export function WidgetInstallCard({ baseUrl, siteId, siteDomain, initialTheme, widgetInstalledAt, id }: WidgetInstallCardProps) {
-  const [copied, setCopied] = useState(false);
-  const [workerCopied, setWorkerCopied] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [theme, setTheme] = useState<WidgetTheme>(initialTheme === "dark" ? "dark" : "light");
   const formRef = useRef<HTMLFormElement>(null);
   const updateWidgetThemeForSite = updateWidgetTheme.bind(null, siteId);
@@ -120,23 +127,13 @@ export default {
     setTheme(initialTheme === "dark" ? "dark" : "light");
   }, [initialTheme]);
 
-  async function handleCopy() {
+  async function copyField(field: string, value: string) {
     try {
-      await navigator.clipboard.writeText(snippet);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      window.setTimeout(() => setCopiedField((current) => (current === field ? null : current)), 2000);
     } catch {
-      setCopied(false);
-    }
-  }
-
-  async function handleWorkerCopy() {
-    try {
-      await navigator.clipboard.writeText(workerScript);
-      setWorkerCopied(true);
-      window.setTimeout(() => setWorkerCopied(false), 2000);
-    } catch {
-      setWorkerCopied(false);
+      setCopiedField(null);
     }
   }
 
@@ -151,10 +148,10 @@ export default {
         </div>
         <button
           type="button"
-          onClick={handleCopy}
+          onClick={() => copyField("snippet", snippet)}
           className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
         >
-          {copied ? "Copied" : "Copy Snippet"}
+          {copiedField === "snippet" ? "Copied" : "Copy Snippet"}
         </button>
       </div>
 
@@ -213,7 +210,7 @@ export default {
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div className="rounded-2xl border border-dashed border-line bg-white/60 p-4 opacity-80">
             <p className="text-sm font-semibold text-ink">Reverse proxy</p>
             <p className="mt-1 text-xs text-slate-500">Serve blog routes through the client domain.</p>
@@ -221,10 +218,6 @@ export default {
           <div className="rounded-2xl border border-dashed border-line bg-white/60 p-4 opacity-80">
             <p className="text-sm font-semibold text-ink">Static export</p>
             <p className="mt-1 text-xs text-slate-500">Publish generated pages directly to the client site.</p>
-          </div>
-          <div className="rounded-2xl border border-dashed border-line bg-white/60 p-4 opacity-80">
-            <p className="text-sm font-semibold text-ink">WordPress plugin</p>
-            <p className="mt-1 text-xs text-slate-500">Install and sync the blog into a WordPress site.</p>
           </div>
         </div>
 
@@ -242,10 +235,10 @@ export default {
             </div>
             <button
               type="button"
-              onClick={handleWorkerCopy}
+              onClick={() => copyField("worker", workerScript)}
               className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
             >
-              {workerCopied ? "Copied" : "Copy Worker Script"}
+              {copiedField === "worker" ? "Copied" : "Copy Worker Script"}
             </button>
           </div>
 
@@ -276,16 +269,80 @@ export default {
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Worker script</p>
               <button
                 type="button"
-                onClick={handleWorkerCopy}
+                onClick={() => copyField("worker", workerScript)}
                 className="inline-flex items-center justify-center rounded-xl border border-line bg-white px-3 py-2 text-xs font-semibold text-ink transition hover:bg-mist"
               >
-                {workerCopied ? "Copied" : "Copy script"}
+                {copiedField === "worker" ? "Copied" : "Copy script"}
               </button>
             </div>
             <pre className="overflow-x-auto p-4 text-sm text-ink">
             <code>{workerScript}</code>
             </pre>
           </div>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-line bg-white/90 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <h4 className="text-sm font-semibold text-ink">WordPress plugin</h4>
+              <p className="mt-1 text-sm text-slate-600">
+                Sync this site&apos;s published articles into a WordPress site as native posts. Installs like any
+                WordPress plugin — no code required.
+              </p>
+            </div>
+            <a
+              href={PLUGIN_DOWNLOAD_URL}
+              className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
+            >
+              Download plugin (.zip)
+            </a>
+          </div>
+
+          <dl className="mt-4 grid gap-3 text-sm text-slate-600 md:grid-cols-2">
+            <div>
+              <dt className="font-semibold text-ink">Base URL</dt>
+              <dd className="mt-1 flex items-center gap-2">
+                <span className="break-all">{baseUrl}</span>
+                <button
+                  type="button"
+                  onClick={() => copyField("baseUrl", baseUrl)}
+                  className="shrink-0 rounded-xl border border-line bg-white px-2.5 py-1 text-xs font-semibold text-ink transition hover:bg-mist"
+                >
+                  {copiedField === "baseUrl" ? "Copied" : "Copy"}
+                </button>
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-ink">Site ID</dt>
+              <dd className="mt-1 flex items-center gap-2">
+                <span className="break-all">{siteId}</span>
+                <button
+                  type="button"
+                  onClick={() => copyField("siteId", siteId)}
+                  className="shrink-0 rounded-xl border border-line bg-white px-2.5 py-1 text-xs font-semibold text-ink transition hover:bg-mist"
+                >
+                  {copiedField === "siteId" ? "Copied" : "Copy"}
+                </button>
+              </dd>
+            </div>
+          </dl>
+
+          <ol className="mt-4 grid gap-2 text-sm text-slate-600">
+            <li>1. Download the zip, then in WordPress go to Plugins → Add New → Upload Plugin, upload it, and activate.</li>
+            <li>2. Open Settings → DIYSEO Sync in WordPress.</li>
+            <li>3. Paste the Base URL and Site ID above.</li>
+            <li>
+              4. Create a Publishing API key on the{" "}
+              <Link
+                href={`/${encodeURIComponent(siteId)}/api`}
+                className="font-semibold text-accent underline-offset-2 hover:underline"
+              >
+                Publishing API page
+              </Link>{" "}
+              and paste it as the API key.
+            </li>
+            <li>5. Click Test connection, then Sync now.</li>
+          </ol>
         </div>
       </div>
 

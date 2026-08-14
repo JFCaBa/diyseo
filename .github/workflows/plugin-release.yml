@@ -59,6 +59,9 @@ jobs:
           zip -r "../diyseo-sync-${{ steps.meta.outputs.version }}.zip" diyseo-sync \
             -x 'diyseo-sync/tests/*'
           cd ..
+          # Also publish a version-less copy so the app can link to a stable
+          # download URL: /releases/latest/download/diyseo-sync.zip
+          cp "diyseo-sync-${{ steps.meta.outputs.version }}.zip" diyseo-sync.zip
           unzip -l "diyseo-sync-${{ steps.meta.outputs.version }}.zip"
 
       - name: Publish GitHub Release
@@ -67,10 +70,12 @@ jobs:
         run: |
           gh release create "${{ steps.meta.outputs.tag }}" \
             "diyseo-sync-${{ steps.meta.outputs.version }}.zip" \
+            "diyseo-sync.zip" \
             --target "$GITHUB_SHA" \
             --title "DIYSEO Sync ${{ steps.meta.outputs.version }}" \
             --notes "Installable WordPress plugin package for DIYSEO Sync ${{ steps.meta.outputs.version }}.
 
           **Install:** download \`diyseo-sync-${{ steps.meta.outputs.version }}.zip\` below, then in WordPress go to **Plugins → Add New → Upload Plugin**, upload the zip, activate, and configure under **Settings → DIYSEO Sync**." \
           || gh release upload "${{ steps.meta.outputs.tag }}" \
-            "diyseo-sync-${{ steps.meta.outputs.version }}.zip" --clobber
+            "diyseo-sync-${{ steps.meta.outputs.version }}.zip" \
+            "diyseo-sync.zip" --clobber

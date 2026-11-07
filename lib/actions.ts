@@ -42,7 +42,7 @@ import {
   RevokePublishingApiKeySchema,
   parseWaitlistForm
 } from "@/lib/validations";
-import { newTrialEndsAt } from "@/lib/entitlements";
+import { planForNewWorkspace, trialEndForPlan } from "@/lib/access";
 
 export type ActionState = {
   error?: string;
@@ -151,7 +151,8 @@ async function getWorkspaceId() {
 
   const workspace = await prisma.workspace.create({
     data: {
-      trialEndsAt: newTrialEndsAt(new Date()),
+      plan: planForNewWorkspace(session.user.email),
+      trialEndsAt: trialEndForPlan(planForNewWorkspace(session.user.email), new Date()),
       ownerId: session.user.id,
       name: session.user.name?.trim() ? `${session.user.name.trim()}'s Workspace` : "My Workspace"
     }
@@ -160,7 +161,7 @@ async function getWorkspaceId() {
   return workspace.id;
 }
 
-async function getOrCreateWorkspaceIdForUser(userId: string, userName?: string | null) {
+async function getOrCreateWorkspaceIdForUser(userId: string, userName?: string | null, email?: string | null) {
   const existingWorkspace = await prisma.workspace.findUnique({
     where: { ownerId: userId }
   });
@@ -171,7 +172,8 @@ async function getOrCreateWorkspaceIdForUser(userId: string, userName?: string |
 
   const workspace = await prisma.workspace.create({
     data: {
-      trialEndsAt: newTrialEndsAt(new Date()),
+      plan: planForNewWorkspace(email),
+      trialEndsAt: trialEndForPlan(planForNewWorkspace(email), new Date()),
       ownerId: userId,
       name: userName?.trim() ? `${userName.trim()}'s Workspace` : "My Workspace"
     }
@@ -305,7 +307,7 @@ export async function transferSite(
     return { error: "That user does not exist yet." };
   }
 
-  const targetWorkspaceId = await getOrCreateWorkspaceIdForUser(targetUser.id, targetUser.name);
+  const targetWorkspaceId = await getOrCreateWorkspaceIdForUser(targetUser.id, targetUser.name, parsed.data.email);
 
   try {
     await withSiteSlot(targetWorkspaceId, (tx) =>

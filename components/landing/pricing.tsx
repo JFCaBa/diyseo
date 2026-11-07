@@ -4,6 +4,7 @@ import { useState } from "react";
 import clsx from "clsx";
 
 import { PLANS } from "@/lib/plans";
+import { startFreeTrial } from "@/lib/signup-actions";
 
 export function Pricing() {
   const [annual, setAnnual] = useState(false);
@@ -13,7 +14,7 @@ export function Pricing() {
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
           <h2 className="font-display text-4xl font-bold leading-tight tracking-tight">Simple pricing</h2>
-          <p className="mt-2 text-slate-600">7-day free trial, no card needed. Prices in GBP, including any VAT due.</p>
+          <p className="mt-2 text-slate-600">7-day free trial, no card needed. Then choose a plan. Prices in GBP, including any VAT due.</p>
         </div>
         <div role="group" aria-label="Billing period" className="flex gap-1 rounded-[10px] border border-slate-300 bg-white p-1">
           {[
@@ -59,12 +60,14 @@ export function Pricing() {
                 <li key={feature}>{feature}</li>
               ))}
             </ul>
-            <a
-              href={`/?plan=${plan.id}#access`}
-              className="block rounded-lg bg-ink px-4 py-3 text-center font-semibold text-white transition hover:bg-slate-800"
-            >
-              Choose {plan.name}
-            </a>
+            <form action={startFreeTrial}>
+              <button
+                type="submit"
+                className="block w-full rounded-lg bg-ink px-4 py-3 text-center font-semibold text-white transition hover:bg-slate-800"
+              >
+                Start free trial
+              </button>
+            </form>
           </article>
         ))}
       </div>

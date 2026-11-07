@@ -5,10 +5,9 @@ import { redirect } from "next/navigation";
 
 import { SignInButton } from "@/components/auth-buttons";
 import { Pricing } from "@/components/landing/pricing";
-import { WaitlistForm } from "@/components/landing/waitlist-form";
 import { auth } from "@/lib/auth";
-import { isPlanId } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
+import { startFreeTrial } from "@/lib/signup-actions";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-landing-body" });
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-landing-display" });
@@ -41,19 +40,19 @@ const modules = [
     body: "Articles in your brand voice, automatic publishing, translations, WordPress and publishing on your domain."
   },
   {
-    status: "Early access",
+    status: "Coming soon",
     live: false,
     title: "SEO data",
     body: "Search Console, Bing, PageSpeed and site crawls, with opportunities and content decay."
   },
   {
-    status: "Early access",
+    status: "Coming soon",
     live: false,
     title: "AI visibility",
     body: "What ChatGPT and Gemini tell your customers, and who they cite."
   },
   {
-    status: "Early access",
+    status: "Coming soon",
     live: false,
     title: "Ads",
     body: "Meta and Google campaigns with copy, images and a landing page. Always paused until you approve."
@@ -64,16 +63,13 @@ const heading = "font-display text-4xl font-bold leading-tight tracking-tight";
 const wrap = "mx-auto max-w-[1180px] px-6";
 
 type HomePageProps = {
-  searchParams?: Promise<{ error?: string; plan?: string }>;
+  searchParams?: Promise<{ error?: string }>;
 };
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const session = await auth();
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const plan = isPlanId(resolvedSearchParams?.plan) ? resolvedSearchParams.plan : null;
-
-  // A plan link is an explicit request for this page, so it wins over the jump to the workspace.
-  if (session?.user?.id && !plan) {
+  if (session?.user?.id) {
     const workspace = await prisma.workspace.findUnique({
       where: { ownerId: session.user.id },
       select: {
@@ -110,16 +106,18 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           ) : (
             <SignInButton label="Sign in" className="hover:text-ink" />
           )}
-          <a href="#access" className="rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
-            Get access
-          </a>
+          <form action={startFreeTrial}>
+            <button type="submit" className="rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
+              Start free trial
+            </button>
+          </form>
         </nav>
       </header>
 
       {resolvedSearchParams?.error === "access_limited" ? (
         <div className={wrap}>
           <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Access is limited for now. Join the waitlist and we'll let you know.
+            This account can't sign in. Contact info@diyseo.online if you think it should.
           </p>
         </div>
       ) : null}
@@ -135,9 +133,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             ad campaigns. All in one place.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <a href="#access" className="rounded-lg bg-accent px-5 py-3.5 font-semibold text-white transition hover:bg-teal-800">
-              Get access
-            </a>
+            <form action={startFreeTrial}>
+              <button type="submit" className="rounded-lg bg-accent px-5 py-3.5 font-semibold text-white transition hover:bg-teal-800">
+                Start your free trial
+              </button>
+            </form>
             <a href="#pricing" className="rounded-lg border border-slate-400 px-5 py-3.5 font-semibold transition hover:bg-white">
               See pricing
             </a>
@@ -205,11 +205,17 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </div>
       </section>
 
-      <section id="access" className={`${wrap} relative scroll-mt-4 py-20`}>
+      <section id="start" className={`${wrap} scroll-mt-4 py-20`}>
         <div className="max-w-[620px]">
-          <h2 className={heading}>We're opening places gradually</h2>
-          <p className="mt-3 text-lg text-slate-600">Leave your email and we'll tell you when your place is ready. No commitment.</p>
-          <WaitlistForm key={plan ?? "none"} defaultPlan={plan} />
+          <h2 className={heading}>Try it free for 7 days</h2>
+          <p className="mt-3 text-lg text-slate-600">
+            Sign in with Google and start with the Pro limits. No card needed. Pick a plan when you are ready.
+          </p>
+          <form action={startFreeTrial} className="mt-6">
+            <button type="submit" className="rounded-lg bg-accent px-5 py-3.5 font-semibold text-white transition hover:bg-teal-800">
+              Start your free trial
+            </button>
+          </form>
         </div>
       </section>
 

@@ -3,9 +3,9 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 
 import authConfig from "@/auth.config";
 import { prisma } from "@/lib/prisma";
-import { newTrialEndsAt } from "@/lib/entitlements";
+import { isListedEmail, planForNewWorkspace, trialEndForPlan } from "@/lib/access";
 
-async function ensureUserWorkspace(userId: string, userName?: string | null) {
+async function ensureUserWorkspace(userId: string, userName?: string | null, email?: string | null) {
   const existingWorkspace = await prisma.workspace.findUnique({
     where: { ownerId: userId },
     include: {
@@ -39,7 +39,8 @@ async function ensureUserWorkspace(userId: string, userName?: string | null) {
 
   const workspace = await prisma.workspace.create({
     data: {
-      trialEndsAt: newTrialEndsAt(new Date()),
+      plan: planForNewWorkspace(email),
+      trialEndsAt: trialEndForPlan(planForNewWorkspace(email), new Date()),
       ownerId: userId,
       name: workspaceName,
       sites: {
@@ -70,7 +71,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!user.id) {
         return;
       }
-      await ensureUserWorkspace(user.id, user.name);
+      await ensureUserWorkspace(user.id, user.name, user.email);
+    },
+    // An email added to ALLOWED_EMAILS later gets the free plan on its next
+    // sign-in. Paying workspaces are left alone: they cancel in the portal.
+    async signIn({ user }) {
+      if (user.id && isListedEmail(user.email)) {
+        await prisma.workspace.updateMany({
+          where: { ownerId: user.id, plan: { in: ["TRIAL", "NONE"] } },
+          data: { plan: "COMP", trialEndsAt: null }
+        });
+      }
     }
   },
   callbacks: {
@@ -83,7 +94,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
 
         if (!workspace) {
-          const created = await ensureUserWorkspace(user.id, user.name);
+          const created = await ensureUserWorkspace(user.id, user.name, user.email);
           session.user.id = user.id;
           session.user.workspaceId = created;
           return session;

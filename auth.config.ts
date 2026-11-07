@@ -1,14 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 
-function getAllowedEmails() {
-  return new Set(
-    (process.env.ALLOWED_EMAILS ?? "")
-      .split(",")
-      .map((value) => value.trim().toLowerCase())
-      .filter(Boolean)
-  );
-}
+import { canSignIn } from "@/lib/access";
 
 const authConfig = {
   trustHost: true,
@@ -31,19 +24,7 @@ const authConfig = {
   },
   callbacks: {
     signIn({ user }) {
-      const allowedEmails = getAllowedEmails();
-
-      if (allowedEmails.size === 0) {
-        return true;
-      }
-
-      const email = user.email?.trim().toLowerCase();
-
-      if (!email || !allowedEmails.has(email)) {
-        return "/?error=access_limited";
-      }
-
-      return true;
+      return canSignIn(user.email) ? true : "/?error=access_limited";
     },
     authorized({ auth, request }) {
       const pathname = request.nextUrl.pathname;

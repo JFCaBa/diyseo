@@ -22,7 +22,7 @@ test("annual price is the monthly price minus 20%", () => {
 
 test("no plan promises unlimited usage", () => {
   for (const feature of PLANS.flatMap((plan) => plan.features)) {
-    assert.doesNotMatch(feature, /ilimitad/i);
+    assert.doesNotMatch(feature, /unlimited/i);
   }
 });
 

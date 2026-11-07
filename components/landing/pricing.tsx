@@ -12,13 +12,13 @@ export function Pricing() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
-          <h2 className="font-display text-4xl font-bold leading-tight tracking-tight">Precios claros, en euros</h2>
-          <p className="mt-2 text-slate-600">14 días de prueba. IVA no incluido.</p>
+          <h2 className="font-display text-4xl font-bold leading-tight tracking-tight">Simple pricing</h2>
+          <p className="mt-2 text-slate-600">7-day free trial, no card needed. Prices in GBP, VAT included.</p>
         </div>
-        <div role="group" aria-label="Periodo de facturación" className="flex gap-1 rounded-[10px] border border-slate-300 bg-white p-1">
+        <div role="group" aria-label="Billing period" className="flex gap-1 rounded-[10px] border border-slate-300 bg-white p-1">
           {[
-            { label: "Mensual", active: !annual, value: false },
-            { label: "Anual, -20 %", active: annual, value: true }
+            { label: "Monthly", active: !annual, value: false },
+            { label: "Annual, save 20%", active: annual, value: true }
           ].map((option) => (
             <button
               key={option.label}
@@ -47,12 +47,12 @@ export function Pricing() {
           >
             <div className="flex items-center justify-between gap-2">
               <h3 className="font-display text-[22px] font-semibold">{plan.name}</h3>
-              {plan.featured ? <span className="text-xs font-semibold text-accent">El más completo para una pyme</span> : null}
+              {plan.featured ? <span className="text-xs font-semibold text-accent">Best for small businesses</span> : null}
             </div>
             <p className="mt-1.5 text-[15px] text-slate-600">{plan.tagline}</p>
             <p className="mt-4">
-              <span className="font-display text-[46px] font-bold">{annual ? plan.annualMonthlyPrice : plan.monthlyPrice} €</span>
-              <span className="text-slate-600"> /mes</span>
+              <span className="font-display text-[46px] font-bold">£{annual ? plan.annualMonthlyPrice : plan.monthlyPrice}</span>
+              <span className="text-slate-600"> /month</span>
             </p>
             <ul className="mb-5 mt-4 flex flex-grow list-disc flex-col gap-2 pl-[18px] text-[15px]">
               {plan.features.map((feature) => (
@@ -60,10 +60,10 @@ export function Pricing() {
               ))}
             </ul>
             <a
-              href={`/?plan=${plan.id}#acceso`}
+              href={`/?plan=${plan.id}#access`}
               className="block rounded-lg bg-ink px-4 py-3 text-center font-semibold text-white transition hover:bg-slate-800"
             >
-              Elegir {plan.name}
+              Choose {plan.name}
             </a>
           </article>
         ))}

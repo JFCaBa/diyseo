@@ -14,49 +14,49 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-landing-body" });
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-landing-display" });
 
 export const metadata: Metadata = {
-  title: "DIYSEO: que te encuentren en Google, en la IA y en los anuncios",
+  title: "DIYSEO: get found on Google, in AI answers and through ads",
   description:
-    "DIYSEO detecta qué búsquedas estás perdiendo, publica el contenido que falta en tu web y convierte lo que funciona en campañas."
+    "DIYSEO finds the searches you're missing, publishes the content your website lacks and turns what works into ad campaigns."
 };
 
 const weekExample = [
-  { source: "Google", text: "Sales en la segunda página para «reformar cocina precio»" },
-  { source: "Respuestas de IA", text: "ChatGPT cita a tu competidor y no a ti en 3 preguntas" },
-  { source: "Contenido", text: "Artículo redactado con tu tono, listo para revisar" },
-  { source: "Anuncios", text: "Campaña en borrador, en pausa hasta que tú la apruebes" }
+  { source: "Google", text: "You rank on page two for “kitchen renovation cost”" },
+  { source: "AI answers", text: "ChatGPT cites your competitor instead of you on 3 questions" },
+  { source: "Content", text: "Article drafted in your tone, ready to review" },
+  { source: "Ads", text: "Campaign drafted and paused until you approve it" }
 ];
 
 const cycle = [
-  { title: "1. Mide", body: "Search Console, Bing, velocidad y rastreo de tu web, y lo que responden las IA sobre tu marca." },
-  { title: "2. Decide", body: "Oportunidades, páginas en caída y competidores que aparecen donde tú no." },
-  { title: "3. Publica", body: "Artículos con tu tono y en tu dominio, en WordPress o con un widget." },
-  { title: "4. Acelera", body: "Lo que funciona pasa a Meta y Google Ads, con landing incluida y sin gastar nada hasta que apruebes." }
+  { title: "1. Measure", body: "Search Console, Bing, site speed and crawl data, plus what AI assistants say about your brand." },
+  { title: "2. Decide", body: "Opportunities, pages losing traffic, and competitors showing up where you don't." },
+  { title: "3. Publish", body: "Articles in your tone on your own domain, through WordPress or a widget." },
+  { title: "4. Accelerate", body: "What works moves to Meta and Google Ads, landing page included, with no spend until you approve." }
 ];
 
 const modules = [
   {
-    status: "Disponible",
+    status: "Available",
     live: true,
-    title: "Blog con IA",
-    body: "Artículos con tu tono de marca, publicación automática, traducciones, WordPress y publicación en tu dominio."
+    title: "AI blog",
+    body: "Articles in your brand voice, automatic publishing, translations, WordPress and publishing on your domain."
   },
   {
-    status: "Acceso anticipado",
+    status: "Early access",
     live: false,
-    title: "Datos SEO",
-    body: "Search Console, Bing, PageSpeed y rastreo de tu web, con oportunidades y contenido en caída."
+    title: "SEO data",
+    body: "Search Console, Bing, PageSpeed and site crawls, with opportunities and content decay."
   },
   {
-    status: "Acceso anticipado",
+    status: "Early access",
     live: false,
-    title: "Visibilidad en IA",
-    body: "Qué responden ChatGPT y Gemini a las preguntas de tus clientes, y a quién citan."
+    title: "AI visibility",
+    body: "What ChatGPT and Gemini tell your customers, and who they cite."
   },
   {
-    status: "Acceso anticipado",
+    status: "Early access",
     live: false,
-    title: "Anuncios",
-    body: "Campañas de Meta y Google con textos, imágenes y landing. Siempre en pausa hasta que apruebes."
+    title: "Ads",
+    body: "Meta and Google campaigns with copy, images and a landing page. Always paused until you approve."
   }
 ];
 
@@ -88,30 +88,30 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   return (
-    <main lang="es" className={`${inter.variable} ${spaceGrotesk.variable} overflow-x-clip bg-[#fbfaf6] font-body leading-relaxed text-ink`}>
+    <main className={`${inter.variable} ${spaceGrotesk.variable} overflow-x-clip bg-[#fbfaf6] font-body leading-relaxed text-ink`}>
       <header className={`${wrap} flex items-center justify-between gap-4 py-5`}>
         <Link href="/" className="font-display text-xl font-bold">
           DIYSEO
         </Link>
-        <nav aria-label="Principal" className="flex items-center gap-6 text-[15px] text-slate-700">
-          <a href="#ciclo" className="hidden hover:text-ink md:inline">
-            El ciclo
+        <nav aria-label="Main" className="flex items-center gap-6 text-[15px] text-slate-700">
+          <a href="#loop" className="hidden hover:text-ink md:inline">
+            The loop
           </a>
-          <a href="#modulos" className="hidden hover:text-ink md:inline">
-            Producto
+          <a href="#modules" className="hidden hover:text-ink md:inline">
+            Product
           </a>
-          <a href="#precios" className="hidden hover:text-ink md:inline">
-            Precios
+          <a href="#pricing" className="hidden hover:text-ink md:inline">
+            Pricing
           </a>
           {session?.user ? (
             <Link href="/settings" className="hover:text-ink">
-              Abrir panel
+              Open workspace
             </Link>
           ) : (
-            <SignInButton label="Entrar" className="hover:text-ink" />
+            <SignInButton label="Sign in" className="hover:text-ink" />
           )}
-          <a href="#acceso" className="rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
-            Pedir acceso
+          <a href="#access" className="rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
+            Get access
           </a>
         </nav>
       </header>
@@ -119,35 +119,35 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       {resolvedSearchParams?.error === "access_limited" ? (
         <div className={wrap}>
           <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            El acceso está limitado por ahora. Apúntate a la lista y te avisaremos.
+            Access is limited for now. Join the waitlist and we'll let you know.
           </p>
         </div>
       ) : null}
 
       <section className={`${wrap} grid items-center gap-9 pb-[88px] pt-14 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14`}>
         <div>
-          <p className="mb-4 text-[15px] font-semibold text-accent">Para pymes y agencias que venden en español</p>
+          <p className="mb-4 text-[15px] font-semibold text-accent">For small businesses and agencies</p>
           <h1 className="font-display text-[40px] font-bold leading-[1.05] tracking-tight md:text-[60px]">
-            Que te encuentren en Google, en la IA y en los anuncios.
+            Get found on Google, in AI answers and through ads.
           </h1>
           <p className="mt-5 max-w-[560px] text-[19px] text-slate-600">
-            DIYSEO detecta qué búsquedas estás perdiendo, publica el contenido que falta en tu web y convierte lo que
-            funciona en campañas. Todo en un mismo sitio.
+            DIYSEO finds the searches you're missing, publishes the content your website lacks and turns what works into
+            ad campaigns. All in one place.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <a href="#acceso" className="rounded-lg bg-accent px-5 py-3.5 font-semibold text-white transition hover:bg-teal-800">
-              Pedir acceso
+            <a href="#access" className="rounded-lg bg-accent px-5 py-3.5 font-semibold text-white transition hover:bg-teal-800">
+              Get access
             </a>
-            <a href="#precios" className="rounded-lg border border-slate-400 px-5 py-3.5 font-semibold transition hover:bg-white">
-              Ver precios
+            <a href="#pricing" className="rounded-lg border border-slate-400 px-5 py-3.5 font-semibold transition hover:bg-white">
+              See pricing
             </a>
           </div>
         </div>
 
         <div className="rounded-[14px] border border-line bg-white p-5">
           <div className="flex items-baseline justify-between gap-3">
-            <h2 className="font-display text-lg font-semibold">Esta semana en tu web</h2>
-            <span className="text-xs text-slate-600">Ejemplo</span>
+            <h2 className="font-display text-lg font-semibold">This week on your website</h2>
+            <span className="text-xs text-slate-600">Example</span>
           </div>
           <div className="mt-3 divide-y divide-[#e8edf1]">
             {weekExample.map((item) => (
@@ -160,11 +160,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </div>
       </section>
 
-      <section id="ciclo" className="scroll-mt-4 bg-ink py-20 text-slate-50">
+      <section id="loop" className="scroll-mt-4 bg-ink py-20 text-slate-50">
         <div className={wrap}>
-          <h2 className={`${heading} max-w-[720px]`}>Cada paso alimenta al siguiente.</h2>
+          <h2 className={`${heading} max-w-[720px]`}>Each step feeds the next.</h2>
           <p className="mt-4 max-w-[640px] text-lg text-slate-300">
-            Comprar estas piezas por separado supera fácilmente los 300 € al mes, y aun así tendrías que unirlas a mano.
+            Buying these tools separately easily tops £300 a month, and you'd still have to connect them by hand.
           </p>
           <ol className="mt-11 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {cycle.map((step) => (
@@ -177,8 +177,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </div>
       </section>
 
-      <section id="modulos" className={`${wrap} scroll-mt-4 py-20`}>
-        <h2 className={heading}>Lo que incluye</h2>
+      <section id="modules" className={`${wrap} scroll-mt-4 py-20`}>
+        <h2 className={heading}>What's included</h2>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {modules.map((module) => (
             <article key={module.title} className="flex flex-col gap-2.5 rounded-[14px] border border-line bg-white p-5">
@@ -195,20 +195,20 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           ))}
         </div>
         <p className="mt-5 text-[15px] text-slate-600">
-          Conecta los datos a Claude, ChatGPT o Codex y pregúntales por tu web con cifras reales.
+          Connect your data to Claude, ChatGPT or Codex and ask about your website with real numbers.
         </p>
       </section>
 
-      <section id="precios" className="scroll-mt-4 bg-[#f1efe8] py-20">
+      <section id="pricing" className="scroll-mt-4 bg-[#f1efe8] py-20">
         <div className={wrap}>
           <Pricing />
         </div>
       </section>
 
-      <section id="acceso" className={`${wrap} relative scroll-mt-4 py-20`}>
+      <section id="access" className={`${wrap} relative scroll-mt-4 py-20`}>
         <div className="max-w-[620px]">
-          <h2 className={heading}>Abrimos plazas poco a poco</h2>
-          <p className="mt-3 text-lg text-slate-600">Déjanos tu email y te avisamos cuando tengas sitio. Sin compromiso.</p>
+          <h2 className={heading}>We're opening places gradually</h2>
+          <p className="mt-3 text-lg text-slate-600">Leave your email and we'll tell you when your place is ready. No commitment.</p>
           <WaitlistForm key={plan ?? "none"} defaultPlan={plan} />
         </div>
       </section>
@@ -216,15 +216,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <footer className="border-t border-line">
         <div className={`${wrap} flex flex-wrap justify-between gap-4 py-6 text-sm text-slate-600`}>
           <span>DIYSEO</span>
-          <nav aria-label="Pie" className="flex flex-wrap gap-5">
+          <nav aria-label="Footer" className="flex flex-wrap gap-5">
             <Link href="/blog" className="hover:text-ink">
               Blog
             </Link>
             <Link href="/privacy" className="hover:text-ink">
-              Privacidad
+              Privacy
             </Link>
             <Link href="/terms" className="hover:text-ink">
-              Términos
+              Terms
             </Link>
             <a href="https://github.com/JFCaBa/diyseo" target="_blank" rel="noreferrer" className="hover:text-ink">
               GitHub

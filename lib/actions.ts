@@ -1253,11 +1253,11 @@ export async function joinWaitlist(_previous: WaitlistState, formData: FormData)
   }
 
   if (submission.kind === "invalid") {
-    return { status: "error", message: "Revisa tu email." };
+    return { status: "error", message: "Check your email address." };
   }
 
   if (!allowWaitlistRequestFromIp(await getRequestIp()) || !allowWaitlistRequest("all")) {
-    return { status: "error", message: "Demasiados intentos. Prueba de nuevo más tarde." };
+    return { status: "error", message: "Too many attempts. Please try again later." };
   }
 
   const { email, plan } = submission;
@@ -1275,7 +1275,7 @@ export async function joinWaitlist(_previous: WaitlistState, formData: FormData)
 
     if (code !== "P2002") {
       console.error("waitlist_signup_failed", { code });
-      return { status: "error", message: "No hemos podido apuntarte. Inténtalo de nuevo." };
+      return { status: "error", message: "We couldn't add you. Please try again." };
     }
   }
 

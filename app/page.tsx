@@ -13,23 +13,23 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-landing-body" });
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-landing-display" });
 
 export const metadata: Metadata = {
-  title: "DIYSEO: get found on Google, in AI answers and through ads",
+  title: "DIYSEO: get found on Google and in AI answers",
   description:
-    "DIYSEO finds the searches you're missing, publishes the content your website lacks and turns what works into ad campaigns."
+    "DIYSEO finds the searches you're missing and publishes the content your website lacks, in your brand voice and on your own domain."
 };
 
 const weekExample = [
   { source: "Google", text: "You rank on page two for “kitchen renovation cost”" },
   { source: "AI answers", text: "ChatGPT cites your competitor instead of you on 3 questions" },
   { source: "Content", text: "Article drafted in your tone, ready to review" },
-  { source: "Ads", text: "Campaign drafted and paused until you approve it" }
+  { source: "Ads (coming soon)", text: "Campaign drafted and paused until you approve it" }
 ];
 
 const cycle = [
   { title: "1. Measure", body: "Search Console, Bing, site speed and crawl data, plus what AI assistants say about your brand." },
   { title: "2. Decide", body: "Opportunities, pages losing traffic, and competitors showing up where you don't." },
   { title: "3. Publish", body: "Articles in your tone on your own domain, through WordPress or a widget." },
-  { title: "4. Accelerate", body: "What works moves to Meta and Google Ads, landing page included, with no spend until you approve." }
+  { title: "4. Accelerate (coming soon)", body: "What works will move to Meta and Google Ads, landing page included, with no spend until you approve." }
 ];
 
 const modules = [
@@ -126,11 +126,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <div>
           <p className="mb-4 text-[15px] font-semibold text-accent">For small businesses and agencies</p>
           <h1 className="font-display text-[40px] font-bold leading-[1.05] tracking-tight md:text-[60px]">
-            Get found on Google, in AI answers and through ads.
+            Get found on Google and in AI answers.
           </h1>
           <p className="mt-5 max-w-[560px] text-[19px] text-slate-600">
-            DIYSEO finds the searches you're missing, publishes the content your website lacks and turns what works into
-            ad campaigns. All in one place.
+            DIYSEO finds the searches you're missing and publishes the content your website lacks, in your brand voice
+            and on your own domain. Ad campaigns are coming soon.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <form action={startFreeTrial}>

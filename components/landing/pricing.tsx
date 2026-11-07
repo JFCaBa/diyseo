@@ -13,7 +13,7 @@ export function Pricing() {
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
           <h2 className="font-display text-4xl font-bold leading-tight tracking-tight">Simple pricing</h2>
-          <p className="mt-2 text-slate-600">7-day free trial, no card needed. Prices in GBP, VAT included.</p>
+          <p className="mt-2 text-slate-600">7-day free trial, no card needed. Prices in GBP. VAT may apply depending on your location.</p>
         </div>
         <div role="group" aria-label="Billing period" className="flex gap-1 rounded-[10px] border border-slate-300 bg-white p-1">
           {[

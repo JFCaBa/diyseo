@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { generateArticleForSite } from "@/lib/generate-article";
+import { isQuotaError } from "@/lib/quota";
 
 type RouteContext = {
   params: Promise<{ siteId: string }>;
@@ -22,6 +23,10 @@ export async function POST(request: Request, context: RouteContext) {
         },
         { status: 400 }
       );
+    }
+
+    if (isQuotaError(error)) {
+      return NextResponse.json({ error: error.message }, { status: 402 });
     }
 
     const message = error instanceof Error ? error.message : "Article generation failed.";

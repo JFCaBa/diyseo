@@ -69,11 +69,7 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold text-ink">Contact</h2>
             <p className="text-base leading-8 text-slate-600">
               Questions about these terms can be sent to:
-              <span className="font-semibold text-ink"> legal@yourdomain.com</span>
-            </p>
-            <p className="text-base leading-8 text-slate-600">
-              This is a placeholder contact address and should be replaced with a real legal or support email before
-              production use.
+              <span className="font-semibold text-ink"> info@diyseo.online</span>
             </p>
           </section>
         </div>

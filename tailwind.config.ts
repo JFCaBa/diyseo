@@ -19,7 +19,9 @@ const config: Config = {
         panel: "0 18px 45px -24px rgba(15, 23, 42, 0.3)"
       },
       fontFamily: {
-        sans: ["Avenir Next", "ui-sans-serif", "system-ui", "sans-serif"]
+        sans: ["Avenir Next", "ui-sans-serif", "system-ui", "sans-serif"],
+        body: ["var(--font-landing-body)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-landing-display)", "ui-sans-serif", "system-ui", "sans-serif"]
       }
     }
   },

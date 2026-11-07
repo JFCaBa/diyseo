@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isPlanId, type PlanId } from "@/lib/plans";
 import { SEARCH_COUNTRY_OPTIONS, SEARCH_LANGUAGE_OPTIONS } from "@/lib/search-locale";
 import { TRANSLATION_LANGUAGE_OPTIONS } from "@/lib/translations";
 
@@ -360,3 +361,26 @@ export type CreateArticleInput = z.infer<typeof CreateArticleSchema>;
 export type GenerateArticleTranslationInput = z.infer<typeof GenerateArticleTranslationSchema>;
 export type GeneratedArticleTranslationInput = z.infer<typeof GeneratedArticleTranslationSchema>;
 export type PublishArticleApiPayloadInput = z.infer<typeof PublishArticleApiPayloadSchema>;
+
+const waitlistEmailSchema = z.string().trim().toLowerCase().max(254).email();
+
+export type WaitlistSubmission =
+  | { kind: "bot" }
+  | { kind: "invalid" }
+  | { kind: "ok"; email: string; plan: PlanId | null };
+
+export function parseWaitlistForm(formData: FormData): WaitlistSubmission {
+  if (formData.get("website")) {
+    return { kind: "bot" };
+  }
+
+  const email = waitlistEmailSchema.safeParse(formData.get("email"));
+
+  if (!email.success) {
+    return { kind: "invalid" };
+  }
+
+  const plan = formData.get("plan");
+
+  return { kind: "ok", email: email.data, plan: isPlanId(plan) ? plan : null };
+}

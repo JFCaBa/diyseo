@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { generateArticleForSite } from "@/lib/generate-article";
+import { denyUnlessSiteOwner } from "@/lib/site-access";
 
 type RouteContext = {
   params: Promise<{ siteId: string }>;
@@ -10,6 +11,12 @@ type RouteContext = {
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { siteId } = await context.params;
+    const denied = await denyUnlessSiteOwner(siteId);
+
+    if (denied) {
+      return denied;
+    }
+
     const body = await request.json().catch(() => ({}));
     const result = await generateArticleForSite(siteId, body);
 

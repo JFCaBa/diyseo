@@ -10,11 +10,14 @@ const authConfig = {
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       allowDangerousEmailAccountLinking: true,
+      // Sign-in asks only for name and email, which Google does not treat as
+      // sensitive. Search Console access is requested later, from Analytics,
+      // and include_granted_scopes brings it back on every later sign-in.
       authorization: {
         params: {
-          scope: "openid email profile https://www.googleapis.com/auth/webmasters.readonly",
+          scope: "openid email profile",
           access_type: "offline",
-          prompt: "consent"
+          include_granted_scopes: "true"
         }
       }
     })

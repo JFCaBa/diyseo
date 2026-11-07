@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 
 import authConfig from "@/auth.config";
+import { accountTokenUpdate } from "@/lib/google-account";
 import { prisma } from "@/lib/prisma";
 import { isListedEmail, planForNewWorkspace, trialEndForPlan } from "@/lib/access";
 
@@ -75,7 +76,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     // An email added to ALLOWED_EMAILS later gets the free plan on its next
     // sign-in. Paying workspaces are left alone: they cancel in the portal.
-    async signIn({ user }) {
+    async signIn({ user, account }) {
+      // Auth.js keeps the tokens from the first link; store each new grant.
+      if (account?.provider === "google" && account.providerAccountId) {
+        try {
+          const where = { provider_providerAccountId: { provider: "google", providerAccountId: account.providerAccountId } };
+          const stored = await prisma.account.findUnique({ where, select: { scope: true } });
+          const update = stored ? accountTokenUpdate(account, stored.scope) : null;
+
+          if (update) {
+            await prisma.account.update({ where, data: update });
+          }
+        } catch (error) {
+          // Never block sign-in over this; Search Console asks to reconnect instead.
+          console.error("google_token_update_failed", { code: (error as { code?: string }).code ?? "unknown" });
+        }
+      }
+
       if (user.id && isListedEmail(user.email)) {
         await prisma.workspace.updateMany({
           where: { ownerId: user.id, plan: { in: ["TRIAL", "NONE"] } },

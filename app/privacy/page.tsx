@@ -81,11 +81,7 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-semibold text-ink">Access, deletion, and contact</h2>
             <p className="text-base leading-8 text-slate-600">
               You can request account or workspace deletion, or ask questions about privacy, by contacting:
-              <span className="font-semibold text-ink"> privacy@yourdomain.com</span>
-            </p>
-            <p className="text-base leading-8 text-slate-600">
-              This is a placeholder contact address and should be replaced with a real support or privacy email before
-              production use.
+              <span className="font-semibold text-ink"> info@diyseo.online</span>
             </p>
           </section>
         </div>

@@ -41,6 +41,7 @@ import {
   RevokePublishingApiKeySchema,
   parseWaitlistForm
 } from "@/lib/validations";
+import { newTrialEndsAt } from "@/lib/entitlements";
 
 export type ActionState = {
   error?: string;
@@ -149,6 +150,7 @@ async function getWorkspaceId() {
 
   const workspace = await prisma.workspace.create({
     data: {
+      trialEndsAt: newTrialEndsAt(new Date()),
       ownerId: session.user.id,
       name: session.user.name?.trim() ? `${session.user.name.trim()}'s Workspace` : "My Workspace"
     }
@@ -168,6 +170,7 @@ async function getOrCreateWorkspaceIdForUser(userId: string, userName?: string |
 
   const workspace = await prisma.workspace.create({
     data: {
+      trialEndsAt: newTrialEndsAt(new Date()),
       ownerId: userId,
       name: userName?.trim() ? `${userName.trim()}'s Workspace` : "My Workspace"
     }

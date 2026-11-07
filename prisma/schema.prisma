@@ -11,11 +11,33 @@ model Workspace {
   id        String        @id @default(cuid())
   ownerId   String        @unique
   name      String        @default("My Workspace")
+  // Billing. `plan` is a projection of Stripe (see lib/billing.ts); COMP is never billed.
+  plan                     String    @default("TRIAL")
+  trialEndsAt              DateTime?
+  stripeCustomerId         String?   @unique
+  subscriptionStatus       String?
+  planSyncedAt             DateTime?
+  pendingCheckoutSessionId String?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
   owner     User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   sites     SiteProject[]
+  aiUsage   AiUsage[]
+}
+
+// One row per AI article generation or translation; quotas count these per month.
+model AiUsage {
+  id            String    @id @default(cuid())
+  workspaceId   String
+  siteProjectId String?
+  kind          String
+  status        String    @default("PENDING")
+  createdAt     DateTime  @default(now())
+
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
 }
 
 model User {

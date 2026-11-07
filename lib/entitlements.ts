@@ -5,6 +5,13 @@ export type WorkspacePlan = "TRIAL" | "STARTER" | "PRO" | "AGENCY" | "COMP" | "N
 
 export type BillingInterval = "monthly" | "annual";
 
+export const TRIAL_DAYS = 7;
+
+/** Every new workspace gets the same trial; existing ones were migrated to COMP. */
+export function newTrialEndsAt(now: Date): Date {
+  return new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+}
+
 const PAID: Record<PlanId, WorkspacePlan> = { starter: "STARTER", pro: "PRO", agency: "AGENCY" };
 const NO_ACCESS: PlanLimits = { sites: 0, articlesPerMonth: 0, translations: false };
 

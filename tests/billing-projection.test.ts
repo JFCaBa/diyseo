@@ -56,3 +56,28 @@ test("automatic tax switch and Checkout params", () => {
   });
   assert.deepEqual((checkoutTaxParams(true, true) as { customer_update?: unknown }).customer_update, { address: "auto", name: "auto" });
 });
+
+test("checkout return: only a completed session of this customer syncs", async () => {
+  const { checkoutReturnOutcome } = await import("../lib/billing-rules");
+  assert.equal(checkoutReturnOutcome({ status: "complete", customerId: "cus_1" }, "cus_1"), "sync");
+  assert.equal(checkoutReturnOutcome({ status: "open", customerId: "cus_1" }, "cus_1"), "incomplete");
+  assert.equal(checkoutReturnOutcome({ status: "expired", customerId: "cus_1" }, "cus_1"), "incomplete");
+  assert.equal(checkoutReturnOutcome({ status: "complete", customerId: "cus_2" }, "cus_1"), "mismatch");
+  assert.equal(checkoutReturnOutcome(null, "cus_1"), "mismatch");
+  assert.equal(checkoutReturnOutcome({ status: "complete", customerId: "cus_1" }, null), "mismatch");
+});
+
+test("checkout expiry is 60-90 minutes ahead and fixed within a 30-minute bucket", async () => {
+  const { checkoutWindow } = await import("../lib/billing-rules");
+  for (const now of [1_800_000_000, 1_800_000_001, 1_800_001_799, 1_800_000_900]) {
+    const { bucket, expiresAt } = checkoutWindow(now);
+    assert.ok(expiresAt - now >= 3600 && expiresAt - now <= 5400, `now=${now}`);
+    assert.equal(checkoutWindow(bucket).expiresAt, expiresAt);
+  }
+});
+
+test("a price without lookup key still maps through its product id", () => {
+  const subs = [{ status: "active", lookupKey: null, productId: "diyseo_pro" }];
+  assert.equal(projectPlan({ current: "TRIAL", trialEndsAt: null, subs }, now).plan, "PRO");
+  assert.equal(projectPlan({ current: "TRIAL", trialEndsAt: null, subs: [{ status: "active", lookupKey: null, productId: "prod_other" }] }, now).plan, "NONE");
+});

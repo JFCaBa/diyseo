@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { syncWorkspaceFromStripe } from "@/lib/billing";
+import { checkoutReturnOutcome } from "@/lib/billing-rules";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 
@@ -31,15 +32,20 @@ export async function GET(request: Request) {
   }
 
   const checkout = await getStripe().checkout.sessions.retrieve(sessionId).catch(() => null);
-  const customerId = typeof checkout?.customer === "string" ? checkout.customer : checkout?.customer?.id;
+  const customerId = typeof checkout?.customer === "string" ? checkout.customer : (checkout?.customer?.id ?? null);
+  const outcome = checkoutReturnOutcome(checkout ? { status: checkout.status, customerId } : null, workspace.stripeCustomerId);
 
-  // Only the buyer's own session may trigger a sync for this workspace.
-  if (!checkout || customerId !== workspace.stripeCustomerId) {
-    return back("error=checkout_mismatch");
+  // Only the buyer's own, completed session may trigger a sync.
+  if (outcome !== "sync") {
+    return back(outcome === "incomplete" ? "error=checkout_incomplete" : "error=checkout_mismatch");
   }
 
   await syncWorkspaceFromStripe(workspace.stripeCustomerId);
-  await prisma.workspace.update({ where: { id: workspace.id }, data: { pendingCheckoutSessionId: null } });
+  // Conditional: an old session must not clear the reference to a newer one.
+  await prisma.workspace.updateMany({
+    where: { id: workspace.id, pendingCheckoutSessionId: sessionId },
+    data: { pendingCheckoutSessionId: null }
+  });
 
   return back("checkout=success");
 }

@@ -84,3 +84,20 @@ test("an expired trial cannot add sites", { skip }, async () => {
   await workspace("w_expired", "TRIAL", new Date(Date.now() - 1000));
   await assert.rejects(q.withSiteSlot("w_expired", async () => null), /trial has ended/);
 });
+
+test("committing an expired reservation re-checks the quota", { skip }, async () => {
+  await workspace("w_late", "STARTER");
+  await fill("w_late", 11);
+  const old = await prisma.aiUsage.create({
+    data: { workspaceId: "w_late", siteProjectId: "s_w_late", kind: "ARTICLE", createdAt: new Date(Date.now() - 20 * 60 * 1000) }
+  });
+  // The expired reservation no longer counts, so this one takes the 12th credit.
+  await q.reserveArticleCredit({ workspaceId: "w_late", siteProjectId: "s_w_late", kind: "ARTICLE" });
+  await assert.rejects(prisma.$transaction((tx) => q.commitArticleCredit(tx, old.id)), q.QuotaError);
+});
+
+test("committing a fresh reservation succeeds", { skip }, async () => {
+  const id = await q.reserveArticleCredit({ workspaceId: "w_comp", siteProjectId: "s_w_comp", kind: "ARTICLE" });
+  await prisma.$transaction((tx) => q.commitArticleCredit(tx, id));
+  assert.equal((await prisma.aiUsage.findUniqueOrThrow({ where: { id } })).status, "COMMITTED");
+});

@@ -36,7 +36,7 @@ export async function lockWorkspace(tx: Tx, workspaceId: string) {
   await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${workspaceId}))::text`;
 }
 
-async function limitsInTx(tx: Tx, workspaceId: string, now: Date) {
+async function limitsInTx(tx: Tx | typeof prisma, workspaceId: string, now: Date) {
   const workspace = await tx.workspace.findUnique({
     where: { id: workspaceId },
     select: { plan: true, trialEndsAt: true }
@@ -108,7 +108,26 @@ export async function reserveArticleCredit(
   });
 }
 
-export async function commitArticleCredit(tx: Tx, usageId: string) {
+/**
+ * Confirms a reservation in the transaction that saves the result. A
+ * reservation older than the TTL stopped counting, so its credit may have gone
+ * to someone else: the quota is checked again, under the lock, before keeping it.
+ */
+export async function commitArticleCredit(tx: Tx, usageId: string, now: Date = new Date()) {
+  const usage = await tx.aiUsage.findUniqueOrThrow({
+    where: { id: usageId },
+    select: { workspaceId: true, kind: true, status: true, createdAt: true }
+  });
+
+  if (!countsTowardQuota(usage, now)) {
+    await lockWorkspace(tx, usage.workspaceId);
+    const { plan, limits } = await limitsInTx(tx, usage.workspaceId, now);
+
+    if (limits && (await tx.aiUsage.count({ where: articleWhere(usage.workspaceId, now) })) >= limits.articlesPerMonth) {
+      throw new QuotaError(noCreditMessage(plan, limits.articlesPerMonth));
+    }
+  }
+
   await tx.aiUsage.update({ where: { id: usageId }, data: { status: "COMMITTED" } });
 }
 
@@ -126,13 +145,11 @@ export async function releaseArticleCredit(usageId: string) {
  * left skips the keyword-suggestion call too, which also costs AI tokens.
  */
 export async function assertHasArticleCredit(workspaceId: string, now: Date = new Date()) {
-  await prisma.$transaction(async (tx) => {
-    const { plan, limits } = await limitsInTx(tx, workspaceId, now);
+  const { plan, limits } = await limitsInTx(prisma, workspaceId, now);
 
-    if (limits && (await tx.aiUsage.count({ where: articleWhere(workspaceId, now) })) >= limits.articlesPerMonth) {
-      throw new QuotaError(noCreditMessage(plan, limits.articlesPerMonth));
-    }
-  });
+  if (limits && (await prisma.aiUsage.count({ where: articleWhere(workspaceId, now) })) >= limits.articlesPerMonth) {
+    throw new QuotaError(noCreditMessage(plan, limits.articlesPerMonth));
+  }
 }
 
 /**

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { getAppOrigin } from "@/lib/app-origin";
 import { auth } from "@/lib/auth";
-import { automaticTaxEnabled, checkoutTaxParams } from "@/lib/billing-rules";
+import { automaticTaxEnabled, checkoutTaxParams, checkoutWindow } from "@/lib/billing-rules";
 import { lookupKey, type BillingInterval } from "@/lib/entitlements";
 import { isPlanId } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
@@ -12,7 +12,6 @@ import { lockWorkspace } from "@/lib/quota";
 import { getStripe } from "@/lib/stripe";
 
 const LIVE = new Set(["active", "trialing", "past_due"]);
-const HALF_HOUR_S = 30 * 60;
 
 /** Billing is managed only by the workspace owner, resolved from the session. */
 async function requireOwnerWorkspace() {
@@ -76,7 +75,7 @@ export async function startCheckout(formData: FormData) {
   }
 
   const origin = getAppOrigin();
-  const url = await prisma.$transaction(
+  const result: { url: string } | { portalFor: string } = await prisma.$transaction(
     async (tx) => {
       await lockWorkspace(tx, workspace.id);
       const current = await tx.workspace.findUniqueOrThrow({
@@ -99,17 +98,28 @@ export async function startCheckout(formData: FormData) {
         await tx.workspace.update({ where: { id: workspace.id }, data: { stripeCustomerId: customerId } });
       }
 
+      // Checked again under the lock: another tab may have just finished paying.
+      if (current.stripeCustomerId && (await hasLiveSubscription(current.stripeCustomerId))) {
+        return { portalFor: current.stripeCustomerId };
+      }
+
       if (current.pendingCheckoutSessionId) {
         const pending = await stripe.checkout.sessions.retrieve(current.pendingCheckoutSessionId).catch(() => null);
 
         if (pending?.status === "open" && pending.metadata?.priceId === price.id && pending.url) {
-          return pending.url;
+          return { url: pending.url };
+        }
+
+        // An open session for another plan stays payable; close it so only one
+        // Checkout can ever turn into a subscription.
+        if (pending?.status === "open") {
+          await stripe.checkout.sessions.expire(pending.id);
         }
       }
 
       // Same 30-minute bucket → same key and same params, so a retried request
       // returns the session Stripe already created instead of a second one.
-      const bucket = Math.floor(Date.now() / 1000 / HALF_HOUR_S) * HALF_HOUR_S;
+      const { bucket, expiresAt } = checkoutWindow(Math.floor(Date.now() / 1000));
       const session = await stripe.checkout.sessions.create(
         {
           mode: "subscription",
@@ -120,7 +130,7 @@ export async function startCheckout(formData: FormData) {
           subscription_data: { metadata: { workspaceId: workspace.id } },
           success_url: `${origin}/billing/return?session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${origin}/billing`,
-          expires_at: bucket + 2 * HALF_HOUR_S,
+          expires_at: expiresAt,
           ...checkoutTaxParams(automaticTaxEnabled(), true)
         },
         { idempotencyKey: `checkout:${workspace.id}:${price.id}:${bucket}` }
@@ -132,12 +142,16 @@ export async function startCheckout(formData: FormData) {
         throw new Error("Stripe returned a Checkout Session without a URL.");
       }
 
-      return session.url;
+      return { url: session.url };
     },
     { timeout: 20_000, maxWait: 10_000 }
   );
 
-  redirect(url);
+  if ("portalFor" in result && result.portalFor) {
+    redirect(await portalUrl(result.portalFor));
+  }
+
+  redirect((result as { url: string }).url);
 }
 
 export async function openBillingPortal() {

@@ -24,7 +24,8 @@ const MESSAGES: Record<string, { tone: "ok" | "error"; text: string }> = {
   "error=invalid_plan": { tone: "error", text: "That plan is not available." },
   "error=price_missing": { tone: "error", text: "That price is not set up yet. Please contact support." },
   "error=checkout_missing": { tone: "error", text: "We could not find that checkout." },
-  "error=checkout_mismatch": { tone: "error", text: "That checkout belongs to a different account." }
+  "error=checkout_mismatch": { tone: "error", text: "That checkout belongs to a different account." },
+  "error=checkout_incomplete": { tone: "error", text: "That checkout was not completed, so nothing was charged." }
 };
 
 type BillingPageProps = { searchParams?: Promise<{ checkout?: string; error?: string }> };

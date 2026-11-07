@@ -1,12 +1,12 @@
 // Billing decisions as pure functions: nothing here imports Stripe or Prisma,
 // so the tests need no keys and no database.
-import { highestPlan, paidPlanFor, planFromLookupKey, type WorkspacePlan } from "@/lib/entitlements";
+import { highestPlan, paidPlanFor, planFromLookupKey, planFromProductId, type WorkspacePlan } from "@/lib/entitlements";
 import type { PlanId } from "@/lib/plans";
 
 /** Statuses that keep a paid plan. past_due keeps it while Stripe retries the card. */
 const LIVE_STATUSES = new Set(["active", "trialing", "past_due"]);
 
-export type SubscriptionSummary = { status: string; lookupKey: string | null };
+export type SubscriptionSummary = { status: string; lookupKey: string | null; productId?: string | null };
 
 /**
  * The single rule for what plan a workspace has, from Stripe's live state:
@@ -19,7 +19,7 @@ export function projectPlan(
   now: Date
 ): { plan: WorkspacePlan; status: string | null; duplicate: boolean } {
   const live = input.subs
-    .map((sub) => ({ status: sub.status, plan: planFromLookupKey(sub.lookupKey) }))
+    .map((sub) => ({ status: sub.status, plan: planFromLookupKey(sub.lookupKey) ?? planFromProductId(sub.productId) }))
     .filter((sub): sub is { status: string; plan: PlanId } => sub.plan !== null && LIVE_STATUSES.has(sub.status));
   const best = highestPlan(live.map((sub) => sub.plan));
   const chosen = best ? live.find((sub) => sub.plan === best)! : null;
@@ -56,3 +56,28 @@ export const checkoutTaxParams = (enabled: boolean, existingCustomer: boolean) =
         ...(existingCustomer ? { customer_update: { address: "auto" as const, name: "auto" as const } } : {})
       }
     : {};
+
+/**
+ * What the Checkout return page may do: sync only for a completed session that
+ * belongs to this workspace's customer.
+ */
+export function checkoutReturnOutcome(
+  checkout: { status: string | null; customerId: string | null } | null,
+  stripeCustomerId: string | null
+): "sync" | "incomplete" | "mismatch" {
+  if (!checkout || !stripeCustomerId || checkout.customerId !== stripeCustomerId) return "mismatch";
+  return checkout.status === "complete" ? "sync" : "incomplete";
+}
+
+const HALF_HOUR_S = 30 * 60;
+
+/**
+ * Checkout Sessions are keyed per 30-minute bucket so a retried request gets
+ * the same session back; the parameters must then be identical, so the expiry
+ * is fixed per bucket. It lands 60-90 minutes ahead: well past Stripe's
+ * 30-minute minimum even with clock skew.
+ */
+export function checkoutWindow(nowSeconds: number): { bucket: number; expiresAt: number } {
+  const bucket = Math.floor(nowSeconds / HALF_HOUR_S) * HALF_HOUR_S;
+  return { bucket, expiresAt: bucket + 3 * HALF_HOUR_S };
+}

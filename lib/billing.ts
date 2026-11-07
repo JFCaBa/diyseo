@@ -4,17 +4,23 @@ import { prisma } from "@/lib/prisma";
 import { lockWorkspace } from "@/lib/quota";
 import { getStripe } from "@/lib/stripe";
 
-type Summary = { status: string; lookupKey: string | null };
+type Summary = { status: string; lookupKey: string | null; productId: string | null };
 
 async function listSubscriptionSummaries(customerId: string): Promise<Summary[]> {
   // Default status filter: everything except canceled. Ours are never more
   // than a handful per customer, so one page is the whole picture.
   const page = await getStripe().subscriptions.list({ customer: customerId, limit: 100 });
 
-  return page.data.map((sub) => ({
-    status: sub.status,
-    lookupKey: sub.items.data.map((item) => item.price.lookup_key).find((key) => key?.startsWith("diyseo_")) ?? null
-  }));
+  return page.data.map((sub) => {
+    const prices = sub.items.data.map((item) => item.price);
+    const product = prices.map((price) => (typeof price.product === "string" ? price.product : price.product.id)).find((id) => id.startsWith("diyseo_"));
+
+    return {
+      status: sub.status,
+      lookupKey: prices.map((price) => price.lookup_key).find((key) => key?.startsWith("diyseo_")) ?? null,
+      productId: product ?? null
+    };
+  });
 }
 
 /**

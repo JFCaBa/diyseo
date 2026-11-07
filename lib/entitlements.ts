@@ -61,6 +61,12 @@ export function planFromLookupKey(key: string | null | undefined): PlanId | null
   return match ? (match[1] as PlanId) : null;
 }
 
+/** Fallback when a price has no lookup key: products have fixed ids in sandbox and live. */
+export function planFromProductId(id: string | null | undefined): PlanId | null {
+  const match = /^diyseo_(starter|pro|agency)$/.exec(id ?? "");
+  return match ? (match[1] as PlanId) : null;
+}
+
 const RANK: PlanId[] = ["starter", "pro", "agency"];
 
 export function highestPlan(plans: PlanId[]): PlanId | null {

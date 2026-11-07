@@ -1,5 +1,11 @@
 export type PlanId = "starter" | "pro" | "agency";
 
+export type PlanLimits = {
+  sites: number;
+  articlesPerMonth: number;
+  translations: boolean;
+};
+
 export type Plan = {
   id: PlanId;
   name: string;
@@ -8,11 +14,13 @@ export type Plan = {
   annualMonthlyPrice: number;
   featured: boolean;
   features: string[];
+  limits: PlanLimits;
 };
 
 export const PLANS: readonly Plan[] = [
   {
     id: "starter",
+    limits: { sites: 1, articlesPerMonth: 12, translations: false },
     name: "Starter",
     tagline: "One website that's ready to grow.",
     monthlyPrice: 29,
@@ -29,6 +37,7 @@ export const PLANS: readonly Plan[] = [
   },
   {
     id: "pro",
+    limits: { sites: 3, articlesPerMonth: 40, translations: true },
     name: "Pro",
     tagline: "A small business that wants the full loop.",
     monthlyPrice: 79,
@@ -46,6 +55,7 @@ export const PLANS: readonly Plan[] = [
   },
   {
     id: "agency",
+    limits: { sites: 10, articlesPerMonth: 150, translations: true },
     name: "Agency",
     tagline: "Client websites in one dashboard.",
     monthlyPrice: 199,

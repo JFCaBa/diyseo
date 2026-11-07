@@ -196,3 +196,11 @@ enum KeywordStatus {
   NEW
   USED
 }
+
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  plan      String?
+  consentAt DateTime @default(now())
+  createdAt DateTime @default(now())
+}

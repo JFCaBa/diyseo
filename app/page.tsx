@@ -1,75 +1,79 @@
+import type { Metadata } from "next";
+import { Inter, Space_Grotesk } from "next/font/google";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { SignInButton, SignOutButton } from "@/components/auth-buttons";
+import { SignInButton } from "@/components/auth-buttons";
+import { Pricing } from "@/components/landing/pricing";
+import { WaitlistForm } from "@/components/landing/waitlist-form";
 import { auth } from "@/lib/auth";
+import { isPlanId } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
 
-const capabilities = [
+const inter = Inter({ subsets: ["latin"], variable: "--font-landing-body" });
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-landing-display" });
+
+export const metadata: Metadata = {
+  title: "DIYSEO: que te encuentren en Google, en la IA y en los anuncios",
+  description:
+    "DIYSEO detecta qué búsquedas estás perdiendo, publica el contenido que falta en tu web y convierte lo que funciona en campañas."
+};
+
+const weekExample = [
+  { source: "Google", text: "Sales en la segunda página para «reformar cocina precio»" },
+  { source: "Respuestas de IA", text: "ChatGPT cita a tu competidor y no a ti en 3 preguntas" },
+  { source: "Contenido", text: "Artículo redactado con tu tono, listo para revisar" },
+  { source: "Anuncios", text: "Campaña en borrador, en pausa hasta que tú la apruebes" }
+];
+
+const cycle = [
+  { title: "1. Mide", body: "Search Console, Bing, velocidad y rastreo de tu web, y lo que responden las IA sobre tu marca." },
+  { title: "2. Decide", body: "Oportunidades, páginas en caída y competidores que aparecen donde tú no." },
+  { title: "3. Publica", body: "Artículos con tu tono y en tu dominio, en WordPress o con un widget." },
+  { title: "4. Acelera", body: "Lo que funciona pasa a Meta y Google Ads, con landing incluida y sin gastar nada hasta que apruebes." }
+];
+
+const modules = [
   {
-    title: "Brand-aware generation",
-    description: "Use Brand DNA to generate a first draft that already matches tone, audience, and topic direction."
+    status: "Disponible",
+    live: true,
+    title: "Blog con IA",
+    body: "Artículos con tu tono de marca, publicación automática, traducciones, WordPress y publicación en tu dominio."
   },
   {
-    title: "Draft to publish workflow",
-    description: "Edit, review, assign keywords, and publish articles through the same lightweight admin flow."
+    status: "Acceso anticipado",
+    live: false,
+    title: "Datos SEO",
+    body: "Search Console, Bing, PageSpeed y rastreo de tu web, con oportunidades y contenido en caída."
   },
   {
-    title: "Open public delivery",
-    description: "Keep your public blog, public API, RSS, sitemap, and widget available without extra integration work."
+    status: "Acceso anticipado",
+    live: false,
+    title: "Visibilidad en IA",
+    body: "Qué responden ChatGPT y Gemini a las preguntas de tus clientes, y a quién citan."
   },
   {
-    title: "Embed anywhere",
-    description: "Drop the widget into an existing site and render published content without changing your architecture."
-  },
-  {
-    title: "Self-hosted control",
-    description: "Run the app on your own stack with your own database, routes, and deployment setup."
-  },
-  {
-    title: "Google sign-in to workspace",
-    description: "Log in, land in your workspace, and go straight into the first-use onboarding path."
+    status: "Acceso anticipado",
+    live: false,
+    title: "Anuncios",
+    body: "Campañas de Meta y Google con textos, imágenes y landing. Siempre en pausa hasta que apruebes."
   }
 ];
 
-const steps = [
-  {
-    number: "01",
-    title: "Connect your site",
-    description: "Create your workspace and start with a site that will power the blog, API, and widget."
-  },
-  {
-    number: "02",
-    title: "Generate article",
-    description: "Use AI plus Brand DNA to turn an idea into a draft quickly."
-  },
-  {
-    number: "03",
-    title: "Publish it",
-    description: "Push one article live so your public blog has real content immediately."
-  },
-  {
-    number: "04",
-    title: "Embed widget",
-    description: "Drop one snippet into your site and render the live blog anywhere."
-  }
-];
-
-const proofPoints = [
-  "API-first",
-  "Widget-ready",
-  "Self-hostable"
-];
+const heading = "font-display text-4xl font-bold leading-tight tracking-tight";
+const wrap = "mx-auto max-w-[1180px] px-6";
 
 type HomePageProps = {
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<{ error?: string; plan?: string }>;
 };
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const session = await auth();
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const plan = isPlanId(resolvedSearchParams?.plan) ? resolvedSearchParams.plan : null;
 
-  if (session?.user?.id) {
+  // A plan link is an explicit request for this page, so it wins over the jump to the workspace.
+  if (session?.user?.id && !plan) {
     const workspace = await prisma.workspace.findUnique({
       where: { ownerId: session.user.id },
       select: {
@@ -83,222 +87,151 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     redirect(workspace?.sites[0]?.id ? `/${workspace.sites[0].id}` : "/settings");
   }
 
-  const startHref = "/settings";
-
   return (
-    <main className="min-h-screen">
-      <section className="mx-auto max-w-5xl px-6 pb-20 pt-6">
-        <header className="flex items-center justify-between gap-4">
-          <Link href="/" className="text-sm font-semibold uppercase tracking-[0.28em] text-accent">
-            DIYSEO
-          </Link>
-          <nav className="flex items-center gap-3">
-            {session?.user ? (
-              <Link
-                href={startHref}
-                className="inline-flex items-center justify-center rounded-2xl border border-line bg-white/80 px-4 py-2 text-sm font-semibold text-ink transition hover:bg-white"
-              >
-                Open workspace
-              </Link>
-            ) : (
-              <SignInButton
-                className="inline-flex items-center justify-center rounded-2xl border border-line bg-white/80 px-4 py-2 text-sm font-semibold text-ink transition hover:bg-white"
-                label="Sign in with Google"
-              />
-            )}
-            {session?.user ? <SignOutButton /> : null}
-          </nav>
-        </header>
-
-        {resolvedSearchParams?.error === "access_limited" ? (
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Access is currently limited. Contact us for access.
-          </div>
-        ) : null}
-
-        <section className="flex justify-center pb-20 pt-12 lg:min-h-[68vh] lg:items-center">
-          <div className="max-w-3xl space-y-7">
-            <div className="space-y-4">
-              <p className="text-sm font-semibold text-accent">Self-hosted SEO workflow</p>
-              <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-ink sm:text-6xl">
-                Launch an AI blog on any website
-              </h1>
-              <p className="max-w-2xl text-lg leading-8 text-slate-600">
-                Generate SEO articles, publish them, and embed a live blog with one snippet.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-4">
-              {session?.user ? (
-                <Link
-                  href={startHref}
-                  className="inline-flex items-center justify-center rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-                >
-                  Open workspace
-                </Link>
-              ) : (
-                <SignInButton label="Sign in with Google" />
-              )}
-              <Link
-                href="#how-it-works"
-                className="inline-flex items-center justify-center rounded-2xl border border-line bg-white/80 px-5 py-3 text-sm font-semibold text-ink transition hover:bg-white"
-              >
-                See how it works
-              </Link>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {proofPoints.map((item) => (
-                <span key={item} className="rounded-full border border-line bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600">
-                  {item}
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="how-it-works" className="border-t border-line py-20 scroll-mt-24">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">How It Works</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">A simple path from content to distribution</h2>
-            <p className="mt-4 text-base leading-8 text-slate-600">
-              DIYSEO combines article generation, publishing, and a public blog widget in one product flow that is easy
-              to understand quickly.
-            </p>
-          </div>
-          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {steps.map((step) => (
-              <div key={step.number} className="rounded-3xl border border-line bg-white/85 p-6 shadow-panel">
-                <p className="text-sm font-semibold text-accent">{step.number}</p>
-                <h3 className="mt-3 text-lg font-semibold text-ink">{step.title}</h3>
-                <p className="mt-2 text-sm leading-7 text-slate-600">{step.description}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="border-t border-line py-20">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Capabilities</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">Built for a practical content workflow</h2>
-            <p className="mt-4 text-base leading-8 text-slate-600">
-              Everything here is based on what the product already does today. The message is tighter, but the promise
-              stays honest.
-            </p>
-          </div>
-          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {capabilities.map((capability) => (
-              <div key={capability.title} className="rounded-3xl border border-line bg-white/85 p-6 shadow-panel">
-                <h3 className="text-lg font-semibold text-ink">{capability.title}</h3>
-                <p className="mt-2 text-sm leading-7 text-slate-600">{capability.description}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="border-t border-line py-20">
-          <div className="grid gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Why It Feels Credible</p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">No abstract funnel. Just a working loop.</h2>
-              <p className="mt-4 max-w-xl text-base leading-8 text-slate-600">
-                The homepage now points to the same progression users take inside the product, so the marketing message
-                does not drift away from the actual onboarding experience.
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] border border-line bg-white/85 p-6 shadow-panel">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-2xl border border-line px-4 py-4">
-                  <p className="text-sm text-slate-500">Input</p>
-                  <p className="mt-2 font-semibold text-ink">Brand DNA + article generation</p>
-                </div>
-                <div className="rounded-2xl border border-line px-4 py-4">
-                  <p className="text-sm text-slate-500">Output</p>
-                  <p className="mt-2 font-semibold text-ink">Public article + widget-ready content</p>
-                </div>
-                <div className="rounded-2xl border border-line px-4 py-4">
-                  <p className="text-sm text-slate-500">Access</p>
-                  <p className="mt-2 font-semibold text-ink">Google sign-in and owned workspace</p>
-                </div>
-                <div className="rounded-2xl border border-line px-4 py-4">
-                  <p className="text-sm text-slate-500">Delivery</p>
-                  <p className="mt-2 font-semibold text-ink">Blog, API, feeds, sitemap, and embed</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="border-t border-line py-20">
-          <div className="rounded-[2rem] border border-line bg-ink px-8 py-10 text-white shadow-panel">
-            <div className="max-w-3xl space-y-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-teal-300">Start</p>
-              <h2 className="text-4xl font-semibold tracking-tight">Launch an AI blog without rebuilding your site</h2>
-              <p className="max-w-2xl text-base leading-8 text-slate-300">
-                Sign in with Google, generate your first article, publish it, and embed the live blog when you are ready.
-              </p>
-            </div>
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              {session?.user ? (
-                <Link
-                  href={startHref}
-                  className="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:bg-slate-100"
-                >
-                  Open workspace
-                </Link>
-              ) : (
-                <SignInButton
-                  className="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:bg-slate-100"
-                  label="Sign in with Google"
-                />
-              )}
-              <Link
-                href="#how-it-works"
-                className="inline-flex items-center justify-center rounded-2xl border border-slate-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-900"
-              >
-                See how it works
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        <footer className="flex flex-col gap-5 border-t border-line py-10 text-sm text-slate-600 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-wrap items-center gap-4">
-            <a
-              href="https://github.com/JFCaBa/diyseo"
-              target="_blank"
-              rel="noreferrer"
-              className="font-semibold text-ink transition hover:text-accent"
-            >
-              GitHub
-            </a>
-            <span>Self-hosted</span>
-            <span>Open source</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-4">
-            {session?.user ? (
-              <Link href={startHref} className="transition hover:text-ink">
-                Open workspace
-              </Link>
-            ) : (
-              <span>Sign in with Google</span>
-            )}
-            <Link href="#how-it-works" className="transition hover:text-ink">
-              How it works
+    <main lang="es" className={`${inter.variable} ${spaceGrotesk.variable} overflow-x-clip bg-[#fbfaf6] font-body leading-relaxed text-ink`}>
+      <header className={`${wrap} flex items-center justify-between gap-4 py-5`}>
+        <Link href="/" className="font-display text-xl font-bold">
+          DIYSEO
+        </Link>
+        <nav aria-label="Principal" className="flex items-center gap-6 text-[15px] text-slate-700">
+          <a href="#ciclo" className="hidden hover:text-ink md:inline">
+            El ciclo
+          </a>
+          <a href="#modulos" className="hidden hover:text-ink md:inline">
+            Producto
+          </a>
+          <a href="#precios" className="hidden hover:text-ink md:inline">
+            Precios
+          </a>
+          {session?.user ? (
+            <Link href="/settings" className="hover:text-ink">
+              Abrir panel
             </Link>
-            <Link href="/blog" className="transition hover:text-ink">
+          ) : (
+            <SignInButton label="Entrar" className="hover:text-ink" />
+          )}
+          <a href="#acceso" className="rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
+            Pedir acceso
+          </a>
+        </nav>
+      </header>
+
+      {resolvedSearchParams?.error === "access_limited" ? (
+        <div className={wrap}>
+          <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            El acceso está limitado por ahora. Apúntate a la lista y te avisaremos.
+          </p>
+        </div>
+      ) : null}
+
+      <section className={`${wrap} grid items-center gap-9 pb-[88px] pt-14 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14`}>
+        <div>
+          <p className="mb-4 text-[15px] font-semibold text-accent">Para pymes y agencias que venden en español</p>
+          <h1 className="font-display text-[40px] font-bold leading-[1.05] tracking-tight md:text-[60px]">
+            Que te encuentren en Google, en la IA y en los anuncios.
+          </h1>
+          <p className="mt-5 max-w-[560px] text-[19px] text-slate-600">
+            DIYSEO detecta qué búsquedas estás perdiendo, publica el contenido que falta en tu web y convierte lo que
+            funciona en campañas. Todo en un mismo sitio.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <a href="#acceso" className="rounded-lg bg-accent px-5 py-3.5 font-semibold text-white transition hover:bg-teal-800">
+              Pedir acceso
+            </a>
+            <a href="#precios" className="rounded-lg border border-slate-400 px-5 py-3.5 font-semibold transition hover:bg-white">
+              Ver precios
+            </a>
+          </div>
+        </div>
+
+        <div className="rounded-[14px] border border-line bg-white p-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-display text-lg font-semibold">Esta semana en tu web</h2>
+            <span className="text-xs text-slate-600">Ejemplo</span>
+          </div>
+          <div className="mt-3 divide-y divide-[#e8edf1]">
+            {weekExample.map((item) => (
+              <div key={item.source} className="py-3">
+                <p className="text-xs font-semibold text-accent">{item.source}</p>
+                <p className="mt-0.5 text-[15px]">{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="ciclo" className="scroll-mt-4 bg-ink py-20 text-slate-50">
+        <div className={wrap}>
+          <h2 className={`${heading} max-w-[720px]`}>Cada paso alimenta al siguiente.</h2>
+          <p className="mt-4 max-w-[640px] text-lg text-slate-300">
+            Comprar estas piezas por separado supera fácilmente los 300 € al mes, y aun así tendrías que unirlas a mano.
+          </p>
+          <ol className="mt-11 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {cycle.map((step) => (
+              <li key={step.title} className="border-t-2 border-teal-300 pt-4">
+                <p className="font-display text-[22px] font-semibold">{step.title}</p>
+                <p className="mt-2 text-slate-300">{step.body}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section id="modulos" className={`${wrap} scroll-mt-4 py-20`}>
+        <h2 className={heading}>Lo que incluye</h2>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {modules.map((module) => (
+            <article key={module.title} className="flex flex-col gap-2.5 rounded-[14px] border border-line bg-white p-5">
+              <span
+                className={`self-start rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  module.live ? "bg-teal-100 text-teal-800" : "bg-amber-100 text-amber-900"
+                }`}
+              >
+                {module.status}
+              </span>
+              <h3 className="font-display text-xl font-semibold">{module.title}</h3>
+              <p className="text-[15px] text-slate-600">{module.body}</p>
+            </article>
+          ))}
+        </div>
+        <p className="mt-5 text-[15px] text-slate-600">
+          Conecta los datos a Claude, ChatGPT o Codex y pregúntales por tu web con cifras reales.
+        </p>
+      </section>
+
+      <section id="precios" className="scroll-mt-4 bg-[#f1efe8] py-20">
+        <div className={wrap}>
+          <Pricing />
+        </div>
+      </section>
+
+      <section id="acceso" className={`${wrap} relative scroll-mt-4 py-20`}>
+        <div className="max-w-[620px]">
+          <h2 className={heading}>Abrimos plazas poco a poco</h2>
+          <p className="mt-3 text-lg text-slate-600">Déjanos tu email y te avisamos cuando tengas sitio. Sin compromiso.</p>
+          <WaitlistForm key={plan ?? "none"} defaultPlan={plan} />
+        </div>
+      </section>
+
+      <footer className="border-t border-line">
+        <div className={`${wrap} flex flex-wrap justify-between gap-4 py-6 text-sm text-slate-600`}>
+          <span>DIYSEO</span>
+          <nav aria-label="Pie" className="flex flex-wrap gap-5">
+            <Link href="/blog" className="hover:text-ink">
               Blog
             </Link>
-            <Link href="/privacy" className="transition hover:text-ink">
-              Privacy
+            <Link href="/privacy" className="hover:text-ink">
+              Privacidad
             </Link>
-            <Link href="/terms" className="transition hover:text-ink">
-              Terms
+            <Link href="/terms" className="hover:text-ink">
+              Términos
             </Link>
-          </div>
-        </footer>
-      </section>
+            <a href="https://github.com/JFCaBa/diyseo" target="_blank" rel="noreferrer" className="hover:text-ink">
+              GitHub
+            </a>
+          </nav>
+        </div>
+      </footer>
     </main>
   );
 }

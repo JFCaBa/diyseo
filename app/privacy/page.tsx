@@ -39,6 +39,15 @@ export default function PrivacyPage() {
           </section>
 
           <section className="space-y-3">
+            <h2 className="text-xl font-semibold text-ink">Waitlist</h2>
+            <p className="text-base leading-8 text-slate-600">
+              If you join the waitlist, we store your email address, the plan you chose (if any), and the date you
+              signed up. We use them only to tell you when access is available, and you can ask us to delete them at
+              any time using the contact details below.
+            </p>
+          </section>
+
+          <section className="space-y-3">
             <h2 className="text-xl font-semibold text-ink">How we use data</h2>
             <p className="text-base leading-8 text-slate-600">
               We use account data to authenticate you, create and secure your workspace, and provide access to the

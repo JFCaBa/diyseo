@@ -1,5 +1,7 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -9,6 +11,7 @@ import { auth } from "@/lib/auth";
 import { listSearchConsolePropertiesForUser } from "@/lib/google-search-console";
 import { renderMarkdownToHtml } from "@/lib/markdown";
 import { prisma } from "@/lib/prisma";
+import { createFixedWindowLimiter } from "@/lib/rate-limit";
 import { generatePublishingApiKey } from "@/lib/site-publishing-api";
 import { generateArticleTranslation as runArticleTranslation } from "@/lib/translate-article";
 import { parseTranslationLanguagesFromFormData } from "@/lib/translations";
@@ -35,7 +38,8 @@ import {
   UpdateArticleSchema,
   UpdateBrandDNASchema,
   GenerateArticleTranslationSchema,
-  RevokePublishingApiKeySchema
+  RevokePublishingApiKeySchema,
+  parseWaitlistForm
 } from "@/lib/validations";
 
 export type ActionState = {
@@ -1226,4 +1230,54 @@ export async function updateArticleDate(siteId: string, formData: FormData) {
   revalidatePath(`/api/public/sites/${siteId}/articles/${article.slug}`);
 
   redirect(parsed.data.returnTo || fallbackReturnTo);
+}
+
+export type WaitlistState = { status: "idle" | "success" | "error"; message?: string };
+
+const WAITLIST_WINDOW_MS = 60 * 60 * 1000;
+const allowWaitlistRequestFromIp = createFixedWindowLimiter({ limit: 10, windowMs: WAITLIST_WINDOW_MS });
+// IP headers can be forged if the origin is reached directly. This per-process cap limits inserts regardless.
+const allowWaitlistRequest = createFixedWindowLimiter({ limit: 300, windowMs: WAITLIST_WINDOW_MS });
+
+async function getRequestIp() {
+  const requestHeaders = await headers();
+
+  return requestHeaders.get("cf-connecting-ip") ?? requestHeaders.get("x-real-ip") ?? "unknown";
+}
+
+export async function joinWaitlist(_previous: WaitlistState, formData: FormData): Promise<WaitlistState> {
+  const submission = parseWaitlistForm(formData);
+
+  if (submission.kind === "bot") {
+    return { status: "success" };
+  }
+
+  if (submission.kind === "invalid") {
+    return { status: "error", message: "Revisa tu email." };
+  }
+
+  if (!allowWaitlistRequestFromIp(await getRequestIp()) || !allowWaitlistRequest("all")) {
+    return { status: "error", message: "Demasiados intentos. Prueba de nuevo más tarde." };
+  }
+
+  const { email, plan } = submission;
+
+  try {
+    await prisma.waitlistEntry.upsert({
+      where: { email },
+      create: { email, plan },
+      update: plan ? { plan } : {}
+    });
+  } catch (error) {
+    // P2002 is a concurrent signup for the same email. Anything else is logged by code only: Prisma's
+    // messages can quote the query arguments, and those include the email.
+    const code = error instanceof Prisma.PrismaClientKnownRequestError ? error.code : "unknown";
+
+    if (code !== "P2002") {
+      console.error("waitlist_signup_failed", { code });
+      return { status: "error", message: "No hemos podido apuntarte. Inténtalo de nuevo." };
+    }
+  }
+
+  return { status: "success" };
 }

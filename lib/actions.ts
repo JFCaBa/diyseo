@@ -12,6 +12,7 @@ import { listSearchConsolePropertiesForUser } from "@/lib/google-search-console"
 import { renderMarkdownToHtml } from "@/lib/markdown";
 import { prisma } from "@/lib/prisma";
 import { createFixedWindowLimiter } from "@/lib/rate-limit";
+import { commitArticleCredit, isQuotaError, releaseArticleCredit, reserveArticleCredit, withSiteSlot } from "@/lib/quota";
 import { generatePublishingApiKey } from "@/lib/site-publishing-api";
 import { generateArticleTranslation as runArticleTranslation } from "@/lib/translate-article";
 import { parseTranslationLanguagesFromFormData } from "@/lib/translations";
@@ -41,6 +42,7 @@ import {
   RevokePublishingApiKeySchema,
   parseWaitlistForm
 } from "@/lib/validations";
+import { newTrialEndsAt } from "@/lib/entitlements";
 
 export type ActionState = {
   error?: string;
@@ -149,6 +151,7 @@ async function getWorkspaceId() {
 
   const workspace = await prisma.workspace.create({
     data: {
+      trialEndsAt: newTrialEndsAt(new Date()),
       ownerId: session.user.id,
       name: session.user.name?.trim() ? `${session.user.name.trim()}'s Workspace` : "My Workspace"
     }
@@ -168,6 +171,7 @@ async function getOrCreateWorkspaceIdForUser(userId: string, userName?: string |
 
   const workspace = await prisma.workspace.create({
     data: {
+      trialEndsAt: newTrialEndsAt(new Date()),
       ownerId: userId,
       name: userName?.trim() ? `${userName.trim()}'s Workspace` : "My Workspace"
     }
@@ -225,20 +229,30 @@ export async function createSite(
 
   const workspaceId = await getWorkspaceId();
 
-  const site = await prisma.$transaction(async (tx) => {
-    return tx.siteProject.create({
-      data: {
-        workspaceId,
-        name: parsed.data.name,
-        domain: parsed.data.domain,
-        brandProfile: {
-          create: {
-            contentLanguage: parsed.data.contentLanguage
+  let site;
+
+  try {
+    site = await withSiteSlot(workspaceId, (tx) =>
+      tx.siteProject.create({
+        data: {
+          workspaceId,
+          name: parsed.data.name,
+          domain: parsed.data.domain,
+          brandProfile: {
+            create: {
+              contentLanguage: parsed.data.contentLanguage
+            }
           }
         }
-      }
-    });
-  });
+      })
+    );
+  } catch (error) {
+    if (isQuotaError(error)) {
+      return { error: error.message };
+    }
+
+    throw error;
+  }
 
   revalidatePath("/settings");
   revalidatePath("/new-site");
@@ -293,12 +307,22 @@ export async function transferSite(
 
   const targetWorkspaceId = await getOrCreateWorkspaceIdForUser(targetUser.id, targetUser.name);
 
-  await prisma.siteProject.update({
-    where: { id: site.id },
-    data: {
-      workspaceId: targetWorkspaceId
+  try {
+    await withSiteSlot(targetWorkspaceId, (tx) =>
+      tx.siteProject.update({
+        where: { id: site.id },
+        data: {
+          workspaceId: targetWorkspaceId
+        }
+      })
+    );
+  } catch (error) {
+    if (isQuotaError(error)) {
+      return { error: "The other account has no free site slot on its plan." };
     }
-  });
+
+    throw error;
+  }
 
   revalidatePath("/settings");
   revalidatePath(`/${siteId}`);
@@ -1116,6 +1140,7 @@ export async function generateArticleTranslation(
       seoDescription: true,
       siteProject: {
         select: {
+          workspaceId: true,
           translationsEnabled: true,
           translationLanguages: true
         }
@@ -1139,6 +1164,18 @@ export async function generateArticleTranslation(
     return { error: "Resave this article in Markdown before generating translations." };
   }
 
+  let usageId: string;
+
+  try {
+    usageId = await reserveArticleCredit({ workspaceId: article.siteProject.workspaceId, siteProjectId: siteId, kind: "TRANSLATION" });
+  } catch (error) {
+    if (isQuotaError(error)) {
+      return { error: error.message };
+    }
+
+    throw error;
+  }
+
   try {
     const translated = await runArticleTranslation({
       title: article.title,
@@ -1149,29 +1186,32 @@ export async function generateArticleTranslation(
       language: parsed.data.language
     });
 
-    await prisma.articleTranslation.upsert({
-      where: {
-        articleId_language: {
+    await prisma.$transaction(async (tx) => {
+      await commitArticleCredit(tx, usageId);
+      await tx.articleTranslation.upsert({
+        where: {
+          articleId_language: {
+            articleId: article.id,
+            language: parsed.data.language
+          }
+        },
+        update: {
+          title: translated.title,
+          excerpt: translated.excerpt ?? null,
+          contentMarkdown: translated.contentMarkdown,
+          seoTitle: translated.seoTitle,
+          seoDescription: translated.seoDescription
+        },
+        create: {
           articleId: article.id,
-          language: parsed.data.language
+          language: parsed.data.language,
+          title: translated.title,
+          excerpt: translated.excerpt ?? null,
+          contentMarkdown: translated.contentMarkdown,
+          seoTitle: translated.seoTitle,
+          seoDescription: translated.seoDescription
         }
-      },
-      update: {
-        title: translated.title,
-        excerpt: translated.excerpt ?? null,
-        contentMarkdown: translated.contentMarkdown,
-        seoTitle: translated.seoTitle,
-        seoDescription: translated.seoDescription
-      },
-      create: {
-        articleId: article.id,
-        language: parsed.data.language,
-        title: translated.title,
-        excerpt: translated.excerpt ?? null,
-        contentMarkdown: translated.contentMarkdown,
-        seoTitle: translated.seoTitle,
-        seoDescription: translated.seoDescription
-      }
+      });
     });
 
     revalidatePath(`/${siteId}/articles/${articleId}`);
@@ -1181,6 +1221,8 @@ export async function generateArticleTranslation(
 
     return { success: "Translation generated." };
   } catch (error) {
+    await releaseArticleCredit(usageId);
+
     return {
       error: normalizeActionErrorMessage(error, "Article translation failed.")
     };

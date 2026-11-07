@@ -3,6 +3,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 
 import authConfig from "@/auth.config";
 import { prisma } from "@/lib/prisma";
+import { newTrialEndsAt } from "@/lib/entitlements";
 
 async function ensureUserWorkspace(userId: string, userName?: string | null) {
   const existingWorkspace = await prisma.workspace.findUnique({
@@ -38,6 +39,7 @@ async function ensureUserWorkspace(userId: string, userName?: string | null) {
 
   const workspace = await prisma.workspace.create({
     data: {
+      trialEndsAt: newTrialEndsAt(new Date()),
       ownerId: userId,
       name: workspaceName,
       sites: {

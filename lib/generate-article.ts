@@ -1,6 +1,7 @@
 import { createUniqueArticleSlug } from "@/lib/article-slug";
 import { prisma } from "@/lib/prisma";
 import { getAIGenerationService } from "@/lib/ai";
+import { commitArticleCredit, releaseArticleCredit, reserveArticleCredit } from "@/lib/quota";
 import { renderMarkdownToHtml } from "@/lib/markdown";
 import { GenerateArticleRequestSchema } from "@/lib/validations";
 import type { ArticleGenerationSource, ArticleStatus } from "@prisma/client";
@@ -19,6 +20,7 @@ async function getSiteGenerationContext(siteId: string) {
       id: true,
       name: true,
       domain: true,
+      workspaceId: true,
       brandProfile: {
         select: {
           contentLanguage: true,
@@ -96,7 +98,21 @@ type SaveGeneratedArticleInput = {
 
 export async function saveGeneratedArticleForSite(siteId: string, input: SaveGeneratedArticleInput = {}) {
   const site = await getSiteGenerationContext(siteId);
+  const usageId = await reserveArticleCredit({ workspaceId: site.workspaceId, siteProjectId: site.id, kind: "ARTICLE" });
 
+  try {
+    return await writeGeneratedArticle(site, input, usageId);
+  } catch (error) {
+    await releaseArticleCredit(usageId);
+    throw error;
+  }
+}
+
+async function writeGeneratedArticle(
+  site: Awaited<ReturnType<typeof getSiteGenerationContext>>,
+  input: SaveGeneratedArticleInput,
+  usageId: string
+) {
   const generator = getAIGenerationService();
   const generated = await generator.generateArticle({
     keyword: input.keyword,
@@ -111,6 +127,7 @@ export async function saveGeneratedArticleForSite(siteId: string, input: SaveGen
   const generationSource = input.generationSource ?? "MANUAL";
 
   return prisma.$transaction(async (tx) => {
+    await commitArticleCredit(tx, usageId);
     const article = await tx.article.create({
       data: {
         siteProjectId: site.id,

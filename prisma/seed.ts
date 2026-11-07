@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { newTrialEndsAt } from "../lib/entitlements";
 
 const prisma = new PrismaClient();
 
@@ -23,6 +24,7 @@ async function main() {
   if (!workspace) {
     workspace = await prisma.workspace.create({
       data: {
+        trialEndsAt: newTrialEndsAt(new Date()),
         ownerId: user.id,
         name: "Default Workspace"
       }

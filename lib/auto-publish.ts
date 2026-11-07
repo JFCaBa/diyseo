@@ -1,6 +1,7 @@
 import type { ArticleStatus, KeywordStatus } from "@prisma/client";
 
 import { generateKeywordSuggestionsForSite, saveGeneratedArticleForSite } from "@/lib/generate-article";
+import { assertHasArticleCredit } from "@/lib/quota";
 import { generateAndSaveArticleCoverImage } from "@/lib/generate-cover-image";
 import { prisma } from "@/lib/prisma";
 
@@ -93,6 +94,7 @@ export async function generateNextAutoArticleForSite(siteId: string) {
     where: { id: siteId },
     select: {
       id: true,
+      workspaceId: true,
       autoPublishEnabled: true,
       requireReview: true
     }
@@ -101,6 +103,9 @@ export async function generateNextAutoArticleForSite(siteId: string) {
   if (!site) {
     throw new Error("Site not found.");
   }
+
+  // Before the keyword-suggestion call, which also spends AI tokens.
+  await assertHasArticleCredit(site.workspaceId);
 
   let selectedKeyword = await getNewKeywordCandidates(site.id);
 

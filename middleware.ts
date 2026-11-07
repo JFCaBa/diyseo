@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_EXACT = new Set(["/", "/privacy", "/terms"]);
-const PUBLIC_PREFIXES = ["/blog", "/admin", "/api/auth", "/api/public", "/api/internal/cron", "/api/v1"];
+const PUBLIC_PREFIXES = ["/blog", "/admin", "/api/auth", "/api/public", "/api/internal/cron", "/api/v1", "/api/stripe/webhook"];
 // Only the API-key publishing route under /api/internal/sites runs without a session.
 // Every other route there is an admin endpoint and needs one, so a new route is
 // protected by default instead of exposed by default.

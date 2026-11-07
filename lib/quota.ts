@@ -159,3 +159,18 @@ export async function withSiteSlot<T>(workspaceId: string, fn: (tx: Tx) => Promi
     return fn(tx);
   });
 }
+
+/** What the billing page shows: the plan in force, its limits and this month's use. */
+export async function getUsageSummary(workspaceId: string, now: Date = new Date()) {
+  const [workspace, sites, articles] = await Promise.all([
+    prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { plan: true, trialEndsAt: true, stripeCustomerId: true, subscriptionStatus: true }
+    }),
+    prisma.siteProject.count({ where: { workspaceId } }),
+    prisma.aiUsage.count({ where: articleWhere(workspaceId, now) })
+  ]);
+  const plan = effectivePlan(workspace, now);
+
+  return { ...workspace, plan, limits: limitsFor(plan), sites, articles };
+}

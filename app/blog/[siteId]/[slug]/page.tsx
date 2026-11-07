@@ -137,7 +137,7 @@ export default async function PublicArticlePage({ params, searchParams }: Public
           {article.coverImageUrl ? (
             <img
               src={getCoverImageProxyUrl(article.coverImageUrl, urls.imageProxyOrigin || undefined)}
-              alt=""
+              alt={displayTitle}
               referrerPolicy="no-referrer"
               className={cn("h-auto w-full rounded-[1.75rem] border object-cover", theme.imageBorder)}
             />

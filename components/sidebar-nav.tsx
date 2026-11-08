@@ -18,7 +18,8 @@ const blogGroup: NavGroup = {
     { label: "Articles", href: "/articles" },
     { label: "Keywords", href: "/keywords" },
     { label: "Analytics", href: "/analytics" },
-    { label: "API", href: "/api" }
+    { label: "API", href: "/api" },
+    { label: "Settings", href: "/settings" }
   ]
 };
 
@@ -26,8 +27,7 @@ const accountGroup: NavGroup = {
   label: "Account",
   items: [
     { label: "Team", href: "/team" },
-    { label: "Billing", href: "/billing" },
-    { label: "Settings", href: "/settings" }
+    { label: "Billing", href: "/billing" }
   ]
 };
 

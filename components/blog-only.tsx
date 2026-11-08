@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
 /** Sections of the site layout that are not the blog: they get the full height, without the blog header. */
-const NON_BLOG = ["seo-data", "ads", "team", "billing", "settings"];
+const NON_BLOG = ["seo-data", "ads", "team", "billing"];
 
 export function isBlogPath(pathname: string, siteId: string): boolean {
   const section = pathname.slice(`/${siteId}/`.length).split("/")[0];

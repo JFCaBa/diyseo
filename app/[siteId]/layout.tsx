@@ -19,14 +19,6 @@ type SiteLayoutProps = {
   params: Promise<{ siteId: string }>;
 };
 
-function formatDisplayDomain(value: string) {
-  try {
-    return new URL(value).host.replace(/\/$/, "");
-  } catch {
-    return value.replace(/^https?:\/\//, "").replace(/\/$/, "");
-  }
-}
-
 export default async function SiteLayout({ children, params }: SiteLayoutProps) {
   const { siteId } = await params;
   const session = await auth();
@@ -40,7 +32,7 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
   const [currentSite, sites, workspace, membership] = await Promise.all([
     prisma.siteProject.findFirst({
       where: { id: siteId, workspaceId },
-      select: { id: true, name: true, domain: true }
+      select: { id: true, name: true }
     }),
     prisma.siteProject.findMany({
       where: { workspaceId },
@@ -63,20 +55,12 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
 
   const isOwner = membership?.workspaceId === workspaceId && membership.role === "OWNER";
   const satellites = workspace ? satelliteGroups(satelliteGrant(effectivePlan(workspace, new Date())), isOwner) : [];
-  const displayDomain = formatDisplayDomain(currentSite.domain);
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
       <aside className="border-b border-line bg-white p-6 dark:border-slate-800 dark:bg-slate-900 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-b-0 lg:border-r">
         <div className="mb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-accent">DIYSEO</p>
-          <h1 className="mt-2 text-xl font-semibold text-ink dark:text-slate-100">{currentSite.name}</h1>
-          <p
-            title={currentSite.domain}
-            className="mt-1 max-w-full truncate text-sm text-slate-600 dark:text-slate-400"
-          >
-            {displayDomain}
-          </p>
         </div>
         <SidebarNav siteId={siteId} satellites={satellites} />
         <div className="mt-6 border-t border-line pt-6 dark:border-slate-800">

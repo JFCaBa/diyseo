@@ -20,11 +20,11 @@ test("paid, complimentary and unknown plans", () => {
 
 test("limits per plan", () => {
   assert.equal(limitsFor("COMP"), null);
-  assert.deepEqual(limitsFor("NONE"), { sites: 0, articlesPerMonth: 0, translations: false });
+  assert.deepEqual(limitsFor("NONE"), { sites: 0, articlesPerMonth: 0, translations: false, members: 1, aiQuestions: 0, adBusinesses: 0 });
   assert.deepEqual(limitsFor("TRIAL"), limitsFor("PRO"));
-  assert.deepEqual(limitsFor("STARTER"), { sites: 1, articlesPerMonth: 12, translations: false });
-  assert.deepEqual(limitsFor("PRO"), { sites: 3, articlesPerMonth: 40, translations: true });
-  assert.deepEqual(limitsFor("AGENCY"), { sites: 10, articlesPerMonth: 150, translations: true });
+  assert.deepEqual(limitsFor("STARTER"), { sites: 1, articlesPerMonth: 12, translations: false, members: 1, aiQuestions: 15, adBusinesses: 0 });
+  assert.deepEqual(limitsFor("PRO"), { sites: 3, articlesPerMonth: 40, translations: true, members: 3, aiQuestions: 60, adBusinesses: 1 });
+  assert.deepEqual(limitsFor("AGENCY"), { sites: 10, articlesPerMonth: 150, translations: true, members: null, aiQuestions: 200, adBusinesses: 10 });
 });
 
 test("every catalogued plan carries its limits", () => {

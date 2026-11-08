@@ -20,8 +20,9 @@ test("annual price is the monthly price minus 20%", () => {
   }
 });
 
-test("no plan promises unlimited usage", () => {
+test("no plan promises unlimited usage (team seats aside)", () => {
   for (const feature of PLANS.flatMap((plan) => plan.features)) {
+    if (/team members?$/i.test(feature)) continue;
     assert.doesNotMatch(feature, /unlimited/i);
   }
 });

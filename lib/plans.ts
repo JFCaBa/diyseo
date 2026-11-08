@@ -34,9 +34,9 @@ export const PLANS: readonly Plan[] = [
       "1 site",
       "1 team member",
       "12 articles a month",
-      "15 AI questions, checked weekly (coming soon)",
-      "1,000 pages crawled (coming soon)",
-      "Your data in Claude and ChatGPT (coming soon)",
+      "15 AI questions, checked weekly",
+      "1,000 pages crawled a month",
+      "Your data in Claude and ChatGPT",
       "WordPress plugin"
     ]
   },
@@ -52,11 +52,11 @@ export const PLANS: readonly Plan[] = [
       "3 sites",
       "3 team members",
       "40 articles a month",
-      "60 AI questions, checked weekly (coming soon)",
-      "5,000 pages crawled (coming soon)",
-      "Opportunities and content decay (coming soon)",
+      "60 AI questions, checked weekly",
+      "5,000 pages crawled a month",
+      "Opportunities and content decay",
       "Translations and your own domain",
-      "Campaigns on 1 ad account (coming soon)"
+      "Campaigns on 1 ad account"
     ]
   },
   {
@@ -71,10 +71,10 @@ export const PLANS: readonly Plan[] = [
       "10 sites, then £15 per extra site",
       "Unlimited team members",
       "150 articles a month",
-      "200 AI questions, checked weekly (coming soon)",
-      "25,000 pages crawled (coming soon)",
+      "200 AI questions, checked weekly",
+      "25,000 pages crawled a month",
       "Everything in Pro",
-      "Campaigns on 10 ad accounts (coming soon)",
+      "Campaigns on 10 ad accounts",
       "White label (coming soon)"
     ]
   }

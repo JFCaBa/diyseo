@@ -22,14 +22,14 @@ const weekExample = [
   { source: "Google", text: "You rank on page two for “kitchen renovation cost”" },
   { source: "AI answers", text: "ChatGPT cites your competitor instead of you on 3 questions" },
   { source: "Content", text: "Article drafted in your tone, ready to review" },
-  { source: "Ads (coming soon)", text: "Campaign drafted and paused until you approve it" }
+  { source: "Ads", text: "Campaign drafted and paused until you approve it" }
 ];
 
 const cycle = [
   { title: "1. Measure", body: "Search Console, Bing, site speed and crawl data, plus what AI assistants say about your brand." },
   { title: "2. Decide", body: "Opportunities, pages losing traffic, and competitors showing up where you don't." },
   { title: "3. Publish", body: "Articles in your tone on your own domain, through WordPress or a widget." },
-  { title: "4. Accelerate (coming soon)", body: "What works will move to Meta and Google Ads, landing page included, with no spend until you approve." }
+  { title: "4. Accelerate", body: "What works moves to Meta and Google Ads, landing page included, with no spend until you approve." }
 ];
 
 const modules = [
@@ -40,20 +40,20 @@ const modules = [
     body: "Articles in your brand voice, automatic publishing, translations, WordPress and publishing on your domain."
   },
   {
-    status: "Coming soon",
-    live: false,
+    status: "Available",
+    live: true,
     title: "SEO data",
     body: "Search Console, Bing, PageSpeed and site crawls, with opportunities and content decay."
   },
   {
-    status: "Coming soon",
-    live: false,
+    status: "Available",
+    live: true,
     title: "AI visibility",
     body: "What ChatGPT and Gemini tell your customers, and who they cite."
   },
   {
-    status: "Coming soon",
-    live: false,
+    status: "Available",
+    live: true,
     title: "Ads",
     body: "Meta and Google campaigns with copy, images and a landing page. Always paused until you approve."
   }
@@ -122,7 +122,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           </h1>
           <p className="mt-5 max-w-[560px] text-[19px] text-slate-600">
             DIYSEO finds the searches you're missing and publishes the content your website lacks, in your brand voice
-            and on your own domain. Ad campaigns are coming soon.
+            and on your own domain. Then it turns what works into Meta and Google ad campaigns, paused until you approve.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <form action={startFreeTrial}>

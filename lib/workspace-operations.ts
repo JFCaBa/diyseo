@@ -81,11 +81,21 @@ export async function transferSiteInWorkspace(
   return { siteName: site.name };
 }
 
+export const DELETE_OWNER_ONLY = "Only the workspace owner can delete sites.";
+
+/** Only the workspace OWNER may delete a site; the role is re-read from the database. */
 export async function deleteSiteInWorkspace(
+  callerUserId: string,
   workspaceId: string,
   siteId: string,
   confirmName: string
 ): Promise<{ error: string } | { remainingSiteId: string | null }> {
+  const caller = await getMembership(callerUserId);
+
+  if (!caller || caller.workspaceId !== workspaceId || caller.role !== "OWNER") {
+    return { error: DELETE_OWNER_ONLY };
+  }
+
   await requireSiteInWorkspace(siteId, workspaceId);
   const site = await prisma.siteProject.findUniqueOrThrow({ where: { id: siteId }, select: { id: true, name: true } });
 

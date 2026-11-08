@@ -135,6 +135,22 @@ test("only the owner transfers a site, and never inside its own workspace", { sk
   assert.equal(await siteWorkspace(), "w_b");
 });
 
+test("only the owner deletes a site", { skip }, async () => {
+  await prisma.siteProject.create({ data: { id: "s_del", workspaceId: "w_a", name: "Doomed", domain: "doomed.test" } });
+  const exists = async () => (await prisma.siteProject.findUnique({ where: { id: "s_del" } })) !== null;
+
+  // A MEMBER of the workspace, or a caller from another workspace, is refused.
+  assert.deepEqual(await ops.deleteSiteInWorkspace("u_m", "w_a", "s_del", "Doomed"), { error: ops.DELETE_OWNER_ONLY });
+  assert.deepEqual(await ops.deleteSiteInWorkspace("u_b", "w_a", "s_del", "Doomed"), { error: ops.DELETE_OWNER_ONLY });
+  // Another workspace's owner cannot reach the site through its own workspace.
+  await assert.rejects(ops.deleteSiteInWorkspace("u_b", "w_b", "s_del", "Doomed"), (e: Error) => e.message === "Not found");
+  assert.equal(await exists(), true);
+
+  const result = await ops.deleteSiteInWorkspace("u_a", "w_a", "s_del", "Doomed");
+  assert.ok(!("error" in result));
+  assert.equal(await exists(), false);
+});
+
 test("ensureUserWorkspace creates the owner membership", { skip }, async () => {
   await prisma.user.create({ data: { id: "u_new", email: "new@test.io", name: "New" } });
   await provisioning.ensureUserWorkspace("u_new", "New", "new@test.io");

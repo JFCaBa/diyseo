@@ -47,6 +47,7 @@ import {
   createPublishingApiKeyInWorkspace,
   createSiteInWorkspace,
   deleteArticleInWorkspace,
+  DELETE_OWNER_ONLY,
   deleteSiteInWorkspace,
   revokePublishingApiKeyInWorkspace,
   toggleArticleStatusInWorkspace,
@@ -274,8 +275,20 @@ export async function deleteSite(
     return { error: parsed.error.issues[0]?.message ?? "Invalid site deletion confirmation." };
   }
 
-  const { workspaceId } = await requireWorkspace();
-  const result = await orNotFound(deleteSiteInWorkspace(workspaceId, siteId, parsed.data.confirmName), "Site not found.");
+  const owner = await requireOwner().catch((error: Error) => error);
+
+  if (owner instanceof Error) {
+    if (owner.message === "Forbidden") {
+      return { error: DELETE_OWNER_ONLY };
+    }
+
+    throw owner;
+  }
+
+  const result = await orNotFound(
+    deleteSiteInWorkspace(owner.userId, owner.workspaceId, siteId, parsed.data.confirmName),
+    "Site not found."
+  );
 
   if (failed(result)) {
     return { error: result.error };

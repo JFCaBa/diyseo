@@ -139,8 +139,12 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
                       >
                         Open site
                       </Link>
-                      {role === "OWNER" ? <SiteTransferForm siteId={site.id} /> : null}
-                      <SiteDeleteForm siteId={site.id} siteName={site.name} />
+                      {role === "OWNER" ? (
+                        <>
+                          <SiteTransferForm siteId={site.id} />
+                          <SiteDeleteForm siteId={site.id} siteName={site.name} />
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 </div>

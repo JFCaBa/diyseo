@@ -6,6 +6,7 @@ import { SitePublishingApiKeysForm } from "@/components/site-publishing-api-keys
 import { buildPublishingApiUrl } from "@/lib/app-origin";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireSitePage } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ type SiteApiPageProps = {
 
 export default async function SiteApiPage({ params }: SiteApiPageProps) {
   const { siteId } = await params;
+  await requireSitePage(siteId);
   const session = await auth();
 
   const workspaceId = session?.user?.workspaceId;

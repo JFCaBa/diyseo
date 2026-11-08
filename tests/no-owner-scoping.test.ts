@@ -23,3 +23,12 @@ test("no admin code scopes by ownerId", () => {
 
   assert.deepEqual(offenders, []);
 });
+
+test("every admin page under app/[siteId] checks the site itself", () => {
+  const missing = sourceFiles(join(root, "app", "[siteId]"))
+    .filter((path) => path.endsWith(`${sep}page.tsx`))
+    .filter((path) => !/await requireSitePage\(siteId\)/.test(readFileSync(path, "utf8")))
+    .map((path) => relative(root, path).split(sep).join("/"));
+
+  assert.deepEqual(missing, []);
+});

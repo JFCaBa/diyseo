@@ -37,9 +37,10 @@ import {
   RevokePublishingApiKeySchema,
   parseWaitlistForm
 } from "@/lib/validations";
-import { requireWorkspace } from "@/lib/workspace-context";
+import { requireOwner, requireWorkspace } from "@/lib/workspace-context";
 import { isNotFoundError, requireArticleInSite, requireSiteInWorkspace } from "@/lib/workspace-guards";
 import {
+  TRANSFER_OWNER_ONLY,
   assignKeywordInWorkspace,
   createArticleInWorkspace,
   createKeywordInWorkspace,
@@ -220,11 +221,23 @@ export async function transferSite(
     return { error: parsed.error.issues[0]?.message ?? "Invalid transfer target." };
   }
 
-  const { workspaceId } = await requireWorkspace();
+  const owner = await requireOwner().catch((error: Error) => error);
+
+  if (owner instanceof Error) {
+    if (owner.message === "Forbidden") {
+      return { error: TRANSFER_OWNER_ONLY };
+    }
+
+    throw owner;
+  }
+
   let result;
 
   try {
-    result = await orNotFound(transferSiteInWorkspace(workspaceId, siteId, parsed.data.email), "Site not found.");
+    result = await orNotFound(
+      transferSiteInWorkspace(owner.userId, owner.workspaceId, siteId, parsed.data.email),
+      "Site not found."
+    );
   } catch (error) {
     if (isQuotaError(error)) {
       return { error: "The other account has no free site slot on its plan." };

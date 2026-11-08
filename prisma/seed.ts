@@ -22,20 +22,30 @@ async function main() {
   });
 
   if (!workspace) {
-    workspace = await prisma.workspace.create({
-      data: {
-        trialEndsAt: newTrialEndsAt(new Date()),
-        ownerId: user.id,
-        name: "Default Workspace"
-      }
+    const ownerId = user.id;
+    workspace = await prisma.$transaction(async (tx) => {
+      const created = await tx.workspace.create({
+        data: {
+          trialEndsAt: newTrialEndsAt(new Date()),
+          ownerId,
+          name: "Default Workspace"
+        }
+      });
+      await tx.workspaceMember.upsert({
+        where: { userId: ownerId },
+        update: {},
+        create: { workspaceId: created.id, userId: ownerId, role: "OWNER" }
+      });
+      return created;
+    });
+  } else {
+    // A seed run from before memberships existed: give the owner its member row.
+    await prisma.workspaceMember.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: { workspaceId: workspace.id, userId: user.id, role: "OWNER" }
     });
   }
-
-  await prisma.workspaceMember.upsert({
-    where: { userId: user.id },
-    update: {},
-    create: { workspaceId: workspace.id, userId: user.id, role: "OWNER" }
-  });
 
   let site = await prisma.siteProject.findFirst({
     where: { workspaceId: workspace.id },

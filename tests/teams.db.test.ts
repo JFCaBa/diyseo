@@ -113,6 +113,26 @@ test("cross-workspace writes are refused and change nothing", { skip }, async ()
   assert.equal((await prisma.siteProject.findUniqueOrThrow({ where: { id: "s_a" } })).articlesPerWeek, 3);
 });
 
+test("only the owner transfers a site, and never inside its own workspace", { skip }, async () => {
+  const siteWorkspace = async () => (await prisma.siteProject.findUniqueOrThrow({ where: { id: "s_a" } })).workspaceId;
+
+  // A MEMBER is refused even with the right workspace and site.
+  assert.deepEqual(await ops.transferSiteInWorkspace("u_m", "w_a", "s_a", "b@test.io"), { error: ops.TRANSFER_OWNER_ONLY });
+  // A caller whose membership is elsewhere cannot act for w_a.
+  assert.deepEqual(await ops.transferSiteInWorkspace("u_b", "w_a", "s_a", "b@test.io"), { error: ops.TRANSFER_OWNER_ONLY });
+  // The owner cannot transfer to a member of the same workspace, nor to itself.
+  assert.deepEqual(await ops.transferSiteInWorkspace("u_a", "w_a", "s_a", "m@test.io"), { error: ops.TRANSFER_SAME_WORKSPACE });
+  assert.deepEqual(await ops.transferSiteInWorkspace("u_a", "w_a", "s_a", "a@test.io"), { error: ops.TRANSFER_SAME_WORKSPACE });
+  // Nor transfer another workspace's site.
+  await assert.rejects(ops.transferSiteInWorkspace("u_a", "w_a", "s_b", "b@test.io"), (e: Error) => e.message === "Not found");
+  assert.equal(await siteWorkspace(), "w_a");
+
+  // To another workspace's owner, with a free slot, it moves.
+  await prisma.workspace.update({ where: { id: "w_b" }, data: { plan: "COMP" } });
+  assert.deepEqual(await ops.transferSiteInWorkspace("u_a", "w_a", "s_a", "b@test.io"), { siteName: "Site a" });
+  assert.equal(await siteWorkspace(), "w_b");
+});
+
 test("ensureUserWorkspace creates the owner membership", { skip }, async () => {
   await prisma.user.create({ data: { id: "u_new", email: "new@test.io", name: "New" } });
   await provisioning.ensureUserWorkspace("u_new", "New", "new@test.io");

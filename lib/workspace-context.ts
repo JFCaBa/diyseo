@@ -1,4 +1,7 @@
+import { notFound } from "next/navigation";
+
 import { auth } from "@/lib/auth";
+import { findSiteInWorkspace } from "@/lib/workspace-guards";
 import type { WorkspaceRole } from "@/lib/workspace-membership";
 
 /**
@@ -29,4 +32,23 @@ export async function requireOwner(): Promise<{ userId: string; workspaceId: str
   }
 
   return { userId, workspaceId };
+}
+
+/**
+ * For admin pages under app/[siteId]: resolves the caller's workspace and
+ * answers 404 unless the site belongs to it. Each page calls this itself,
+ * before loading anything, instead of relying on the layout's check.
+ */
+export async function requireSitePage(siteId: string): Promise<{ userId: string; workspaceId: string; role: WorkspaceRole }> {
+  // Only "no session / no membership" becomes a 404; any other failure is a real error.
+  const member = await requireWorkspace().catch((error: unknown) => {
+    if (error instanceof Error && error.message === "Unauthorized") return null;
+    throw error;
+  });
+
+  if (!member || !(await findSiteInWorkspace(siteId, member.workspaceId))) {
+    notFound();
+  }
+
+  return member;
 }

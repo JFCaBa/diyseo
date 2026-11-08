@@ -14,6 +14,7 @@ import type {
   UpdateTranslationSettingsInput
 } from "@/lib/validations";
 import { requireArticleInSite, requireSiteInWorkspace } from "@/lib/workspace-guards";
+import { getMembership } from "@/lib/workspace-membership";
 import { getOrCreateWorkspaceIdForUser } from "@/lib/workspace-provisioning";
 
 /*
@@ -38,18 +39,37 @@ export async function createSiteInWorkspace(workspaceId: string, data: CreateSit
   );
 }
 
-/** Quota errors from the target workspace propagate to the caller. */
+export const TRANSFER_OWNER_ONLY = "Only the workspace owner can transfer sites.";
+export const TRANSFER_SAME_WORKSPACE = "That user is already in this workspace. Choose someone outside it.";
+
+/**
+ * Only the workspace OWNER may transfer, and never to someone in the same
+ * workspace (the caller included). The caller's role is read again from the
+ * database here, on top of the action's requireOwner(). Quota errors from the
+ * target workspace propagate to the caller.
+ */
 export async function transferSiteInWorkspace(
+  callerUserId: string,
   workspaceId: string,
   siteId: string,
   email: string
 ): Promise<{ error: string } | { siteName: string }> {
+  const caller = await getMembership(callerUserId);
+
+  if (!caller || caller.workspaceId !== workspaceId || caller.role !== "OWNER") {
+    return { error: TRANSFER_OWNER_ONLY };
+  }
+
   await requireSiteInWorkspace(siteId, workspaceId);
   const site = await prisma.siteProject.findUniqueOrThrow({ where: { id: siteId }, select: { id: true, name: true } });
   const targetUser = await prisma.user.findUnique({ where: { email }, select: { id: true, name: true } });
 
   if (!targetUser) {
     return { error: "That user does not exist yet." };
+  }
+
+  if ((await getMembership(targetUser.id))?.workspaceId === workspaceId) {
+    return { error: TRANSFER_SAME_WORKSPACE };
   }
 
   const targetWorkspaceId = await getOrCreateWorkspaceIdForUser(targetUser.id, targetUser.name, email);

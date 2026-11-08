@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BrandDNAForm } from "@/components/brand-dna-form";
 import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/prisma";
+import { requireSitePage } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ type BrandDNAPageProps = {
 
 export default async function BrandDNAPage({ params }: BrandDNAPageProps) {
   const { siteId } = await params;
+  await requireSitePage(siteId);
 
   const site = await prisma.siteProject.findUnique({
     where: { id: siteId },

@@ -10,6 +10,7 @@ import { SiteTranslationSettingsForm } from "@/components/site-translation-setti
 import { SiteTransferForm } from "@/components/site-transfer-form";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireSitePage } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ function formatDisplayDomain(value: string) {
 
 export default async function SiteSettingsPage({ params }: SiteSettingsPageProps) {
   const { siteId } = await params;
+  await requireSitePage(siteId);
   const session = await auth();
 
   const workspaceId = session?.user?.workspaceId;

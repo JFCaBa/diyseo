@@ -10,6 +10,7 @@ let m: typeof import("../lib/workspace-membership");
 let guards: typeof import("../lib/workspace-guards");
 let ops: typeof import("../lib/workspace-operations");
 let provisioning: typeof import("../lib/workspace-provisioning");
+let teams: typeof import("../lib/teams");
 let prisma: typeof import("../lib/prisma").prisma;
 
 before(async () => {
@@ -18,6 +19,7 @@ before(async () => {
   guards = await import("../lib/workspace-guards");
   ops = await import("../lib/workspace-operations");
   provisioning = await import("../lib/workspace-provisioning");
+  teams = await import("../lib/teams");
   prisma = (await import("../lib/prisma")).prisma;
   await prisma.workspaceInvite.deleteMany();
   await prisma.workspaceMember.deleteMany();
@@ -146,4 +148,258 @@ test("ensureUserWorkspace creates the owner membership", { skip }, async () => {
   await provisioning.ensureUserWorkspace("u_new", "New", "new@test.io");
   assert.equal((await m.getMembership("u_new"))?.workspaceId, workspace.id);
   assert.equal(await prisma.workspaceMember.count({ where: { userId: "u_new" } }), 1);
+});
+
+// ---- Team invites. Each test builds its own workspaces (ids w_<k>, owner u_<k>, site s_<k>).
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const T0 = new Date("2026-03-02T10:00:00Z");
+
+/** A workspace with its OWNER member and the default site, like signup creates. */
+async function soloWorkspace(k: string, plan = "PRO") {
+  await prisma.user.create({ data: { id: `u_${k}`, email: `${k}@test.io` } });
+  await prisma.workspace.create({
+    data: {
+      id: `w_${k}`,
+      ownerId: `u_${k}`,
+      plan,
+      members: { create: { userId: `u_${k}`, role: "OWNER" } },
+      sites: {
+        create: { id: `s_${k}`, name: "My Site", domain: "https://example.com", brandProfile: { create: { contentLanguage: "en" } } }
+      }
+    }
+  });
+}
+
+async function addMember(workspaceId: string, k: string) {
+  await prisma.user.create({ data: { id: `u_${k}`, email: `${k}@test.io` } });
+  await prisma.workspaceMember.create({ data: { workspaceId, userId: `u_${k}`, role: "MEMBER" } });
+}
+
+async function invite(workspaceId: string, email: string, now = T0): Promise<string> {
+  const ownerId = (await prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId } })).ownerId;
+  const result = await teams.createInvite(workspaceId, ownerId, email, now);
+  assert.ok("token" in result, `expected a token, got ${JSON.stringify(result)}`);
+  return result.token;
+}
+
+const user = (k: string) => ({ id: `u_${k}`, email: `${k}@test.io` });
+
+test("accepting moves the user and deletes their empty workspace", { skip }, async () => {
+  await soloWorkspace("t1");
+  await soloWorkspace("x1", "TRIAL");
+  const token = await invite("w_t1", "X1@Test.io");
+
+  assert.deepEqual(await teams.acceptInvite(token, { id: "u_x1", email: "x1@TEST.io" }, T0), { workspaceId: "w_t1" });
+
+  assert.deepEqual(await m.getMembership("u_x1"), {
+    id: (await prisma.workspaceMember.findUniqueOrThrow({ where: { userId: "u_x1" } })).id,
+    workspaceId: "w_t1",
+    role: "MEMBER"
+  });
+  assert.equal(await prisma.workspace.findUnique({ where: { id: "w_x1" } }), null);
+  assert.equal(await prisma.siteProject.findUnique({ where: { id: "s_x1" } }), null);
+  assert.equal(await prisma.brandProfile.count({ where: { siteProjectId: "s_x1" } }), 0);
+  const row = await prisma.workspaceInvite.findFirstOrThrow({ where: { workspaceId: "w_t1", email: "x1@test.io" } });
+  assert.ok(row.acceptedAt);
+  // The target workspace keeps its owner and site.
+  assert.equal((await m.getMembership("u_t1"))?.role, "OWNER");
+  assert.notEqual(await prisma.siteProject.findUnique({ where: { id: "s_t1" } }), null);
+
+  // The token is single use.
+  assert.deepEqual(await teams.acceptInvite(token, user("x1"), T0), { error: "invalid" });
+  assert.deepEqual(await teams.acceptInvite("not-a-token", user("x1"), T0), { error: "invalid" });
+});
+
+test("accepting is refused when the email does not match", { skip }, async () => {
+  await soloWorkspace("t2");
+  await soloWorkspace("x2");
+  const token = await invite("w_t2", "someone-else@test.io");
+
+  assert.deepEqual(await teams.acceptInvite(token, user("x2"), T0), { error: "email_mismatch" });
+  assert.equal((await m.getMembership("u_x2"))?.workspaceId, "w_x2");
+  assert.notEqual(await prisma.workspace.findUnique({ where: { id: "w_x2" } }), null);
+});
+
+test("accepting is refused when the user's workspace has articles", { skip }, async () => {
+  await soloWorkspace("t3");
+  await soloWorkspace("x3");
+  await prisma.article.create({
+    data: { siteProjectId: "s_x3", title: "Mine", slug: "mine", contentHtml: "<p>x</p>", contentMarkdown: "x" }
+  });
+  const token = await invite("w_t3", "x3@test.io");
+
+  assert.deepEqual(await teams.acceptInvite(token, user("x3"), T0), { error: "has_content" });
+  assert.notEqual(await prisma.workspace.findUnique({ where: { id: "w_x3" } }), null);
+  assert.equal((await m.getMembership("u_x3"))?.workspaceId, "w_x3");
+  assert.equal((await prisma.workspaceInvite.findFirstOrThrow({ where: { workspaceId: "w_t3" } })).acceptedAt, null);
+});
+
+test("an expired invite is refused", { skip }, async () => {
+  await soloWorkspace("t4");
+  await soloWorkspace("x4");
+  const token = await invite("w_t4", "x4@test.io", T0);
+
+  assert.deepEqual(await teams.acceptInvite(token, user("x4"), new Date(T0.getTime() + 7 * DAY_MS + 1)), { error: "expired" });
+  assert.equal((await m.getMembership("u_x4"))?.workspaceId, "w_x4");
+});
+
+test("pending invites count toward the member limit", { skip }, async () => {
+  await soloWorkspace("t5", "PRO");
+  await addMember("w_t5", "m5");
+  await invite("w_t5", "p5@test.io");
+
+  assert.deepEqual(await teams.createInvite("w_t5", "u_t5", "q5@test.io", T0), { error: "limit_reached" });
+  // An expired invite frees its seat.
+  const later = new Date(T0.getTime() + 8 * DAY_MS);
+  assert.ok("token" in (await teams.createInvite("w_t5", "u_t5", "q5@test.io", later)));
+});
+
+test("accepting re-checks the limit of the plan in force", { skip }, async () => {
+  await soloWorkspace("t6", "PRO");
+  await soloWorkspace("x6");
+  const token = await invite("w_t6", "x6@test.io");
+  await prisma.workspace.update({ where: { id: "w_t6" }, data: { plan: "STARTER" } });
+
+  assert.deepEqual(await teams.acceptInvite(token, user("x6"), T0), { error: "limit_reached" });
+  assert.equal(await prisma.workspaceMember.count({ where: { workspaceId: "w_t6" } }), 1);
+  assert.notEqual(await prisma.workspace.findUnique({ where: { id: "w_x6" } }), null);
+});
+
+test("two concurrent invites cannot both take the last seat", { skip }, async () => {
+  await soloWorkspace("t7", "PRO");
+  await addMember("w_t7", "m7");
+
+  const results = await Promise.all([
+    teams.createInvite("w_t7", "u_t7", "c1@test.io", T0),
+    teams.createInvite("w_t7", "u_t7", "c2@test.io", T0)
+  ]);
+
+  assert.equal(results.filter((r) => "token" in r).length, 1, JSON.stringify(results));
+  assert.equal(results.filter((r) => "error" in r && r.error === "limit_reached").length, 1);
+  assert.equal(await prisma.workspaceInvite.count({ where: { workspaceId: "w_t7" } }), 1);
+});
+
+test("accepting an invite to one's own workspace is refused", { skip }, async () => {
+  await soloWorkspace("t8");
+  await addMember("w_t8", "m8");
+  // createInvite already refuses members of this workspace.
+  assert.deepEqual(await teams.createInvite("w_t8", "u_t8", "T8@test.io", T0), { error: "already_member" });
+  assert.deepEqual(await teams.createInvite("w_t8", "u_t8", "m8@test.io", T0), { error: "already_member" });
+
+  // An invite row that predates the membership (e.g. created before the user joined).
+  const { createHash } = await import("node:crypto");
+  const token = "own-workspace-token";
+  await prisma.workspaceInvite.create({
+    data: {
+      workspaceId: "w_t8",
+      email: "t8@test.io",
+      tokenHash: createHash("sha256").update(token).digest("hex"),
+      invitedById: "u_t8",
+      expiresAt: new Date(T0.getTime() + DAY_MS)
+    }
+  });
+
+  assert.deepEqual(await teams.acceptInvite(token, user("t8"), T0), { error: "already_member" });
+  assert.deepEqual(await m.getMembership("u_t8"), {
+    id: (await prisma.workspaceMember.findUniqueOrThrow({ where: { userId: "u_t8" } })).id,
+    workspaceId: "w_t8",
+    role: "OWNER"
+  });
+  assert.notEqual(await prisma.siteProject.findUnique({ where: { id: "s_t8" } }), null);
+});
+
+test("a member of another team cannot join", { skip }, async () => {
+  await soloWorkspace("t9");
+  const token = await invite("w_t9", "m8@test.io");
+
+  assert.deepEqual(await teams.acceptInvite(token, user("m8"), T0), { error: "has_team" });
+  assert.equal((await m.getMembership("u_m8"))?.workspaceId, "w_t8");
+});
+
+test("the owner cannot be removed", { skip }, async () => {
+  await assert.rejects(teams.removeMember("w_t8", "u_t8"));
+  assert.equal((await m.getMembership("u_t8"))?.role, "OWNER");
+  // Nor can a member be removed through another workspace.
+  await assert.rejects(teams.removeMember("w_t9", "u_m8"));
+  assert.equal((await m.getMembership("u_m8"))?.workspaceId, "w_t8");
+});
+
+test("removing a member deletes their hub sessions", { skip }, async () => {
+  const expires = new Date(Date.now() + DAY_MS);
+  await prisma.session.create({ data: { sessionToken: "sess_m8", userId: "u_m8", expires } });
+  await prisma.session.create({ data: { sessionToken: "sess_t8", userId: "u_t8", expires } });
+
+  await teams.removeMember("w_t8", "u_m8");
+
+  assert.equal(await m.getMembership("u_m8"), null);
+  assert.equal(await prisma.session.count({ where: { userId: "u_m8" } }), 0);
+  assert.equal(await prisma.session.count({ where: { userId: "u_t8" } }), 1);
+  assert.equal(await teams.isMemberActive("u_m8"), null);
+  assert.deepEqual(await teams.isMemberActive("u_t8"), { workspaceId: "w_t8", role: "OWNER" });
+});
+
+test("a removed member can be invited again and accept", { skip }, async () => {
+  await soloWorkspace("t10");
+  await soloWorkspace("x10");
+  const first = await invite("w_t10", "x10@test.io");
+  assert.deepEqual(await teams.acceptInvite(first, user("x10"), T0), { workspaceId: "w_t10" });
+  await teams.removeMember("w_t10", "u_x10");
+  assert.equal(await m.getMembership("u_x10"), null);
+
+  const second = await invite("w_t10", "x10@test.io");
+  assert.notEqual(second, first);
+  assert.deepEqual(await teams.acceptInvite(first, user("x10"), T0), { error: "invalid" });
+  assert.deepEqual(await teams.acceptInvite(second, user("x10"), T0), { workspaceId: "w_t10" });
+  assert.equal((await m.getMembership("u_x10"))?.role, "MEMBER");
+});
+
+test("re-inviting a pending email replaces its token without taking another seat", { skip }, async () => {
+  await soloWorkspace("t11", "PRO");
+  await addMember("w_t11", "m11");
+  const first = await invite("w_t11", "x11@test.io");
+  const later = new Date(T0.getTime() + DAY_MS);
+  const second = await invite("w_t11", "x11@test.io", later);
+
+  assert.notEqual(second, first);
+  const row = await prisma.workspaceInvite.findFirstOrThrow({ where: { workspaceId: "w_t11", email: "x11@test.io" } });
+  assert.equal(row.expiresAt.getTime(), later.getTime() + 7 * DAY_MS);
+  assert.equal(await prisma.workspaceInvite.count({ where: { workspaceId: "w_t11" } }), 1);
+
+  await soloWorkspace("x11");
+  assert.deepEqual(await teams.acceptInvite(first, user("x11"), later), { error: "invalid" });
+  assert.deepEqual(await teams.acceptInvite(second, user("x11"), later), { workspaceId: "w_t11" });
+});
+
+test("listTeam shows members and pending invites; revokeInvite removes one", { skip }, async () => {
+  await soloWorkspace("t12");
+  await addMember("w_t12", "m12");
+  await invite("w_t12", "p12@test.io");
+
+  const team = await teams.listTeam("w_t12");
+  assert.deepEqual(
+    team.members.map((x) => [x.userId, x.email, x.role]),
+    [
+      ["u_t12", "t12@test.io", "OWNER"],
+      ["u_m12", "m12@test.io", "MEMBER"]
+    ]
+  );
+  assert.deepEqual(team.invites.map((i) => i.email), ["p12@test.io"]);
+
+  // Another workspace cannot revoke it.
+  await teams.revokeInvite("w_t11", team.invites[0].id);
+  assert.equal((await teams.listTeam("w_t12")).invites.length, 1);
+
+  await teams.revokeInvite("w_t12", team.invites[0].id);
+  assert.deepEqual((await teams.listTeam("w_t12")).invites, []);
+});
+
+test("a legacy owner without a member row cannot accept an invite to their own workspace", { skip }, async () => {
+  await soloWorkspace("t13");
+  await prisma.workspaceMember.delete({ where: { userId: "u_t13" } });
+  const token = await invite("w_t13", "t13@test.io");
+
+  assert.deepEqual(await teams.acceptInvite(token, user("t13"), T0), { error: "already_member" });
+  assert.notEqual(await prisma.workspace.findUnique({ where: { id: "w_t13" } }), null);
+  assert.notEqual(await prisma.siteProject.findUnique({ where: { id: "s_t13" } }), null);
 });

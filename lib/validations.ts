@@ -181,6 +181,11 @@ export const TransferSiteSchema = z.object({
   email: z.string().email("Enter a valid user email.")
 });
 
+/** Invites are matched by email without regard to case, so it is stored lower-cased. */
+export const inviteMemberSchema = z.object({
+  email: z.string().trim().toLowerCase().max(254).email("Enter a valid email.")
+});
+
 export const CreatePublishingApiKeySchema = z.object({
   label: z.string().trim().min(1, "Key label is required.").max(80, "Key label must be 80 characters or less.")
 });

@@ -15,12 +15,14 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "mint:api-key": "tsx scripts/mint-publishing-api-key.ts",
     "backup:database": "tsx scripts/backup-database.ts",
-    "test": "tsx --test --test-concurrency=1 tests/*.test.ts"
+    "test": "tsx --test --test-concurrency=1 tests/*.test.ts",
+    "sso:keygen": "tsx scripts/generate-sso-key.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
     "@prisma/client": "^6.7.0",
     "clsx": "^2.1.1",
+    "jose": "^6.2.15",
     "marked": "^18.0.2",
     "next": "^15.3.1",
     "next-auth": "^5.0.0-beta.29",

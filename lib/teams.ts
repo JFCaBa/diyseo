@@ -46,14 +46,37 @@ function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
-function isSerializationFailure(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";
+/** Postgres aborted the transaction as a serialization conflict (P2034 / 40001) or a deadlock (40P01). */
+function isRetryableConflict(error: unknown) {
+  const deadlockText = (message: string) =>
+    message.includes("40P01") || message.includes("40001") || /deadlock detected/i.test(message);
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2034") return true;
+    // Raw queries (the advisory lock) report the Postgres code in meta.
+    const meta = (error.meta ?? {}) as Record<string, unknown>;
+    return meta.code === "40P01" || meta.code === "40001" || deadlockText(error.message);
+  }
+  return error instanceof Prisma.PrismaClientUnknownRequestError && deadlockText(error.message);
+}
+
+const TEAM_TX_ATTEMPTS = 3;
+// Jittered wait before each retry: [min, max) ms.
+const RETRY_BACKOFF_MS: [number, number][] = [
+  [20, 80],
+  [50, 150]
+];
+
+function backoff(retry: number) {
+  const [min, max] = RETRY_BACKOFF_MS[Math.min(retry, RETRY_BACKOFF_MS.length - 1)];
+  return new Promise((resolve) => setTimeout(resolve, min + Math.random() * (max - min)));
 }
 
 /**
  * Runs a membership-changing operation: Serializable, holding the advisory lock
- * of every workspace it touches (taken in a fixed order so two of these cannot
- * deadlock), retried once if Postgres aborts it as a serialization conflict.
+ * of every workspace it touches, taken in a fixed order. A lock taken later
+ * inside `fn` (or row locks under concurrent writers) can still deadlock, so
+ * serialization conflicts and deadlocks are retried with a short backoff,
+ * 3 attempts in total.
  */
 async function inTeamTransaction<T>(workspaceIds: string[], fn: (tx: Tx) => Promise<T>): Promise<T> {
   const ordered = [...new Set(workspaceIds)].sort();
@@ -66,11 +89,13 @@ async function inTeamTransaction<T>(workspaceIds: string[], fn: (tx: Tx) => Prom
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
 
-  try {
-    return await run();
-  } catch (error) {
-    if (!isSerializationFailure(error)) throw error;
-    return run();
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await run();
+    } catch (error) {
+      if (attempt >= TEAM_TX_ATTEMPTS || !isRetryableConflict(error)) throw error;
+      await backoff(attempt - 1);
+    }
   }
 }
 

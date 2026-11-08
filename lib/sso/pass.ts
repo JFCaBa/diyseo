@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { SignJWT, importJWK, jwtVerify } from "jose";
+import { getAppOrigin } from "@/lib/app-origin";
 import type { SatelliteGrant, SatelliteService } from "@/lib/satellite-entitlements";
 import type { WorkspacePlan } from "@/lib/entitlements";
 import type { WorkspaceRole } from "@/lib/workspace-membership";
@@ -20,8 +21,9 @@ const PASS_TTL_SECONDS = 60;
 const CLOCK_TOLERANCE_SECONDS = 5;
 const KEY_ID = "hub-1";
 
+/** The hub origin without a trailing slash, the same for signing and verifying. */
 function issuer(): string {
-  return process.env.NEXT_PUBLIC_APP_URL || "https://diyseo.online";
+  return getAppOrigin() || "https://diyseo.online";
 }
 
 export async function signPass(

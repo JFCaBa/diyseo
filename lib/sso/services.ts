@@ -8,12 +8,24 @@ type Env = Record<string, string | undefined>;
 const SERVICES: SatelliteService[] = ["mcp", "ads"];
 const MIN_SECRET_LENGTH = 32;
 
+/** https only; plain http is accepted just for localhost / 127.0.0.1 (development). */
+function isValidCallbackUrl(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if (url.protocol === "https:") return true;
+  return url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+}
+
 export function ssoService(name: string, env: Env = process.env): SsoService | null {
   if (!(SERVICES as string[]).includes(name)) return null;
   const key = name.toUpperCase();
   const callbackUrl = env[`SSO_${key}_CALLBACK_URL`];
   const secret = env[`SSO_${key}_SECRET`];
-  if (!callbackUrl || !secret || secret.length < MIN_SECRET_LENGTH) return null;
+  if (!callbackUrl || !isValidCallbackUrl(callbackUrl) || !secret || secret.length < MIN_SECRET_LENGTH) return null;
   return { name: name as SatelliteService, callbackUrl, secret };
 }
 

@@ -81,3 +81,11 @@ test("a price without lookup key still maps through its product id", () => {
   assert.equal(projectPlan({ current: "TRIAL", trialEndsAt: null, subs }, now).plan, "PRO");
   assert.equal(projectPlan({ current: "TRIAL", trialEndsAt: null, subs: [{ status: "active", lookupKey: null, productId: "prod_other" }] }, now).plan, "NONE");
 });
+
+test("a stale Checkout is cleared, an open one expired first, a paid one kept", async () => {
+  const { staleCheckoutAction } = await import("../lib/billing-rules");
+  assert.equal(staleCheckoutAction("complete"), "keep");
+  assert.equal(staleCheckoutAction("open"), "expire_then_clear");
+  assert.equal(staleCheckoutAction("expired"), "clear");
+  assert.equal(staleCheckoutAction(null), "clear");
+});

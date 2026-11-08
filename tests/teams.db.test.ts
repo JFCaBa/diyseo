@@ -543,3 +543,16 @@ test("moving more sites than the destination plan allows is refused", { skip }, 
   await assert.rejects(teams.moveWorkspaceInto("w_t53", "w_t52", T0), /allows/);
   assert.notEqual(await prisma.workspace.findUnique({ where: { id: "w_t53" } }), null);
 });
+
+test("an expired Checkout clears only the workspace that still points at it", { skip }, async () => {
+  const { clearExpiredCheckout } = await import("../lib/billing");
+  await prisma.user.create({ data: { id: "u_cx1", email: "cx1@test.io" } });
+  await prisma.user.create({ data: { id: "u_cx2", email: "cx2@test.io" } });
+  await prisma.workspace.create({ data: { id: "w_cx1", ownerId: "u_cx1", pendingCheckoutSessionId: "cs_old" } });
+  await prisma.workspace.create({ data: { id: "w_cx2", ownerId: "u_cx2", pendingCheckoutSessionId: "cs_newer" } });
+
+  assert.equal(await clearExpiredCheckout("cs_old"), 1);
+  assert.equal(await clearExpiredCheckout("cs_unknown"), 0);
+  const rows = await prisma.workspace.findMany({ where: { id: { in: ["w_cx1", "w_cx2"] } }, orderBy: { id: "asc" }, select: { pendingCheckoutSessionId: true } });
+  assert.deepEqual(rows.map((row) => row.pendingCheckoutSessionId), [null, "cs_newer"]);
+});

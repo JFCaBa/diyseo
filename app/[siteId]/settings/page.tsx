@@ -28,7 +28,7 @@ function formatDisplayDomain(value: string) {
 
 export default async function SiteSettingsPage({ params }: SiteSettingsPageProps) {
   const { siteId } = await params;
-  await requireSitePage(siteId);
+  const { role } = await requireSitePage(siteId);
   const session = await auth();
 
   const workspaceId = session?.user?.workspaceId;
@@ -139,7 +139,7 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
                       >
                         Open site
                       </Link>
-                      <SiteTransferForm siteId={site.id} />
+                      {role === "OWNER" ? <SiteTransferForm siteId={site.id} /> : null}
                       <SiteDeleteForm siteId={site.id} siteName={site.name} />
                     </div>
                   </div>

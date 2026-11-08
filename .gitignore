@@ -16,3 +16,6 @@ prisma/dev.db
 
 # Consenso multi-agent review scratch output
 .consenso/
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo

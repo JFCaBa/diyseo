@@ -6,10 +6,12 @@ import { redirect } from "next/navigation";
 import { getAppOrigin } from "@/lib/app-origin";
 import { auth } from "@/lib/auth";
 import { effectivePlan } from "@/lib/entitlements";
+import { INVITE_RATE_LIMITED, inviteAllowed } from "@/lib/invite-limits";
 import { sendInviteEmail } from "@/lib/mailer";
 import { prisma } from "@/lib/prisma";
 import { memberLimit } from "@/lib/satellite-entitlements";
-import { acceptInvite, createInvite, removeMember, revokeInvite } from "@/lib/teams";
+import { releaseStaleCheckout } from "@/lib/stale-checkout";
+import { acceptInvite, createInvite, inviteForToken, removeMember, revokeInvite } from "@/lib/teams";
 import { inviteMemberSchema } from "@/lib/validations";
 import { requireOwner } from "@/lib/workspace-context";
 
@@ -25,7 +27,10 @@ const OWNER_ONLY = "Only the workspace owner can manage the team.";
 
 /** The OWNER's identity from the session, or null for anyone else. Never taken from the client. */
 async function ownerOrNull() {
-  return requireOwner().catch(() => null);
+  return requireOwner().catch((error: unknown) => {
+    if (error instanceof Error && (error.message === "Unauthorized" || error.message === "Forbidden")) return null;
+    throw error;
+  });
 }
 
 export async function inviteMember(_prevState: TeamActionState, formData: FormData): Promise<TeamActionState> {
@@ -38,6 +43,11 @@ export async function inviteMember(_prevState: TeamActionState, formData: FormDa
   }
   const email = parsed.data.email;
   const now = new Date();
+
+  // Before anything is created or sent: a limited request changes nothing.
+  if (!inviteAllowed(owner.workspaceId, email, now.getTime())) {
+    return { error: INVITE_RATE_LIMITED };
+  }
 
   let result: Awaited<ReturnType<typeof createInvite>>;
   try {
@@ -126,9 +136,19 @@ export async function acceptTeamInvite(token: string): Promise<void> {
     redirect(invitePath);
   }
 
+  // An abandoned Checkout on the user's own workspace must not block joining.
+  // Only for a usable invite to this email, so a bad link never touches billing.
+  const now = new Date();
+  const invite = await inviteForToken(token, now).catch(() => null);
+  if (invite?.usable && invite.email === email.trim().toLowerCase()) {
+    await releaseStaleCheckout(userId).catch((error: unknown) => {
+      console.error("team_stale_checkout_failed", { code: (error as { code?: string }).code ?? "unknown" });
+    });
+  }
+
   let result: Awaited<ReturnType<typeof acceptInvite>>;
   try {
-    result = await acceptInvite(token, { id: userId, email }, new Date());
+    result = await acceptInvite(token, { id: userId, email }, now);
   } catch (error) {
     console.error("team_accept_failed", { code: (error as { code?: string }).code ?? "unknown" });
     redirect(`${invitePath}?error=retry`);

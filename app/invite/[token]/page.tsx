@@ -19,7 +19,7 @@ const HAS_DATA = "Your account already has a workspace with data. Write to info@
 const ERRORS: Record<string, string> = {
   has_content: HAS_DATA,
   has_subscription: HAS_DATA,
-  has_team: HAS_DATA,
+  has_team: "You're already part of another team. Ask its owner to remove you first, or write to info@diyseo.online.",
   limit_reached: "This team is full on its current plan. Ask the owner to upgrade.",
   expired: EXPIRED,
   invalid: EXPIRED,

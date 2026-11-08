@@ -9,11 +9,25 @@ export type SmtpConfig = { host: string; port: number; user?: string; pass?: str
 export type MailMessage = { from: string; to: string; subject: string; text: string };
 export type SendMail = (config: SmtpConfig, message: MailMessage) => Promise<unknown>;
 
-export function inviteEmailContent(inviteUrl: string, workspaceName: string): { subject: string; text: string } {
+const MAX_NAME_LENGTH = 60;
+
+/**
+ * The workspace name as it may appear in an invite email: control characters
+ * (newlines included) become spaces, whitespace is collapsed and trimmed, and
+ * the result is capped at 60 characters. Falls back to "a team" when empty.
+ */
+export function safeWorkspaceName(name: string): string {
+  const cleaned = name.replace(/[\p{Cc}\u2028\u2029]/gu, " ").replace(/\s+/g, " ").trim();
+  const capped = Array.from(cleaned).slice(0, MAX_NAME_LENGTH).join("").trim();
+  return capped || "a team";
+}
+
+export function inviteEmailContent(inviteUrl: string, rawWorkspaceName: string): { subject: string; text: string } {
+  const workspaceName = safeWorkspaceName(rawWorkspaceName);
   return {
     subject: `You're invited to join ${workspaceName} on DIYSEO`,
     text: [
-      `You've been invited to join the ${workspaceName} workspace on DIYSEO.`,
+      `You've been invited to join ${workspaceName} on DIYSEO.`,
       "",
       `Accept the invite here (the link expires in 7 days):`,
       inviteUrl,

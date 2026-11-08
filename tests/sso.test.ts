@@ -88,3 +88,42 @@ test("a pass missing exp is rejected", async () => {
     .sign(key);
   await assert.rejects(verifyPass(token, "mcp", k.pub, now));
 });
+
+test("the issuer drops a trailing slash from NEXT_PUBLIC_APP_URL and the pass verifies", async () => {
+  const k = await keys();
+  const previous = process.env.NEXT_PUBLIC_APP_URL;
+  process.env.NEXT_PUBLIC_APP_URL = "https://diyseo.online/";
+  try {
+    const token = await signPass("mcp", claims, now, k.priv);
+    const { decodeJwt } = await import("jose");
+    assert.equal(decodeJwt(token).iss, "https://diyseo.online");
+    const out = await verifyPass(token, "mcp", k.pub, now);
+    assert.equal(out.mid, "m1");
+  } finally {
+    if (previous === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+    else process.env.NEXT_PUBLIC_APP_URL = previous;
+  }
+});
+
+test("a pass from another issuer is rejected", async () => {
+  const k = await keys();
+  const { SignJWT, importJWK } = await import("jose");
+  const key = await importJWK(JSON.parse(k.priv), "EdDSA");
+  const iat = Math.floor(now.getTime() / 1000);
+  const token = await new SignJWT({ ...claims })
+    .setProtectedHeader({ alg: "EdDSA", kid: "hub-1" })
+    .setJti("x").setIssuer("https://evil.example").setAudience("mcp").setIssuedAt(iat).setExpirationTime(iat + 60)
+    .sign(key);
+  await assert.rejects(verifyPass(token, "mcp", k.pub, now));
+});
+
+test("a callback URL that is not https (or local http) disables the service", () => {
+  const withUrl = (url: string) => ssoService("mcp", { ...fullEnv, SSO_MCP_CALLBACK_URL: url });
+  assert.equal(withUrl("not a url"), null);
+  assert.equal(withUrl("http://mcp.example/cb"), null);
+  assert.equal(withUrl("ftp://mcp.example/cb"), null);
+  assert.equal(withUrl("javascript:alert(1)"), null);
+  assert.equal(withUrl("https://mcp.example/cb")?.callbackUrl, "https://mcp.example/cb");
+  assert.ok(withUrl("http://localhost:3001/cb"));
+  assert.ok(withUrl("http://127.0.0.1:3001/cb"));
+});

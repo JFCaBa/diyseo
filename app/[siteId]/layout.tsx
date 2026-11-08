@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { type ReactNode } from "react";
 
 import { SignOutButton } from "@/components/auth-buttons";
+import { BlogOnly } from "@/components/blog-only";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { SiteSelector } from "@/components/site-selector";
 import { auth } from "@/lib/auth";
@@ -78,9 +79,13 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
           </p>
         </div>
         <SidebarNav siteId={siteId} satellites={satellites} />
+        <div className="mt-6 border-t border-line pt-6 dark:border-slate-800">
+          <SignOutButton className="flex w-full items-center rounded-2xl px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-ink dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100" />
+        </div>
       </aside>
 
       <div className="flex min-h-screen min-w-0 flex-col">
+        <BlogOnly siteId={siteId}>
         <header className="border-b border-line bg-white/70 px-6 py-4 backdrop-blur">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -101,12 +106,12 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
                 >
                   New Article
                 </Link>
-                <SignOutButton />
               </div>
               <SiteSelector currentSiteId={siteId} sites={sites} />
             </div>
           </div>
         </header>
+        </BlogOnly>
         <main className="min-w-0 flex-1 px-6 py-8">{children}</main>
       </div>
     </div>

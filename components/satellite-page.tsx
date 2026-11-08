@@ -37,7 +37,7 @@ export async function SatellitePage({
       src={src}
       title={satelliteLabel(service)}
       allow="clipboard-write"
-      className="-mx-6 -my-8 block h-[calc(100vh-5.5rem)] w-[calc(100%+3rem)] border-0 bg-white"
+      className="-mx-6 -my-8 block h-screen w-[calc(100%+3rem)] border-0 bg-white"
     />
   );
 }

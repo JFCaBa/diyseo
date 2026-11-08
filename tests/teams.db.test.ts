@@ -443,3 +443,26 @@ test("a legacy owner without a member row cannot accept an invite to their own w
   assert.notEqual(await prisma.workspace.findUnique({ where: { id: "w_t13" } }), null);
   assert.notEqual(await prisma.siteProject.findUnique({ where: { id: "s_t13" } }), null);
 });
+
+test("hasPendingInvite is true only for a live, unaccepted invite", { skip }, async () => {
+  await soloWorkspace("t30");
+  await invite("w_t30", "p30@test.io");
+
+  assert.equal(await teams.hasPendingInvite("P30@Test.io ", T0), true);
+  assert.equal(await teams.hasPendingInvite("other30@test.io", T0), false);
+  assert.equal(await teams.hasPendingInvite("", T0), false);
+  assert.equal(await teams.hasPendingInvite("p30@test.io", new Date(T0.getTime() + 8 * DAY_MS)), false);
+
+  await prisma.workspaceInvite.updateMany({ where: { workspaceId: "w_t30" }, data: { acceptedAt: T0 } });
+  assert.equal(await teams.hasPendingInvite("p30@test.io", T0), false);
+});
+
+test("isTeamMemberEmail is true only for a MEMBER", { skip }, async () => {
+  await soloWorkspace("t31");
+  await addMember("w_t31", "m31");
+
+  assert.equal(await teams.isTeamMemberEmail("M31@test.io"), true);
+  assert.equal(await teams.isTeamMemberEmail("t31@test.io"), false);
+  assert.equal(await teams.isTeamMemberEmail("nobody31@test.io"), false);
+  assert.equal(await teams.isTeamMemberEmail(null), false);
+});

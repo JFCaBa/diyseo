@@ -4,7 +4,8 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import authConfig from "@/auth.config";
 import { accountTokenUpdate } from "@/lib/google-account";
 import { prisma } from "@/lib/prisma";
-import { isListedEmail } from "@/lib/access";
+import { canSignIn, isListedEmail } from "@/lib/access";
+import { hasPendingInvite, isTeamMemberEmail } from "@/lib/teams";
 import { getMembership } from "@/lib/workspace-membership";
 import { ensureUserWorkspace, findOwnedWorkspaceId } from "@/lib/workspace-provisioning";
 
@@ -53,6 +54,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     ...authConfig.callbacks,
+    // Same rule as auth.config.ts, plus team members and anyone holding a live team invite, even while sign-up is closed.
+    async signIn({ user }) {
+      if (canSignIn(user.email)) return true;
+      if (await hasPendingInvite(user.email)) return true;
+      return (await isTeamMemberEmail(user.email)) ? true : "/?error=access_limited";
+    },
     async session({ session, user }) {
       if (session.user) {
         const membership = (await getMembership(user.id)) ?? (await ensureUserWorkspace(user.id, user.name, user.email));

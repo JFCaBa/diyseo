@@ -281,6 +281,47 @@ export async function revokeInvite(workspaceId: string, inviteId: string): Promi
   await prisma.workspaceInvite.deleteMany({ where: { id: inviteId, workspaceId, acceptedAt: null } });
 }
 
+/** What the invite page shows for a token: the invited email, the workspace, and whether it can still be accepted. */
+export async function inviteForToken(
+  token: string,
+  now: Date
+): Promise<{ email: string; workspaceId: string; workspaceName: string; usable: boolean } | null> {
+  if (!token) return null;
+  const invite = await prisma.workspaceInvite.findUnique({
+    where: { tokenHash: hashToken(token) },
+    select: { email: true, workspaceId: true, acceptedAt: true, expiresAt: true, workspace: { select: { name: true } } }
+  });
+  if (!invite) return null;
+  return {
+    email: invite.email,
+    workspaceId: invite.workspaceId,
+    workspaceName: invite.workspace.name,
+    usable: invite.acceptedAt === null && invite.expiresAt.getTime() > now.getTime()
+  };
+}
+
+/** True when an invite for this email is neither accepted nor expired, in any workspace. Lets invited people sign up while sign-up is closed. */
+export async function hasPendingInvite(email: string | null | undefined, now: Date = new Date()): Promise<boolean> {
+  const normalized = email ? normalizeEmail(email) : "";
+  if (!normalized) return false;
+  const invite = await prisma.workspaceInvite.findFirst({
+    where: { email: normalized, acceptedAt: null, expiresAt: { gt: now } },
+    select: { id: true }
+  });
+  return invite !== null;
+}
+
+/** True when a user with this email is a MEMBER of a team, so they keep signing in after accepting while sign-up is closed. */
+export async function isTeamMemberEmail(email: string | null | undefined): Promise<boolean> {
+  const normalized = email ? normalizeEmail(email) : "";
+  if (!normalized) return false;
+  const member = await prisma.workspaceMember.findFirst({
+    where: { role: "MEMBER", user: { email: { equals: normalized, mode: "insensitive" } } },
+    select: { id: true }
+  });
+  return member !== null;
+}
+
 /** For token introspection by the satellites: the user's current membership, if any. */
 export async function isMemberActive(userId: string): Promise<{ workspaceId: string; role: WorkspaceRole } | null> {
   const membership = await getMembership(userId);

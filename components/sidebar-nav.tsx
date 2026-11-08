@@ -44,19 +44,19 @@ export function SidebarNav({ siteId }: SidebarNavProps) {
         );
       })}
       <Link
-        href="/billing"
+        href={`/${siteId}/billing`}
         className={cn(
           "flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition hover:bg-slate-50 hover:text-ink dark:hover:bg-slate-800 dark:hover:text-slate-100",
-          pathname === "/billing" ? "bg-slate-50 text-ink shadow-sm dark:bg-slate-800 dark:text-slate-100" : "text-slate-600 dark:text-slate-400"
+          pathname === `/${siteId}/billing` ? "bg-slate-50 text-ink shadow-sm dark:bg-slate-800 dark:text-slate-100" : "text-slate-600 dark:text-slate-400"
         )}
       >
         Billing
       </Link>
       <Link
-        href="/team"
+        href={`/${siteId}/team`}
         className={cn(
           "flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition hover:bg-slate-50 hover:text-ink dark:hover:bg-slate-800 dark:hover:text-slate-100",
-          pathname === "/team" ? "bg-slate-50 text-ink shadow-sm dark:bg-slate-800 dark:text-slate-100" : "text-slate-600 dark:text-slate-400"
+          pathname === `/${siteId}/team` ? "bg-slate-50 text-ink shadow-sm dark:bg-slate-800 dark:text-slate-100" : "text-slate-600 dark:text-slate-400"
         )}
       >
         Team

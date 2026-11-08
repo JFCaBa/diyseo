@@ -466,3 +466,80 @@ test("isTeamMemberEmail is true only for a MEMBER", { skip }, async () => {
   assert.equal(await teams.isTeamMemberEmail("nobody31@test.io"), false);
   assert.equal(await teams.isTeamMemberEmail(null), false);
 });
+
+test("moving a workspace brings its sites, articles and usage and makes the owner a member", { skip }, async () => {
+  await soloWorkspace("t40", "PRO");
+  await soloWorkspace("t41", "STARTER");
+  await prisma.article.create({
+    data: { id: "art_t41", siteProjectId: "s_t41", title: "T", slug: "t", contentHtml: "<p>x</p>", contentMarkdown: "x" }
+  });
+  await prisma.aiUsage.create({ data: { id: "au_t41", workspaceId: "w_t41", kind: "ARTICLE" } });
+
+  assert.deepEqual(await teams.moveWorkspaceInto("w_t41", "w_t40", T0), { sites: 1 });
+
+  assert.equal((await prisma.siteProject.findUniqueOrThrow({ where: { id: "s_t41" } })).workspaceId, "w_t40");
+  assert.equal((await prisma.article.findUniqueOrThrow({ where: { id: "art_t41" } })).siteProjectId, "s_t41");
+  assert.equal((await prisma.aiUsage.findUniqueOrThrow({ where: { id: "au_t41" } })).workspaceId, "w_t40");
+  assert.equal((await prisma.brandProfile.count({ where: { siteProjectId: "s_t41" } })), 1);
+  const member = await prisma.workspaceMember.findUniqueOrThrow({ where: { userId: "u_t41" } });
+  assert.deepEqual([member.workspaceId, member.role], ["w_t40", "MEMBER"]);
+  assert.equal(await prisma.workspace.findUnique({ where: { id: "w_t41" } }), null);
+});
+
+test("moving a workspace with a live subscription is refused and changes nothing", { skip }, async () => {
+  await soloWorkspace("t42");
+  await soloWorkspace("t43");
+  await prisma.workspace.update({ where: { id: "w_t43" }, data: { subscriptionStatus: "active" } });
+
+  await assert.rejects(teams.moveWorkspaceInto("w_t43", "w_t42", T0), /subscription/);
+  assert.notEqual(await prisma.workspace.findUnique({ where: { id: "w_t43" } }), null);
+  assert.equal((await prisma.siteProject.findUniqueOrThrow({ where: { id: "s_t43" } })).workspaceId, "w_t43");
+});
+
+test("moving a workspace into itself is refused", { skip }, async () => {
+  await soloWorkspace("t44");
+  await assert.rejects(teams.moveWorkspaceInto("w_t44", "w_t44", T0), /same/);
+  assert.equal((await prisma.workspaceMember.findUniqueOrThrow({ where: { userId: "u_t44" } })).role, "OWNER");
+  assert.equal((await prisma.siteProject.count({ where: { workspaceId: "w_t44" } })), 1);
+});
+
+test("moving a workspace that has a second member is refused", { skip }, async () => {
+  await soloWorkspace("t45");
+  await soloWorkspace("t46");
+  await addMember("w_t46", "m46");
+
+  await assert.rejects(teams.moveWorkspaceInto("w_t46", "w_t45", T0), /other members/);
+  assert.notEqual(await prisma.workspace.findUnique({ where: { id: "w_t46" } }), null);
+  assert.equal(await prisma.workspaceMember.count({ where: { workspaceId: "w_t46" } }), 2);
+});
+
+test("moving a workspace into a full team is refused", { skip }, async () => {
+  await soloWorkspace("t47", "STARTER");
+  await soloWorkspace("t48");
+
+  await assert.rejects(teams.moveWorkspaceInto("w_t48", "w_t47", T0), /no free seat/);
+  assert.notEqual(await prisma.workspace.findUnique({ where: { id: "w_t48" } }), null);
+});
+
+test("moving counts the owner's own pending invite as the seat they take and accepts it", { skip }, async () => {
+  await soloWorkspace("t49", "PRO");
+  await addMember("w_t49", "m49");
+  await soloWorkspace("t51");
+  // Pro: 3 seats = owner + member + the invite to t51.
+  await invite("w_t49", "T51@test.io");
+
+  assert.deepEqual(await teams.moveWorkspaceInto("w_t51", "w_t49", T0), { sites: 1 });
+  assert.equal((await prisma.workspaceInvite.findFirstOrThrow({ where: { workspaceId: "w_t49" } })).acceptedAt?.getTime(), T0.getTime());
+  assert.equal(await prisma.workspaceMember.count({ where: { workspaceId: "w_t49" } }), 3);
+});
+
+test("moving more sites than the destination plan allows is refused", { skip }, async () => {
+  await soloWorkspace("t52", "PRO");
+  await soloWorkspace("t53");
+  const limit = (await import("../lib/entitlements")).limitsFor("PRO")!.sites;
+  for (let i = 0; i < limit; i++) {
+    await prisma.siteProject.create({ data: { id: `s_t53_${i}`, workspaceId: "w_t53", name: `S${i}`, domain: "https://x.test" } });
+  }
+  await assert.rejects(teams.moveWorkspaceInto("w_t53", "w_t52", T0), /allows/);
+  assert.notEqual(await prisma.workspace.findUnique({ where: { id: "w_t53" } }), null);
+});

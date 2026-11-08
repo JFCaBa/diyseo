@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 
 import { Prisma } from "@prisma/client";
 
-import { effectivePlan } from "@/lib/entitlements";
+import { effectivePlan, limitsFor } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
 import { lockWorkspace } from "@/lib/quota";
 import { memberLimit } from "@/lib/satellite-entitlements";
@@ -233,6 +233,74 @@ export async function acceptInvite(
     await tx.workspaceInvite.update({ where: { id: invite.id }, data: { acceptedAt: now } });
 
     return { workspaceId: invite.workspaceId };
+  });
+}
+
+/**
+ * One-off admin operation: folds a solo owner's workspace into a team
+ * workspace. Their sites (with articles, keywords and brand profile) and AI
+ * usage move over, the owner becomes a MEMBER of `into`, and the emptied
+ * source workspace is deleted. Refuses (throws, nothing changes) when the
+ * source has a team or a live subscription, or the destination has no free seat.
+ */
+export async function moveWorkspaceInto(
+  fromWorkspaceId: string,
+  intoWorkspaceId: string,
+  now: Date = new Date()
+): Promise<{ sites: number }> {
+  if (fromWorkspaceId === intoWorkspaceId) throw new Error("The source and destination workspaces are the same.");
+
+  return inTeamTransaction([fromWorkspaceId, intoWorkspaceId], async (tx) => {
+    const source = await tx.workspace.findUnique({ where: { id: fromWorkspaceId }, select: { ownerId: true } });
+    if (!source) throw new Error(`Source workspace ${fromWorkspaceId} not found.`);
+    if (!(await tx.workspace.findUnique({ where: { id: intoWorkspaceId }, select: { id: true } }))) {
+      throw new Error(`Destination workspace ${intoWorkspaceId} not found.`);
+    }
+
+    const blocker = await joinBlockerFor(tx, fromWorkspaceId, now);
+    if (blocker === "has_team") throw new Error("The source workspace has other members or pending invites.");
+    if (blocker === "has_subscription") throw new Error("The source workspace has a live subscription or a pending checkout.");
+
+    // An invite already sent to the owner is the seat they are about to take, not another one.
+    const owner = await tx.user.findUnique({ where: { id: source.ownerId }, select: { email: true } });
+    const ownerInvite = owner?.email
+      ? await tx.workspaceInvite.findFirst({
+          where: { ...pendingInviteWhere(intoWorkspaceId, now), email: { equals: normalizeEmail(owner.email), mode: "insensitive" } },
+          select: { id: true }
+        })
+      : null;
+    if (await seatLimitReached(tx, intoWorkspaceId, now, ownerInvite ? { id: ownerInvite.id } : { id: "" })) {
+      throw new Error("The destination workspace has no free seat (pending invites count).");
+    }
+
+    const incoming = await tx.siteProject.count({ where: { workspaceId: fromWorkspaceId } });
+    const destination = await tx.workspace.findUniqueOrThrow({ where: { id: intoWorkspaceId }, select: { plan: true, trialEndsAt: true } });
+    const limits = limitsFor(effectivePlan(destination, now));
+    if (limits && (await tx.siteProject.count({ where: { workspaceId: intoWorkspaceId } })) + incoming > limits.sites) {
+      throw new Error(`The destination plan allows ${limits.sites} site(s); moving ${incoming} more would exceed it.`);
+    }
+
+    // userId is unique: the owner's single membership row moves; a second one is never created.
+    const membership = await tx.workspaceMember.findUnique({ where: { userId: source.ownerId }, select: { id: true, workspaceId: true } });
+    if (membership && membership.workspaceId !== fromWorkspaceId) {
+      throw new Error("The source owner already belongs to another workspace.");
+    }
+
+    const { count: sites } = await tx.siteProject.updateMany({ where: { workspaceId: fromWorkspaceId }, data: { workspaceId: intoWorkspaceId } });
+    await tx.aiUsage.updateMany({ where: { workspaceId: fromWorkspaceId }, data: { workspaceId: intoWorkspaceId } });
+
+    if (membership) {
+      await tx.workspaceMember.update({ where: { id: membership.id }, data: { workspaceId: intoWorkspaceId, role: "MEMBER" } });
+    } else {
+      // A legacy owner without a member row.
+      await tx.workspaceMember.create({ data: { workspaceId: intoWorkspaceId, userId: source.ownerId, role: "MEMBER" } });
+    }
+
+    if (ownerInvite) await tx.workspaceInvite.update({ where: { id: ownerInvite.id }, data: { acceptedAt: now } });
+
+    // Members, invites, sites and AI usage are the only relations under Workspace; all emptied or moved above.
+    await tx.workspace.delete({ where: { id: fromWorkspaceId } });
+    return { sites };
   });
 }
 

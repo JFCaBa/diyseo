@@ -29,18 +29,15 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
   const { siteId } = await params;
   const session = await auth();
 
-  if (!session?.user?.id) {
+  const workspaceId = session?.user?.workspaceId;
+
+  if (!session?.user?.id || !workspaceId) {
     notFound();
   }
 
   const [currentSite, workspace] = await Promise.all([
     prisma.siteProject.findFirst({
-      where: {
-        id: siteId,
-        workspace: {
-          ownerId: session.user.id
-        }
-      },
+      where: { id: siteId, workspaceId },
       select: {
         id: true,
         autoPublishEnabled: true,
@@ -53,7 +50,7 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
       }
     }),
     prisma.workspace.findUnique({
-      where: { ownerId: session.user.id },
+      where: { id: workspaceId },
       include: {
         sites: {
           orderBy: { createdAt: "asc" }

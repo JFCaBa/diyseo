@@ -112,11 +112,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
         searchConsoleConnectedAt: true,
         defaultSearchCountry: true,
         defaultSearchLanguage: true,
-        workspace: {
-          select: {
-            ownerId: true
-          }
-        }
+        workspaceId: true
       }
     }),
     prisma.article.groupBy({
@@ -135,7 +131,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
     notFound();
   }
 
-  if (site.workspace.ownerId !== session.user.id) {
+  if (!session.user.workspaceId || site.workspaceId !== session.user.workspaceId) {
     notFound();
   }
 

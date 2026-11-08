@@ -2,11 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { BillingPlanPicker } from "@/components/billing-plan-picker";
-import { auth } from "@/lib/auth";
 import { hasDuplicateSubscriptions } from "@/lib/billing";
 import { openBillingPortal } from "@/lib/billing-actions";
 import { prisma } from "@/lib/prisma";
 import { getUsageSummary } from "@/lib/quota";
+import { requireWorkspace } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,8 @@ const MESSAGES: Record<string, { tone: "ok" | "error"; text: string }> = {
   "error=price_missing": { tone: "error", text: "That price is not set up yet. Please contact support." },
   "error=checkout_missing": { tone: "error", text: "We could not find that checkout." },
   "error=checkout_mismatch": { tone: "error", text: "That checkout belongs to a different account." },
-  "error=checkout_incomplete": { tone: "error", text: "That checkout was not completed, so nothing was charged." }
+  "error=checkout_incomplete": { tone: "error", text: "That checkout was not completed, so nothing was charged." },
+  "error=owner_only": { tone: "error", text: "Only the workspace owner can manage billing." }
 };
 
 type BillingPageProps = { searchParams?: Promise<{ checkout?: string; error?: string }> };
@@ -43,19 +44,41 @@ function Meter({ label, used, limit }: { label: string; used: number; limit: num
 }
 
 export default async function BillingPage({ searchParams }: BillingPageProps) {
-  const session = await auth();
+  const member = await requireWorkspace().catch(() => null);
 
-  if (!session?.user?.id) {
+  if (!member) {
     redirect("/");
   }
 
   const workspace = await prisma.workspace.findUnique({
-    where: { ownerId: session.user.id },
+    where: { id: member.workspaceId },
     select: { id: true, name: true, sites: { orderBy: { createdAt: "asc" }, select: { id: true }, take: 1 } }
   });
 
   if (!workspace) {
     redirect("/");
+  }
+
+  const firstSiteId = workspace.sites[0]?.id;
+  const header = (
+    <div className="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Billing</p>
+        <h1 className="mt-2 text-3xl font-semibold text-ink">{workspace.name}</h1>
+      </div>
+      <Link href={firstSiteId ? `/${firstSiteId}` : "/new-site"} className="text-sm font-semibold text-accent hover:underline">
+        {firstSiteId ? "Back to your site" : "Create your first site"}
+      </Link>
+    </div>
+  );
+
+  if (member.role !== "OWNER") {
+    return (
+      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+        {header}
+        <p className="mt-8 text-sm text-slate-600">Only the workspace owner can manage billing.</p>
+      </main>
+    );
   }
 
   const usage = await getUsageSummary(workspace.id);
@@ -64,19 +87,10 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   const messageKey = params?.checkout ? `checkout=${params.checkout}` : params?.error ? `error=${params.error}` : null;
   const message = messageKey ? MESSAGES[messageKey] : undefined;
   const paid = usage.plan === "STARTER" || usage.plan === "PRO" || usage.plan === "AGENCY";
-  const firstSiteId = workspace.sites[0]?.id;
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Billing</p>
-          <h1 className="mt-2 text-3xl font-semibold text-ink">{workspace.name}</h1>
-        </div>
-        <Link href={firstSiteId ? `/${firstSiteId}` : "/new-site"} className="text-sm font-semibold text-accent hover:underline">
-          {firstSiteId ? "Back to your site" : "Create your first site"}
-        </Link>
-      </div>
+      {header}
 
       {message ? (
         <p

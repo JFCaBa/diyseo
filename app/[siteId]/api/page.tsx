@@ -17,17 +17,14 @@ export default async function SiteApiPage({ params }: SiteApiPageProps) {
   const { siteId } = await params;
   const session = await auth();
 
-  if (!session?.user?.id) {
+  const workspaceId = session?.user?.workspaceId;
+
+  if (!session?.user?.id || !workspaceId) {
     notFound();
   }
 
   const site = await prisma.siteProject.findFirst({
-    where: {
-      id: siteId,
-      workspace: {
-        ownerId: session.user.id
-      }
-    },
+    where: { id: siteId, workspaceId },
     select: {
       id: true,
       name: true,

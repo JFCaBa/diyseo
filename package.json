@@ -15,7 +15,7 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "mint:api-key": "tsx scripts/mint-publishing-api-key.ts",
     "backup:database": "tsx scripts/backup-database.ts",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "tsx --test --test-concurrency=1 tests/*.test.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",

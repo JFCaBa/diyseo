@@ -4,62 +4,9 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import authConfig from "@/auth.config";
 import { accountTokenUpdate } from "@/lib/google-account";
 import { prisma } from "@/lib/prisma";
-import { isListedEmail, planForNewWorkspace, trialEndForPlan } from "@/lib/access";
-
-async function ensureUserWorkspace(userId: string, userName?: string | null, email?: string | null) {
-  const existingWorkspace = await prisma.workspace.findUnique({
-    where: { ownerId: userId },
-    include: {
-      sites: {
-        orderBy: { createdAt: "asc" },
-        select: { id: true }
-      }
-    }
-  });
-
-  if (existingWorkspace) {
-    if (existingWorkspace.sites.length === 0) {
-      await prisma.siteProject.create({
-        data: {
-          workspaceId: existingWorkspace.id,
-          name: "My Site",
-          domain: "https://example.com",
-          brandProfile: {
-            create: {
-              contentLanguage: "en"
-            }
-          }
-        }
-      });
-    }
-
-    return existingWorkspace.id;
-  }
-
-  const workspaceName = userName?.trim() ? `${userName.trim()}'s Workspace` : "My Workspace";
-
-  const workspace = await prisma.workspace.create({
-    data: {
-      plan: planForNewWorkspace(email),
-      trialEndsAt: trialEndForPlan(planForNewWorkspace(email), new Date()),
-      ownerId: userId,
-      name: workspaceName,
-      sites: {
-        create: {
-          name: "My Site",
-          domain: "https://example.com",
-          brandProfile: {
-            create: {
-              contentLanguage: "en"
-            }
-          }
-        }
-      }
-    }
-  });
-
-  return workspace.id;
-}
+import { isListedEmail } from "@/lib/access";
+import { getMembership } from "@/lib/workspace-membership";
+import { ensureUserWorkspace, findOwnedWorkspaceId } from "@/lib/workspace-provisioning";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -93,9 +40,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       }
 
-      if (user.id && isListedEmail(user.email)) {
+      // Only the workspace the user owns; a member never changes someone else's plan.
+      const ownedWorkspaceId = user.id && isListedEmail(user.email) ? await findOwnedWorkspaceId(user.id) : null;
+
+      if (ownedWorkspaceId) {
         await prisma.workspace.updateMany({
-          where: { ownerId: user.id, plan: { in: ["TRIAL", "NONE"] } },
+          where: { id: ownedWorkspaceId, plan: { in: ["TRIAL", "NONE"] } },
           data: { plan: "COMP", trialEndsAt: null }
         });
       }
@@ -105,20 +55,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig.callbacks,
     async session({ session, user }) {
       if (session.user) {
-        const workspace = await prisma.workspace.findUnique({
-          where: { ownerId: user.id },
-          select: { id: true }
-        });
-
-        if (!workspace) {
-          const created = await ensureUserWorkspace(user.id, user.name, user.email);
-          session.user.id = user.id;
-          session.user.workspaceId = created;
-          return session;
-        }
+        const membership = (await getMembership(user.id)) ?? (await ensureUserWorkspace(user.id, user.name, user.email));
 
         session.user.id = user.id;
-        session.user.workspaceId = workspace.id;
+        session.user.workspaceId = membership.workspaceId;
+        session.user.workspaceRole = membership.role;
       }
 
       return session;

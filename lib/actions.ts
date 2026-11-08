@@ -5,15 +5,10 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
-import { createUniqueArticleSlug } from "@/lib/article-slug";
 import { generateNextAutoArticleForSite as runAutoPublishGenerationForSite } from "@/lib/auto-publish";
-import { auth } from "@/lib/auth";
-import { listSearchConsolePropertiesForUser } from "@/lib/google-search-console";
-import { renderMarkdownToHtml } from "@/lib/markdown";
 import { prisma } from "@/lib/prisma";
 import { createFixedWindowLimiter } from "@/lib/rate-limit";
-import { commitArticleCredit, isQuotaError, releaseArticleCredit, reserveArticleCredit, withSiteSlot } from "@/lib/quota";
-import { generatePublishingApiKey } from "@/lib/site-publishing-api";
+import { commitArticleCredit, isQuotaError, releaseArticleCredit, reserveArticleCredit } from "@/lib/quota";
 import { generateArticleTranslation as runArticleTranslation } from "@/lib/translate-article";
 import { parseTranslationLanguagesFromFormData } from "@/lib/translations";
 import {
@@ -42,7 +37,29 @@ import {
   RevokePublishingApiKeySchema,
   parseWaitlistForm
 } from "@/lib/validations";
-import { planForNewWorkspace, trialEndForPlan } from "@/lib/access";
+import { requireWorkspace } from "@/lib/workspace-context";
+import { isNotFoundError, requireArticleInSite, requireSiteInWorkspace } from "@/lib/workspace-guards";
+import {
+  assignKeywordInWorkspace,
+  createArticleInWorkspace,
+  createKeywordInWorkspace,
+  createPublishingApiKeyInWorkspace,
+  createSiteInWorkspace,
+  deleteArticleInWorkspace,
+  deleteSiteInWorkspace,
+  revokePublishingApiKeyInWorkspace,
+  toggleArticleStatusInWorkspace,
+  transferSiteInWorkspace,
+  updateArticleDateInWorkspace,
+  updateArticleInWorkspace,
+  updateAutoPublishSettingsInWorkspace,
+  updateBrandDNAInWorkspace,
+  updateSearchConsolePropertyInWorkspace,
+  updateSearchLocaleDefaultsInWorkspace,
+  updateTranslationSettingsInWorkspace,
+  updateWidgetInstalledStateInWorkspace,
+  updateWidgetThemeInWorkspace
+} from "@/lib/workspace-operations";
 
 export type ActionState = {
   error?: string;
@@ -134,82 +151,24 @@ function toUtcIsoFromDateInput(value: FormDataEntryValue | null) {
   return candidate.toISOString();
 }
 
-async function getWorkspaceId() {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
-
-  const existingWorkspace = await prisma.workspace.findUnique({
-    where: { ownerId: session.user.id }
-  });
-
-  if (existingWorkspace) {
-    return existingWorkspace.id;
-  }
-
-  const workspace = await prisma.workspace.create({
-    data: {
-      plan: planForNewWorkspace(session.user.email),
-      trialEndsAt: trialEndForPlan(planForNewWorkspace(session.user.email), new Date()),
-      ownerId: session.user.id,
-      name: session.user.name?.trim() ? `${session.user.name.trim()}'s Workspace` : "My Workspace"
+/**
+ * Runs a workspace operation and maps its Error("Not found") to the action's
+ * user-facing message. Any other error propagates.
+ */
+async function orNotFound<T>(operation: Promise<T>, message: string): Promise<T | { error: string }> {
+  try {
+    return await operation;
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return { error: message };
     }
-  });
 
-  return workspace.id;
+    throw error;
+  }
 }
 
-async function getOrCreateWorkspaceIdForUser(userId: string, userName?: string | null, email?: string | null) {
-  const existingWorkspace = await prisma.workspace.findUnique({
-    where: { ownerId: userId }
-  });
-
-  if (existingWorkspace) {
-    return existingWorkspace.id;
-  }
-
-  const workspace = await prisma.workspace.create({
-    data: {
-      plan: planForNewWorkspace(email),
-      trialEndsAt: trialEndForPlan(planForNewWorkspace(email), new Date()),
-      ownerId: userId,
-      name: userName?.trim() ? `${userName.trim()}'s Workspace` : "My Workspace"
-    }
-  });
-
-  return workspace.id;
-}
-
-async function getCurrentUserId() {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
-
-  return session.user.id;
-}
-
-async function requireOwnedSite(siteId: string) {
-  const userId = await getCurrentUserId();
-
-  const site = await prisma.siteProject.findFirst({
-    where: {
-      id: siteId,
-      workspace: {
-        ownerId: userId
-      }
-    },
-    select: { id: true, brandProfile: { select: { id: true } } }
-  });
-
-  if (!site) {
-    throw new Error("Unauthorized");
-  }
-
-  return site;
+function failed(result: unknown): result is { error: string } {
+  return typeof result === "object" && result !== null && typeof (result as { error?: unknown }).error === "string";
 }
 
 export async function createSite(
@@ -229,25 +188,12 @@ export async function createSite(
     return { error: parsed.error.issues[0]?.message ?? "Invalid site data." };
   }
 
-  const workspaceId = await getWorkspaceId();
+  const { workspaceId } = await requireWorkspace();
 
   let site;
 
   try {
-    site = await withSiteSlot(workspaceId, (tx) =>
-      tx.siteProject.create({
-        data: {
-          workspaceId,
-          name: parsed.data.name,
-          domain: parsed.data.domain,
-          brandProfile: {
-            create: {
-              contentLanguage: parsed.data.contentLanguage
-            }
-          }
-        }
-      })
-    );
+    site = await createSiteInWorkspace(workspaceId, parsed.data);
   } catch (error) {
     if (isQuotaError(error)) {
       return { error: error.message };
@@ -274,56 +220,21 @@ export async function transferSite(
     return { error: parsed.error.issues[0]?.message ?? "Invalid transfer target." };
   }
 
-  const currentUserId = await getCurrentUserId();
-  const site = await prisma.siteProject.findFirst({
-    where: {
-      id: siteId,
-      workspace: {
-        ownerId: currentUserId
-      }
-    },
-    select: {
-      id: true,
-      name: true,
-      workspaceId: true
-    }
-  });
-
-  if (!site) {
-    return { error: "Site not found." };
-  }
-
-  const targetUser = await prisma.user.findUnique({
-    where: {
-      email: parsed.data.email
-    },
-    select: {
-      id: true,
-      name: true
-    }
-  });
-
-  if (!targetUser) {
-    return { error: "That user does not exist yet." };
-  }
-
-  const targetWorkspaceId = await getOrCreateWorkspaceIdForUser(targetUser.id, targetUser.name, parsed.data.email);
+  const { workspaceId } = await requireWorkspace();
+  let result;
 
   try {
-    await withSiteSlot(targetWorkspaceId, (tx) =>
-      tx.siteProject.update({
-        where: { id: site.id },
-        data: {
-          workspaceId: targetWorkspaceId
-        }
-      })
-    );
+    result = await orNotFound(transferSiteInWorkspace(workspaceId, siteId, parsed.data.email), "Site not found.");
   } catch (error) {
     if (isQuotaError(error)) {
       return { error: "The other account has no free site slot on its plan." };
     }
 
     throw error;
+  }
+
+  if (failed(result)) {
+    return { error: result.error };
   }
 
   revalidatePath("/settings");
@@ -334,7 +245,7 @@ export async function transferSite(
   revalidatePath(`/${siteId}/keywords`);
   revalidatePath(`/${siteId}/calendar`);
 
-  return { success: `Transferred ${site.name} to ${parsed.data.email}. Refresh to update your site list.` };
+  return { success: `Transferred ${result.siteName} to ${parsed.data.email}. Refresh to update your site list.` };
 }
 
 export async function deleteSite(
@@ -350,42 +261,12 @@ export async function deleteSite(
     return { error: parsed.error.issues[0]?.message ?? "Invalid site deletion confirmation." };
   }
 
-  const userId = await getCurrentUserId();
-  const site = await prisma.siteProject.findFirst({
-    where: {
-      id: siteId,
-      workspace: {
-        ownerId: userId
-      }
-    },
-    select: {
-      id: true,
-      name: true,
-      workspaceId: true
-    }
-  });
+  const { workspaceId } = await requireWorkspace();
+  const result = await orNotFound(deleteSiteInWorkspace(workspaceId, siteId, parsed.data.confirmName), "Site not found.");
 
-  if (!site) {
-    return { error: "Site not found." };
+  if (failed(result)) {
+    return { error: result.error };
   }
-
-  if (parsed.data.confirmName !== site.name) {
-    return { error: "Site name does not match. Deletion cancelled." };
-  }
-
-  await prisma.siteProject.delete({
-    where: { id: site.id }
-  });
-
-  const remainingSites = await prisma.siteProject.findMany({
-    where: {
-      workspace: {
-        ownerId: userId
-      }
-    },
-    orderBy: { createdAt: "asc" },
-    select: { id: true }
-  });
 
   revalidatePath("/settings");
   revalidatePath(`/${siteId}`);
@@ -396,7 +277,7 @@ export async function deleteSite(
   revalidatePath(`/${siteId}/keywords`);
   revalidatePath(`/${siteId}/calendar`);
 
-  redirect(remainingSites[0]?.id ? `/${remainingSites[0].id}/settings` : "/new-site");
+  redirect(result.remainingSiteId ? `/${result.remainingSiteId}/settings` : "/new-site");
 }
 
 export async function updateBrandDNA(
@@ -422,25 +303,11 @@ export async function updateBrandDNA(
     return { error: parsed.error.issues[0]?.message ?? "Invalid Brand DNA data." };
   }
 
-  let site;
-  try {
-    site = await requireOwnedSite(siteId);
-  } catch {
-    return { error: "Site not found." };
-  }
+  const { workspaceId } = await requireWorkspace();
+  const result = await orNotFound(updateBrandDNAInWorkspace(workspaceId, siteId, parsed.data), "Site not found.");
 
-  if (site.brandProfile) {
-    await prisma.brandProfile.update({
-      where: { siteProjectId: siteId },
-      data: parsed.data
-    });
-  } else {
-    await prisma.brandProfile.create({
-      data: {
-        siteProjectId: siteId,
-        ...parsed.data
-      }
-    });
+  if (failed(result)) {
+    return { error: result.error };
   }
 
   revalidatePath(`/${siteId}/brand-dna`);
@@ -463,36 +330,15 @@ export async function toggleArticleStatus(
     return { error: parsed.error.issues[0]?.message ?? "Invalid article status update." };
   }
 
-  const article = await prisma.article.findFirst({
-    where: {
-      id: parsed.data.articleId,
-      siteProjectId: siteId,
-      siteProject: {
-        workspace: {
-          ownerId: await getCurrentUserId()
-        }
-      }
-    },
-    select: { id: true, slug: true, siteProjectId: true }
-  });
+  const { workspaceId } = await requireWorkspace();
+  const article = await orNotFound(
+    toggleArticleStatusInWorkspace(workspaceId, siteId, parsed.data.articleId, parsed.data.status),
+    "Article not found."
+  );
 
-  if (!article) {
-    return { error: "Article not found." };
+  if (failed(article)) {
+    return { error: article.error };
   }
-
-  await prisma.article.update({
-    where: { id: article.id },
-    data:
-      parsed.data.status === "PUBLISHED"
-        ? {
-            status: "PUBLISHED",
-            publishedAt: new Date()
-          }
-        : {
-            status: "DRAFT",
-            publishedAt: null
-          }
-  });
 
   revalidatePath(`/${siteId}/articles`);
   revalidatePath(`/api/public/sites/${siteId}/articles`);
@@ -516,26 +362,12 @@ export async function deleteArticle(
     return { error: parsed.error.issues[0]?.message ?? "Invalid article delete request." };
   }
 
-  const article = await prisma.article.findFirst({
-    where: {
-      id: parsed.data.articleId,
-      siteProjectId: siteId,
-      siteProject: {
-        workspace: {
-          ownerId: await getCurrentUserId()
-        }
-      }
-    },
-    select: { id: true, slug: true, status: true }
-  });
+  const { workspaceId } = await requireWorkspace();
+  const article = await orNotFound(deleteArticleInWorkspace(workspaceId, siteId, parsed.data.articleId), "Article not found.");
 
-  if (!article) {
-    return { error: "Article not found." };
+  if (failed(article)) {
+    return { error: article.error };
   }
-
-  await prisma.article.delete({
-    where: { id: article.id }
-  });
 
   revalidatePath(`/${siteId}/articles`);
   revalidatePath(`/${siteId}/calendar`);
@@ -566,21 +398,12 @@ export async function createKeyword(
     return { error: parsed.error.issues[0]?.message ?? "Invalid keyword term." };
   }
 
-  try {
-    await requireOwnedSite(siteId);
-  } catch {
-    return { error: "Site not found." };
-  }
+  const { workspaceId } = await requireWorkspace();
 
   try {
-    await prisma.keyword.create({
-      data: {
-        siteProjectId: siteId,
-        term: parsed.data.term
-      }
-    });
-  } catch {
-    return { error: "Keyword already exists for this site." };
+    await createKeywordInWorkspace(workspaceId, siteId, parsed.data.term);
+  } catch (error) {
+    return { error: isNotFoundError(error) ? "Site not found." : "Keyword already exists for this site." };
   }
 
   revalidatePath(`/${siteId}/keywords`);
@@ -602,43 +425,15 @@ export async function updateSearchConsoleProperty(
     return { error: parsed.error.issues[0]?.message ?? "Invalid Search Console property." };
   }
 
-  const userId = await getCurrentUserId();
-  const site = await prisma.siteProject.findFirst({
-    where: {
-      id: siteId,
-      workspace: {
-        ownerId: userId
-      }
-    },
-    select: {
-      id: true,
-      domain: true
-    }
-  });
+  const { workspaceId, userId } = await requireWorkspace();
+  const result = await orNotFound(
+    updateSearchConsolePropertyInWorkspace(workspaceId, userId, siteId, parsed.data.propertyUrl),
+    "Site not found."
+  );
 
-  if (!site) {
-    return { error: "Site not found." };
+  if (failed(result)) {
+    return { error: result.error };
   }
-
-  const properties = await listSearchConsolePropertiesForUser(userId, site.domain);
-
-  if (!properties) {
-    return { error: "Google Search Console is not connected." };
-  }
-
-  const selectedProperty = properties.find((property) => property.siteUrl === parsed.data.propertyUrl);
-
-  if (!selectedProperty) {
-    return { error: "Selected property is not available for this Google account." };
-  }
-
-  await prisma.siteProject.update({
-    where: { id: site.id },
-    data: {
-      searchConsolePropertyUrl: selectedProperty.siteUrl,
-      searchConsoleConnectedAt: new Date()
-    }
-  });
 
   revalidatePath(`/${siteId}/analytics`);
 
@@ -658,18 +453,12 @@ export async function updateWidgetTheme(
     return { error: parsed.error.issues[0]?.message ?? "Invalid widget theme." };
   }
 
-  try {
-    await requireOwnedSite(siteId);
-  } catch {
-    return { error: "Site not found." };
-  }
+  const { workspaceId } = await requireWorkspace();
+  const result = await orNotFound(updateWidgetThemeInWorkspace(workspaceId, siteId, parsed.data.widgetTheme), "Site not found.");
 
-  await prisma.siteProject.update({
-    where: { id: siteId },
-    data: {
-      widgetTheme: parsed.data.widgetTheme
-    }
-  });
+  if (failed(result)) {
+    return { error: result.error };
+  }
 
   revalidatePath(`/${siteId}`);
 
@@ -691,20 +480,12 @@ export async function updateAutoPublishSettings(
     return { error: parsed.error.issues[0]?.message ?? "Invalid auto-publish settings." };
   }
 
-  try {
-    await requireOwnedSite(siteId);
-  } catch {
-    return { error: "Site not found." };
-  }
+  const { workspaceId } = await requireWorkspace();
+  const result = await orNotFound(updateAutoPublishSettingsInWorkspace(workspaceId, siteId, parsed.data), "Site not found.");
 
-  await prisma.siteProject.update({
-    where: { id: siteId },
-    data: {
-      autoPublishEnabled: parsed.data.autoPublishEnabled,
-      articlesPerWeek: parsed.data.articlesPerWeek,
-      requireReview: parsed.data.requireReview
-    }
-  });
+  if (failed(result)) {
+    return { error: result.error };
+  }
 
   revalidatePath(`/${siteId}`);
   revalidatePath(`/${siteId}/settings`);
@@ -726,19 +507,12 @@ export async function updateSearchLocaleDefaults(
     return { error: parsed.error.issues[0]?.message ?? "Invalid search locale defaults." };
   }
 
-  try {
-    await requireOwnedSite(siteId);
-  } catch {
-    return { error: "Site not found." };
-  }
+  const { workspaceId } = await requireWorkspace();
+  const result = await orNotFound(updateSearchLocaleDefaultsInWorkspace(workspaceId, siteId, parsed.data), "Site not found.");
 
-  await prisma.siteProject.update({
-    where: { id: siteId },
-    data: {
-      defaultSearchCountry: parsed.data.defaultSearchCountry,
-      defaultSearchLanguage: parsed.data.defaultSearchLanguage
-    }
-  });
+  if (failed(result)) {
+    return { error: result.error };
+  }
 
   revalidatePath(`/${siteId}/settings`);
   revalidatePath(`/${siteId}/analytics`);
@@ -762,23 +536,12 @@ export async function updateTranslationSettings(
     return { error: parsed.error.issues[0]?.message ?? "Invalid translation settings." };
   }
 
-  try {
-    await requireOwnedSite(siteId);
-  } catch {
-    return { error: "Site not found." };
-  }
+  const { workspaceId } = await requireWorkspace();
+  const result = await orNotFound(updateTranslationSettingsInWorkspace(workspaceId, siteId, parsed.data), "Site not found.");
 
-  if (parsed.data.translationsEnabled && parsed.data.translationLanguages.length === 0) {
-    return { error: "Select at least one target language when translations are enabled." };
+  if (failed(result)) {
+    return { error: result.error };
   }
-
-  await prisma.siteProject.update({
-    where: { id: siteId },
-    data: {
-      translationsEnabled: parsed.data.translationsEnabled,
-      translationLanguages: parsed.data.translationsEnabled ? parsed.data.translationLanguages : []
-    }
-  });
 
   revalidatePath(`/${siteId}/settings`);
   revalidatePath(`/${siteId}/articles`);
@@ -799,22 +562,12 @@ export async function createPublishingApiKey(
     return { error: parsed.error.issues[0]?.message ?? "Invalid API key label." };
   }
 
-  try {
-    await requireOwnedSite(siteId);
-  } catch {
-    return { error: "Site not found." };
+  const { workspaceId } = await requireWorkspace();
+  const rawKey = await orNotFound(createPublishingApiKeyInWorkspace(workspaceId, siteId, parsed.data.label), "Site not found.");
+
+  if (failed(rawKey)) {
+    return { error: rawKey.error };
   }
-
-  const { rawKey, keyHash, keyPrefix } = generatePublishingApiKey();
-
-  await prisma.sitePublishingApiKey.create({
-    data: {
-      siteProjectId: siteId,
-      label: parsed.data.label,
-      keyHash,
-      keyPrefix
-    }
-  });
 
   revalidatePath(`/${siteId}/settings`);
 
@@ -837,34 +590,11 @@ export async function revokePublishingApiKey(
     return { error: parsed.error.issues[0]?.message ?? "Invalid API key." };
   }
 
-  const userId = await getCurrentUserId();
-  const apiKey = await prisma.sitePublishingApiKey.findFirst({
-    where: {
-      id: parsed.data.keyId,
-      siteProjectId: siteId,
-      siteProject: {
-        workspace: {
-          ownerId: userId
-        }
-      }
-    },
-    select: {
-      id: true,
-      revokedAt: true
-    }
-  });
+  const { workspaceId } = await requireWorkspace();
+  const result = await orNotFound(revokePublishingApiKeyInWorkspace(workspaceId, siteId, parsed.data.keyId), "API key not found.");
 
-  if (!apiKey) {
-    return { error: "API key not found." };
-  }
-
-  if (!apiKey.revokedAt) {
-    await prisma.sitePublishingApiKey.update({
-      where: { id: apiKey.id },
-      data: {
-        revokedAt: new Date()
-      }
-    });
+  if (failed(result)) {
+    return { error: result.error };
   }
 
   revalidatePath(`/${siteId}/settings`);
@@ -879,18 +609,12 @@ export async function updateWidgetInstalledState(
 ): Promise<ActionState> {
   const markInstalled = formData.get("installed") === "true";
 
-  try {
-    await requireOwnedSite(siteId);
-  } catch {
-    return { error: "Site not found." };
-  }
+  const { workspaceId } = await requireWorkspace();
+  const result = await orNotFound(updateWidgetInstalledStateInWorkspace(workspaceId, siteId, markInstalled), "Site not found.");
 
-  await prisma.siteProject.update({
-    where: { id: siteId },
-    data: {
-      widgetInstalledAt: markInstalled ? new Date() : null
-    }
-  });
+  if (failed(result)) {
+    return { error: result.error };
+  }
 
   revalidatePath(`/${siteId}`);
 
@@ -902,10 +626,11 @@ export async function generateNextAutoArticle(
   _prevState: ActionState,
   _formData: FormData
 ): Promise<ActionState> {
-  try {
-    await requireOwnedSite(siteId);
-  } catch {
-    return { error: "Site not found." };
+  const { workspaceId } = await requireWorkspace();
+  const site = await orNotFound(requireSiteInWorkspace(siteId, workspaceId), "Site not found.");
+
+  if (failed(site)) {
+    return { error: site.error };
   }
 
   try {
@@ -946,55 +671,14 @@ export async function assignKeywordToArticle(
     return { error: parsed.error.issues[0]?.message ?? "Invalid keyword assignment." };
   }
 
-  const userId = await getCurrentUserId();
-  const article = await prisma.article.findFirst({
-    where: {
-      id: parsed.data.articleId,
-      siteProjectId: siteId,
-      siteProject: {
-        workspace: {
-          ownerId: userId
-        }
-      }
-    },
-    select: { id: true, siteProjectId: true, keywordId: true }
-  });
+  const { workspaceId } = await requireWorkspace();
+  const result = await orNotFound(
+    assignKeywordInWorkspace(workspaceId, siteId, parsed.data.articleId, parsed.data.keywordId),
+    "Article not found."
+  );
 
-  if (!article) {
-    return { error: "Article not found." };
-  }
-
-  if (parsed.data.keywordId) {
-    const keyword = await prisma.keyword.findFirst({
-      where: {
-        id: parsed.data.keywordId,
-        siteProjectId: siteId,
-        siteProject: {
-          workspace: {
-            ownerId: userId
-          }
-        }
-      },
-      select: { id: true, siteProjectId: true }
-    });
-
-    if (!keyword) {
-      return { error: "Keyword not found." };
-    }
-  }
-
-  await prisma.article.update({
-    where: { id: article.id },
-    data: {
-      keywordId: parsed.data.keywordId
-    }
-  });
-
-  if (parsed.data.keywordId) {
-    await prisma.keyword.update({
-      where: { id: parsed.data.keywordId },
-      data: { status: "USED" }
-    });
+  if (failed(result)) {
+    return { error: result.error };
   }
 
   revalidatePath(`/${siteId}/articles`);
@@ -1025,29 +709,12 @@ export async function createArticle(
     return { error: parsed.error.issues[0]?.message ?? "Invalid article data." };
   }
 
-  try {
-    await requireOwnedSite(siteId);
-  } catch {
-    return { error: "Site not found." };
+  const { workspaceId } = await requireWorkspace();
+  const result = await orNotFound(createArticleInWorkspace(workspaceId, siteId, parsed.data), "Site not found.");
+
+  if (failed(result)) {
+    return { error: result.error };
   }
-
-  const slug = await createUniqueArticleSlug(siteId, parsed.data.title);
-
-  await prisma.article.create({
-    data: {
-      siteProjectId: siteId,
-      title: parsed.data.title,
-      slug,
-      excerpt: parsed.data.excerpt,
-      coverImageUrl: parsed.data.coverImageUrl,
-      contentMarkdown: parsed.data.contentMarkdown,
-      contentHtml: renderMarkdownToHtml(parsed.data.contentMarkdown),
-      seoTitle: parsed.data.seoTitle,
-      seoDescription: parsed.data.seoDescription,
-      status: "DRAFT",
-      publishedAt: parsed.data.publishedDate ? new Date(`${parsed.data.publishedDate}T00:00:00.000Z`) : null
-    }
-  });
 
   revalidatePath(`/${siteId}/articles`);
   revalidatePath(`/${siteId}/calendar`);
@@ -1074,30 +741,12 @@ export async function updateArticle(
     return { error: parsed.error.issues[0]?.message ?? "Invalid article update." };
   }
 
-  const article = await prisma.article.findFirst({
-    where: {
-      id: articleId,
-      siteProjectId: siteId,
-      siteProject: {
-        workspace: {
-          ownerId: await getCurrentUserId()
-        }
-      }
-    },
-    select: { id: true, siteProjectId: true }
-  });
+  const { workspaceId } = await requireWorkspace();
+  const result = await orNotFound(updateArticleInWorkspace(workspaceId, siteId, articleId, parsed.data), "Article not found.");
 
-  if (!article) {
-    return { error: "Article not found." };
+  if (failed(result)) {
+    return { error: result.error };
   }
-
-  await prisma.article.update({
-    where: { id: article.id },
-    data: {
-      ...parsed.data,
-      contentHtml: renderMarkdownToHtml(parsed.data.contentMarkdown)
-    }
-  });
 
   revalidatePath(`/${siteId}/articles`);
   revalidatePath(`/${siteId}/articles/${articleId}`);
@@ -1121,17 +770,15 @@ export async function generateArticleTranslation(
     return { error: parsed.error.issues[0]?.message ?? "Invalid translation request." };
   }
 
-  const userId = await getCurrentUserId();
-  const article = await prisma.article.findFirst({
-    where: {
-      id: parsed.data.articleId,
-      siteProjectId: siteId,
-      siteProject: {
-        workspace: {
-          ownerId: userId
-        }
-      }
-    },
+  const { workspaceId } = await requireWorkspace();
+  const guarded = await orNotFound(requireArticleInSite(parsed.data.articleId, siteId, workspaceId), "Article not found.");
+
+  if (failed(guarded)) {
+    return { error: guarded.error };
+  }
+
+  const article = await prisma.article.findUnique({
+    where: { id: guarded.id },
     select: {
       id: true,
       slug: true,
@@ -1244,29 +891,15 @@ export async function updateArticleDate(siteId: string, formData: FormData) {
     redirect(fallbackReturnTo);
   }
 
-  const article = await prisma.article.findFirst({
-    where: {
-      id: parsed.data.articleId,
-      siteProjectId: siteId,
-      siteProject: {
-        workspace: {
-          ownerId: await getCurrentUserId()
-        }
-      }
-    },
-    select: { id: true, siteProjectId: true, slug: true }
-  });
+  const { workspaceId } = await requireWorkspace();
+  const article = await orNotFound(
+    updateArticleDateInWorkspace(workspaceId, siteId, parsed.data.articleId, parsed.data.newDate),
+    "Article not found."
+  );
 
-  if (!article) {
+  if (failed(article)) {
     redirect(parsed.data.returnTo || fallbackReturnTo);
   }
-
-  await prisma.article.update({
-    where: { id: article.id },
-    data: {
-      publishedAt: parsed.data.newDate ? new Date(parsed.data.newDate) : null
-    }
-  });
 
   revalidatePath(`/${siteId}/calendar`);
   revalidatePath(`/${siteId}/articles`);

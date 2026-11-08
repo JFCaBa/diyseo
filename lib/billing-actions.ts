@@ -3,26 +3,26 @@
 import { redirect } from "next/navigation";
 
 import { getAppOrigin } from "@/lib/app-origin";
-import { auth } from "@/lib/auth";
 import { automaticTaxEnabled, checkoutTaxParams, checkoutWindow } from "@/lib/billing-rules";
 import { lookupKey, type BillingInterval } from "@/lib/entitlements";
 import { isPlanId } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
 import { lockWorkspace } from "@/lib/quota";
 import { getStripe } from "@/lib/stripe";
+import { requireOwner } from "@/lib/workspace-context";
 
 const LIVE = new Set(["active", "trialing", "past_due"]);
 
-/** Billing is managed only by the workspace owner, resolved from the session. */
+/** Billing is managed only by the workspace OWNER member, resolved from the session. */
 async function requireOwnerWorkspace() {
-  const session = await auth();
+  const owner = await requireOwner().catch((error: Error) => error);
 
-  if (!session?.user?.id) {
-    redirect("/");
+  if (owner instanceof Error) {
+    redirect(owner.message === "Forbidden" ? "/billing" : "/");
   }
 
   const workspace = await prisma.workspace.findUnique({
-    where: { ownerId: session.user.id },
+    where: { id: owner.workspaceId },
     select: { id: true, name: true, stripeCustomerId: true, owner: { select: { email: true, name: true } } }
   });
 

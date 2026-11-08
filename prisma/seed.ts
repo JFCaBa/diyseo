@@ -31,6 +31,12 @@ async function main() {
     });
   }
 
+  await prisma.workspaceMember.upsert({
+    where: { userId: user.id },
+    update: {},
+    create: { workspaceId: workspace.id, userId: user.id, role: "OWNER" }
+  });
+
   let site = await prisma.siteProject.findFirst({
     where: { workspaceId: workspace.id },
     orderBy: { createdAt: "asc" }

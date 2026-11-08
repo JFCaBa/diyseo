@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { auth } from "@/lib/auth";
 import { syncWorkspaceFromStripe } from "@/lib/billing";
 import { checkoutReturnOutcome } from "@/lib/billing-rules";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
+import { requireOwner } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
 
@@ -16,14 +16,14 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const back = (query: string) => NextResponse.redirect(new URL(`/billing?${query}`, request.url));
   const sessionId = new URL(request.url).searchParams.get("session_id");
-  const session = await auth();
+  const owner = await requireOwner().catch((error: Error) => error);
 
-  if (!session?.user?.id) {
-    return NextResponse.redirect(new URL("/", request.url));
+  if (owner instanceof Error) {
+    return owner.message === "Forbidden" ? back("error=owner_only") : NextResponse.redirect(new URL("/", request.url));
   }
 
   const workspace = await prisma.workspace.findUnique({
-    where: { ownerId: session.user.id },
+    where: { id: owner.workspaceId },
     select: { id: true, stripeCustomerId: true }
   });
 

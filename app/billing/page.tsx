@@ -6,6 +6,7 @@ import { hasDuplicateSubscriptions } from "@/lib/billing";
 import { openBillingPortal } from "@/lib/billing-actions";
 import { prisma } from "@/lib/prisma";
 import { getUsageSummary } from "@/lib/quota";
+import type { SatelliteService } from "@/lib/satellite-entitlements";
 import { requireWorkspace } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +30,21 @@ const MESSAGES: Record<string, { tone: "ok" | "error"; text: string }> = {
   "error=owner_only": { tone: "error", text: "Only the workspace owner can manage billing." }
 };
 
-type BillingPageProps = { searchParams?: Promise<{ checkout?: string; error?: string }> };
+// Shown when a service sends someone here because their plan does not include it.
+const UPGRADE_NOTICES: Record<SatelliteService, string> = {
+  ads: "Ads campaigns are included in Pro and Agency.",
+  mcp: "Your plan doesn't include SEO data in Claude."
+};
+
+type BillingPageProps = { searchParams?: Promise<{ checkout?: string; error?: string; upgrade?: string }> };
+
+function UpgradeNotice({ text }: { text: string }) {
+  return (
+    <p role="status" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      {text}
+    </p>
+  );
+}
 
 function Meter({ label, used, limit }: { label: string; used: number; limit: number | null }) {
   return (
@@ -59,6 +74,9 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
     redirect("/");
   }
 
+  const params = searchParams ? await searchParams : undefined;
+  const upgrade = params?.upgrade;
+  const upgradeNotice = upgrade === "ads" || upgrade === "mcp" ? UPGRADE_NOTICES[upgrade] : undefined;
   const firstSiteId = workspace.sites[0]?.id;
   const header = (
     <div className="flex flex-wrap items-center justify-between gap-4">
@@ -73,17 +91,30 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   );
 
   if (member.role !== "OWNER") {
+    const owner = upgradeNotice
+      ? await prisma.workspaceMember.findFirst({
+          where: { workspaceId: workspace.id, role: "OWNER" },
+          select: { user: { select: { email: true } } }
+        })
+      : null;
+    const ownerEmail = owner?.user.email;
+
     return (
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
         {header}
-        <p className="mt-8 text-sm text-slate-600">Only the workspace owner can manage billing.</p>
+        {upgradeNotice ? (
+          <UpgradeNotice
+            text={`${upgradeNotice} ${ownerEmail ? `Ask your workspace owner (${ownerEmail}) to upgrade.` : "Ask your workspace owner to upgrade."}`}
+          />
+        ) : (
+          <p className="mt-8 text-sm text-slate-600">Only the workspace owner can manage billing.</p>
+        )}
       </main>
     );
   }
 
   const usage = await getUsageSummary(workspace.id);
   const duplicate = usage.stripeCustomerId ? await hasDuplicateSubscriptions(usage.stripeCustomerId).catch(() => false) : false;
-  const params = searchParams ? await searchParams : undefined;
   const messageKey = params?.checkout ? `checkout=${params.checkout}` : params?.error ? `error=${params.error}` : null;
   const message = messageKey ? MESSAGES[messageKey] : undefined;
   const paid = usage.plan === "STARTER" || usage.plan === "PRO" || usage.plan === "AGENCY";
@@ -100,6 +131,8 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
           {message.text}
         </p>
       ) : null}
+
+      {upgradeNotice ? <UpgradeNotice text={upgradeNotice} /> : null}
 
       {usage.subscriptionStatus === "past_due" ? (
         <p role="alert" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">

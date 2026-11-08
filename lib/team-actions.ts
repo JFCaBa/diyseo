@@ -78,6 +78,7 @@ export async function inviteMember(_prevState: TeamActionState, formData: FormDa
   }
 
   revalidatePath("/team");
+  revalidatePath("/[siteId]/team", "page");
   return { invite: { email, url, emailStatus } };
 }
 
@@ -101,6 +102,7 @@ export async function removeTeamMember(_prevState: TeamActionState, formData: Fo
   }
 
   revalidatePath("/team");
+  revalidatePath("/[siteId]/team", "page");
   return {};
 }
 
@@ -119,6 +121,7 @@ export async function revokeTeamInvite(_prevState: TeamActionState, formData: Fo
   }
 
   revalidatePath("/team");
+  revalidatePath("/[siteId]/team", "page");
   return {};
 }
 

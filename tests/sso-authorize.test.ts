@@ -106,4 +106,5 @@ test("auto-POST headers pin the script hash and the callback origin", () => {
   assert.ok(csp.startsWith("default-src 'none';"));
   assert.ok(csp.includes("form-action https://ads.example:8443;"));
   assert.ok(csp.includes(`script-src 'sha256-${hash}'`));
+  assert.ok(csp.endsWith("frame-ancestors 'self'"));
 });

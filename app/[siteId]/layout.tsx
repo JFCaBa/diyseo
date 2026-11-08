@@ -9,7 +9,7 @@ import { auth } from "@/lib/auth";
 import { effectivePlan } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
 import { satelliteGrant } from "@/lib/satellite-entitlements";
-import { satelliteLinks } from "@/lib/sso/satellite-links";
+import { satelliteGroups } from "@/lib/sso/satellite-links";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +36,7 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
     redirect("/");
   }
 
-  const [currentSite, sites, workspace] = await Promise.all([
+  const [currentSite, sites, workspace, membership] = await Promise.all([
     prisma.siteProject.findFirst({
       where: { id: siteId, workspaceId },
       select: { id: true, name: true, domain: true }
@@ -49,6 +49,10 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
     prisma.workspace.findUnique({
       where: { id: workspaceId },
       select: { plan: true, trialEndsAt: true }
+    }),
+    prisma.workspaceMember.findUnique({
+      where: { userId: session.user.id },
+      select: { role: true, workspaceId: true }
     })
   ]);
 
@@ -56,7 +60,8 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
     notFound();
   }
 
-  const satellites = workspace ? satelliteLinks(satelliteGrant(effectivePlan(workspace, new Date()))) : [];
+  const isOwner = membership?.workspaceId === workspaceId && membership.role === "OWNER";
+  const satellites = workspace ? satelliteGroups(satelliteGrant(effectivePlan(workspace, new Date())), isOwner) : [];
   const displayDomain = formatDisplayDomain(currentSite.domain);
 
   return (

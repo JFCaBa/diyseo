@@ -87,13 +87,16 @@ export function autoPostHtml(callbackUrl: string, fields: Record<string, string>
   );
 }
 
-/** Headers for the auto-POST page: the form may only go to the callback's origin. */
+/**
+ * Headers for the auto-POST page: the form may only go to the callback's origin. It may be framed only by the hub
+ * itself, which embeds the satellites (/[siteId]/ads, /[siteId]/seo-data) and so runs their SSO inside an iframe.
+ */
 export function autoPostHeaders(callbackUrl: string): Record<string, string> {
   const origin = new URL(callbackUrl).origin;
   return {
     "Content-Type": "text/html; charset=utf-8",
     "Cache-Control": "no-store",
     "Referrer-Policy": "no-referrer",
-    "Content-Security-Policy": `default-src 'none'; form-action ${origin}; script-src 'sha256-${AUTO_POST_SCRIPT_HASH}'; base-uri 'none'; frame-ancestors 'none'`,
+    "Content-Security-Policy": `default-src 'none'; form-action ${origin}; script-src 'sha256-${AUTO_POST_SCRIPT_HASH}'; base-uri 'none'; frame-ancestors 'self'`,
   };
 }

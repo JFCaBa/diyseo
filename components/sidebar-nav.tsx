@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import type { SatelliteLink } from "@/lib/sso/satellite-links";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -17,9 +18,10 @@ const navItems = [
 
 type SidebarNavProps = {
   siteId: string;
+  satellites: SatelliteLink[];
 };
 
-export function SidebarNav({ siteId }: SidebarNavProps) {
+export function SidebarNav({ siteId, satellites }: SidebarNavProps) {
   const pathname = usePathname();
 
   return (
@@ -43,6 +45,17 @@ export function SidebarNav({ siteId }: SidebarNavProps) {
           </Link>
         );
       })}
+      {satellites.map((satellite) => (
+        <a
+          key={satellite.service}
+          href={
+            satellite.href.startsWith("/") ? `/${siteId}${satellite.href}` : satellite.href
+          }
+          className="flex items-center rounded-2xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-ink dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+        >
+          {satellite.label}
+        </a>
+      ))}
       <Link
         href={`/${siteId}/billing`}
         className={cn(

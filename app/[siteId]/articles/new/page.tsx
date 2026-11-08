@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ArticleCreateForm } from "@/components/article-create-form";
 import { PageHeader } from "@/components/page-header";
+import { requireSitePage } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ function getInitialDate(value?: string) {
 
 export default async function NewArticlePage({ params, searchParams }: NewArticlePageProps) {
   const { siteId } = await params;
+  await requireSitePage(siteId);
   const query = await searchParams;
   const initialDate = getInitialDate(query.date);
   const returnTo = query.returnTo || `/${siteId}/calendar`;

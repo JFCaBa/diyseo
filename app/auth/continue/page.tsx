@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { firstSiteIdInWorkspace } from "@/lib/workspace-guards";
 
 export const dynamic = "force-dynamic";
 
@@ -12,15 +12,7 @@ export default async function AuthContinuePage() {
     redirect("/");
   }
 
-  const workspace = await prisma.workspace.findUnique({
-    where: { ownerId: session.user.id },
-    select: {
-      sites: {
-        orderBy: { createdAt: "asc" },
-        select: { id: true }
-      }
-    }
-  });
+  const firstSiteId = await firstSiteIdInWorkspace(session.user.workspaceId);
 
-  redirect(workspace?.sites[0]?.id ? `/${workspace.sites[0].id}` : "/settings");
+  redirect(firstSiteId ? `/${firstSiteId}` : "/settings");
 }

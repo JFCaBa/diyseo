@@ -13,6 +13,7 @@ import { getArticleRenderedHtml } from "@/lib/markdown";
 import { getPublicBlogTheme } from "@/lib/public-blog-theme";
 import { getRequestedTranslationLanguage, getTranslationQuerySuffix, pickArticleTranslation } from "@/lib/translations";
 import { cn } from "@/lib/utils";
+import { requireSitePage } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ function formatPublishedDate(value: Date | string | null) {
 
 export default async function PreviewPage({ params, searchParams }: PreviewPageProps) {
   const { siteId } = await params;
+  await requireSitePage(siteId);
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const slug = typeof resolvedSearchParams?.slug === "string" ? resolvedSearchParams.slug.trim() : "";
   const language = getRequestedTranslationLanguage(typeof resolvedSearchParams?.lang === "string" ? resolvedSearchParams.lang : null);

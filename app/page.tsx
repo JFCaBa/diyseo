@@ -6,8 +6,8 @@ import { redirect } from "next/navigation";
 import { SignInButton } from "@/components/auth-buttons";
 import { Pricing } from "@/components/landing/pricing";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { startFreeTrial } from "@/lib/signup-actions";
+import { firstSiteIdInWorkspace } from "@/lib/workspace-guards";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-landing-body" });
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-landing-display" });
@@ -70,17 +70,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const session = await auth();
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   if (session?.user?.id) {
-    const workspace = await prisma.workspace.findUnique({
-      where: { ownerId: session.user.id },
-      select: {
-        sites: {
-          orderBy: { createdAt: "asc" },
-          select: { id: true }
-        }
-      }
-    });
+    const firstSiteId = await firstSiteIdInWorkspace(session.user.workspaceId);
 
-    redirect(workspace?.sites[0]?.id ? `/${workspace.sites[0].id}` : "/settings");
+    redirect(firstSiteId ? `/${firstSiteId}` : "/settings");
   }
 
   return (

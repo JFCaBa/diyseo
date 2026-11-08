@@ -81,3 +81,15 @@ export function checkoutWindow(nowSeconds: number): { bucket: number; expiresAt:
   const bucket = Math.floor(nowSeconds / HALF_HOUR_S) * HALF_HOUR_S;
   return { bucket, expiresAt: bucket + 3 * HALF_HOUR_S };
 }
+
+/**
+ * What to do with a workspace's remembered Checkout Session before its owner
+ * joins another team: a finished-without-paying (or unknown) session is
+ * cleared, an open one is expired first so it can no longer be paid, and a
+ * completed one stays (its subscription blocks the join).
+ */
+export function staleCheckoutAction(status: string | null): "clear" | "expire_then_clear" | "keep" {
+  if (status === "complete") return "keep";
+  if (status === "open") return "expire_then_clear";
+  return "clear";
+}

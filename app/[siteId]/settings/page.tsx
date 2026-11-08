@@ -10,6 +10,7 @@ import { SiteTranslationSettingsForm } from "@/components/site-translation-setti
 import { SiteTransferForm } from "@/components/site-transfer-form";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireSitePage } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
 
@@ -27,20 +28,18 @@ function formatDisplayDomain(value: string) {
 
 export default async function SiteSettingsPage({ params }: SiteSettingsPageProps) {
   const { siteId } = await params;
+  const { role } = await requireSitePage(siteId);
   const session = await auth();
 
-  if (!session?.user?.id) {
+  const workspaceId = session?.user?.workspaceId;
+
+  if (!session?.user?.id || !workspaceId) {
     notFound();
   }
 
   const [currentSite, workspace] = await Promise.all([
     prisma.siteProject.findFirst({
-      where: {
-        id: siteId,
-        workspace: {
-          ownerId: session.user.id
-        }
-      },
+      where: { id: siteId, workspaceId },
       select: {
         id: true,
         autoPublishEnabled: true,
@@ -53,7 +52,7 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
       }
     }),
     prisma.workspace.findUnique({
-      where: { ownerId: session.user.id },
+      where: { id: workspaceId },
       include: {
         sites: {
           orderBy: { createdAt: "asc" }
@@ -140,8 +139,12 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
                       >
                         Open site
                       </Link>
-                      <SiteTransferForm siteId={site.id} />
-                      <SiteDeleteForm siteId={site.id} siteName={site.name} />
+                      {role === "OWNER" ? (
+                        <>
+                          <SiteTransferForm siteId={site.id} />
+                          <SiteDeleteForm siteId={site.id} siteName={site.name} />
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 </div>

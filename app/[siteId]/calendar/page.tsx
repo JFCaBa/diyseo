@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CalendarMonthView } from "@/components/calendar-month-view";
 import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/prisma";
+import { requireSitePage } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ function getMonthStart(value?: string) {
 
 export default async function CalendarPage({ params, searchParams }: CalendarPageProps) {
   const { siteId } = await params;
+  await requireSitePage(siteId);
   const query = await searchParams;
   const monthStart = getMonthStart(query.month);
   const nextMonthStart = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1));

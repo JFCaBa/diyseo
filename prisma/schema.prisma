@@ -9,6 +9,7 @@ datasource db {
 
 model Workspace {
   id        String        @id @default(cuid())
+  // Mirror of the OWNER WorkspaceMember's userId; keep both in sync.
   ownerId   String        @unique
   name      String        @default("My Workspace")
   // Billing. `plan` is a projection of Stripe (see lib/billing.ts); COMP is never billed.
@@ -24,6 +25,38 @@ model Workspace {
   owner     User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   sites     SiteProject[]
   aiUsage   AiUsage[]
+  members   WorkspaceMember[]
+  invites   WorkspaceInvite[]
+}
+
+// One person belongs to exactly one workspace (userId unique). role: OWNER | MEMBER.
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String   @unique
+  role        String
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+// Pending invitation; only the sha256 of the URL token is stored.
+model WorkspaceInvite {
+  id          String    @id @default(cuid())
+  workspaceId String
+  email       String
+  tokenHash   String    @unique
+  invitedById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, email])
 }
 
 // One row per AI article generation or translation; quotas count these per month.
@@ -52,6 +85,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   workspace     Workspace?
+  membership    WorkspaceMember?
 }
 
 model Account {

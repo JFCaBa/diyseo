@@ -27,26 +27,19 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
   const { siteId } = await params;
   const session = await auth();
 
-  if (!session?.user?.id) {
+  const workspaceId = session?.user?.workspaceId;
+
+  if (!session?.user?.id || !workspaceId) {
     redirect("/");
   }
 
   const [currentSite, sites] = await Promise.all([
     prisma.siteProject.findFirst({
-      where: {
-        id: siteId,
-        workspace: {
-          ownerId: session.user.id
-        }
-      },
+      where: { id: siteId, workspaceId },
       select: { id: true, name: true, domain: true }
     }),
     prisma.siteProject.findMany({
-      where: {
-        workspace: {
-          ownerId: session.user.id
-        }
-      },
+      where: { workspaceId },
       orderBy: { createdAt: "asc" },
       select: { id: true, name: true }
     })

@@ -13,7 +13,14 @@ export function newTrialEndsAt(now: Date): Date {
 }
 
 const PAID: Record<PlanId, WorkspacePlan> = { starter: "STARTER", pro: "PRO", agency: "AGENCY" };
-const NO_ACCESS: PlanLimits = { sites: 0, articlesPerMonth: 0, translations: false };
+const NO_ACCESS: PlanLimits = {
+  sites: 0,
+  articlesPerMonth: 0,
+  translations: false,
+  members: 1,
+  aiQuestions: 0,
+  adBusinesses: 0
+};
 
 export function paidPlanFor(id: PlanId): WorkspacePlan {
   return PAID[id];

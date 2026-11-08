@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CreateKeywordForm } from "@/components/create-keyword-form";
 import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/prisma";
+import { requireSitePage } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ function parsePage(value?: string) {
 
 export default async function KeywordsPage({ params, searchParams }: KeywordsPageProps) {
   const { siteId } = await params;
+  await requireSitePage(siteId);
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const requestedPage = parsePage(resolvedSearchParams?.page);
   const totalKeywords = await prisma.keyword.count({

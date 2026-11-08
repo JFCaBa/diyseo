@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { generateAndSaveArticleCoverImage } from "@/lib/generate-cover-image";
 import { prisma } from "@/lib/prisma";
+import { findArticleInWorkspace } from "@/lib/workspace-guards";
 
 type RouteContext = {
   params: Promise<{ siteId: string; articleId: string }>;
@@ -21,7 +22,9 @@ function normalizeTextValue(value: FormDataEntryValue | null) {
 export async function POST(request: Request, context: RouteContext) {
   const session = await auth();
 
-  if (!session?.user?.id) {
+  const workspaceId = session?.user?.workspaceId;
+
+  if (!session?.user?.id || !workspaceId) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
@@ -30,18 +33,11 @@ export async function POST(request: Request, context: RouteContext) {
   const titleOverride = normalizeTextValue(formData.get("title"));
   const excerptOverride = normalizeTextValue(formData.get("excerpt"));
 
-  const article = await prisma.article.findFirst({
-    where: {
-      id: articleId,
-      siteProjectId: siteId,
-      siteProject: {
-        workspace: {
-          ownerId: session.user.id
-        }
-      }
-    },
-    select: { id: true, slug: true }
-  });
+  const guarded = await findArticleInWorkspace(articleId, workspaceId);
+  const article =
+    guarded && guarded.siteProjectId === siteId
+      ? await prisma.article.findUnique({ where: { id: guarded.id }, select: { id: true, slug: true } })
+      : null;
 
   if (!article) {
     return NextResponse.json({ error: "Article not found." }, { status: 404 });

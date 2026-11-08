@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { WidgetInstallCard } from "@/components/widget-install-card";
 import { prisma } from "@/lib/prisma";
+import { requireSitePage } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ type OnboardingStep = {
 
 export default async function DashboardPage({ params }: DashboardPageProps) {
   const { siteId } = await params;
+  await requireSitePage(siteId);
   const [site, articleMetrics, keywordMetrics, recentArticles] = await Promise.all([
     prisma.siteProject.findUnique({
       where: { id: siteId },

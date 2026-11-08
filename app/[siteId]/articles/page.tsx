@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { getCoverImageProxyPath } from "@/lib/cover-image-url";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { requireSitePage } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ function parsePage(value?: string) {
 
 export default async function ArticlesPage({ params, searchParams }: ArticlesPageProps) {
   const { siteId } = await params;
+  await requireSitePage(siteId);
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const requestedPage = parsePage(resolvedSearchParams?.page);
   const totalArticles = await prisma.article.count({

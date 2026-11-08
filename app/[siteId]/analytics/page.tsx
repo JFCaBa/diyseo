@@ -22,6 +22,7 @@ import {
 } from "@/lib/search-locale";
 import { runLiveSerpCheck } from "@/lib/serper";
 import { AnalyticsRouteParamsSchema } from "@/lib/validations";
+import { requireSitePage } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
 
@@ -90,6 +91,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
   }
 
   const { siteId } = parsedParams.data;
+  await requireSitePage(siteId);
   const changePropertyRequested = resolvedSearchParams?.changeProperty === "1";
   const gscDebugEnabled = resolvedSearchParams?.gscDebug === "1";
   const searchedKeyword = resolvedSearchParams?.keyword?.trim() ?? "";
@@ -112,11 +114,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
         searchConsoleConnectedAt: true,
         defaultSearchCountry: true,
         defaultSearchLanguage: true,
-        workspace: {
-          select: {
-            ownerId: true
-          }
-        }
+        workspaceId: true
       }
     }),
     prisma.article.groupBy({
@@ -135,7 +133,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
     notFound();
   }
 
-  if (site.workspace.ownerId !== session.user.id) {
+  if (!session.user.workspaceId || site.workspaceId !== session.user.workspaceId) {
     notFound();
   }
 

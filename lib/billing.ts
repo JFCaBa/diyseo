@@ -67,3 +67,15 @@ export async function hasDuplicateSubscriptions(customerId: string): Promise<boo
   const subs = await listSubscriptionSummaries(customerId);
   return projectPlan({ current: "NONE", trialEndsAt: null, subs }, new Date()).duplicate;
 }
+
+/**
+ * Webhook `checkout.session.expired`: forgets the session on the workspace
+ * that still points at it. Conditional, so it never clears a newer session.
+ */
+export async function clearExpiredCheckout(sessionId: string): Promise<number> {
+  const { count } = await prisma.workspace.updateMany({
+    where: { pendingCheckoutSessionId: sessionId },
+    data: { pendingCheckoutSessionId: null }
+  });
+  return count;
+}

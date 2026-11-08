@@ -5,6 +5,7 @@ import { ArticleTranslationForm } from "@/components/article-translation-form";
 import { ArticleEditorForm } from "@/components/article-editor-form";
 import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/prisma";
+import { requireSitePage } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ type ArticleEditorPageProps = {
 
 export default async function ArticleEditorPage({ params }: ArticleEditorPageProps) {
   const { siteId, articleId } = await params;
+  await requireSitePage(siteId);
 
   const [article, site] = await Promise.all([
     prisma.article.findFirst({

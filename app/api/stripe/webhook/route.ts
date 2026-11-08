@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { syncWorkspaceFromStripe } from "@/lib/billing";
+import { clearExpiredCheckout, syncWorkspaceFromStripe } from "@/lib/billing";
 import { getStripe } from "@/lib/stripe";
 
 const SYNC_EVENTS = new Set([
@@ -33,6 +33,17 @@ export async function POST(request: Request) {
     event = getStripe().webhooks.constructEvent(await request.text(), signature, secret);
   } catch {
     return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
+  }
+
+  if (event.type === "checkout.session.expired") {
+    try {
+      await clearExpiredCheckout(event.data.object.id);
+      return NextResponse.json({ received: true });
+    } catch (error) {
+      // 500 so Stripe retries; clearing is idempotent.
+      console.error("stripe_webhook_sync_failed", { type: event.type, message: error instanceof Error ? error.message : "unknown" });
+      return NextResponse.json({ error: "Sync failed." }, { status: 500 });
+    }
   }
 
   if (!SYNC_EVENTS.has(event.type)) {

@@ -72,7 +72,7 @@ export function buildUserPrompt(context: ArticleGenerationContext) {
     "{",
     '  "title": "A catchy, SEO-friendly title (H1)",',
     '  "excerpt": "A short, engaging 2-3 sentence summary",',
-    '  "contentMarkdown": "The full article content formatted in Markdown. Use headings, lists, quotes, code fences, and inline Markdown links where useful.",',
+    '  "contentMarkdown": "The full article content formatted in Markdown. Do not repeat the title and do not use # (H1): the page already shows the title as its H1, so start sections at ##. Use headings, lists, quotes, code fences, and inline Markdown links where useful.",',
     '  "seoTitle": "Optimized meta title (under 60 characters)",',
     '  "seoDescription": "Optimized meta description (under 160 characters)",',
     '  "keywords": ["5 to 7 relevant SEO-friendly short phrases, each 2 to 5 words"]',

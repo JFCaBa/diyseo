@@ -1,3 +1,4 @@
+import { mapProse } from "@/lib/markdown-prose";
 import { normalizePageUrl } from "@/lib/site-pages";
 
 const bareHost = (host: string) => host.toLowerCase().replace(/^www\./, "");
@@ -75,8 +76,6 @@ export function sanitizeInternalLinks(
 ): { markdown: string; removed: string[] } {
   const keep = internalLinkFilter(origin, allowedPages);
   const removed: string[] = [];
-  // Odd segments are fenced code blocks: never touched.
-  const parts = markdown.split(/(^ {0,3}(?:```|~~~)[\s\S]*?^ {0,3}(?:```|~~~)[^\n]*$)/m);
-  const out = parts.map((part, i) => (i % 2 === 1 ? part : cleanProse(part, keep, removed))).join("");
+  const out = mapProse(markdown, (prose) => cleanProse(prose, keep, removed));
   return { markdown: out, removed };
 }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAIGenerationService } from "@/lib/ai";
 import { commitArticleCredit, releaseArticleCredit, reserveArticleCredit } from "@/lib/quota";
 import { renderMarkdownToHtml } from "@/lib/markdown";
+import { normalizeArticleHeadings } from "@/lib/article-headings";
 import { sanitizeInternalLinks } from "@/lib/internal-links";
 import { fetchSitePages, siteOrigin } from "@/lib/site-pages";
 import { GenerateArticleRequestSchema } from "@/lib/validations";
@@ -125,9 +126,11 @@ async function writeGeneratedArticle(
   });
   // The model can still invent a path: links to the site that are not real pages become plain text.
   const origin = siteOrigin(site.domain);
-  const contentMarkdown = origin
+  const linked = origin
     ? sanitizeInternalLinks(generated.contentMarkdown, origin, sitePages).markdown
     : generated.contentMarkdown;
+  // The template renders the title as the page's H1: the content must not add another.
+  const contentMarkdown = normalizeArticleHeadings(linked, generated.title);
 
   const slug = await createUniqueArticleSlug(site.id, generated.title, "generated-article");
   const keywordTerms = Array.from(new Set(generated.keywords.map((keyword) => normalizeKeywordTerm(keyword)))).slice(0, 7);

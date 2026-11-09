@@ -34,3 +34,8 @@ test("a longer fence is not closed by a shorter one inside it", () => {
   const md = "````md\n```\n# not a heading\n```\n````\n\n# Real heading";
   assert.equal(normalizeArticleHeadings(md, title), "````md\n```\n# not a heading\n```\n````\n\n## Real heading");
 });
+
+test("a leading H2 that only repeats the title is dropped too; other H2s stay", () => {
+  assert.equal(normalizeArticleHeadings("## Your Ultimate Car Buying Guide: Decode License Plates\n\n### One\n\nText", title), "### One\n\nText");
+  assert.equal(normalizeArticleHeadings("## Something else\n\nText", title), "## Something else\n\nText");
+});

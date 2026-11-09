@@ -9,6 +9,23 @@ function valueOrFallback(value: string | null | undefined, fallback = "Not provi
   return value && value.trim().length > 0 ? value.trim() : fallback;
 }
 
+/** Links only to pages that exist: the site's real pages when known, otherwise just its home page. */
+function internalLinkInstructions(sitePages: string[], siteDomain: string): string[] {
+  if (sitePages.length > 1) {
+    return [
+      "Include 2 to 4 natural, contextual inline Markdown links [anchor](...) to the most relevant pages from this list of the site's real pages. Copy each URL exactly. Never link to a URL that is not in this list, never invent paths, and do not link to external sites. Use descriptive anchor text, never bare URLs.",
+      "--- SITE PAGES ---",
+      ...sitePages,
+      "-----------------"
+    ];
+  }
+  return [
+    "You may include one natural inline Markdown link to the site's home page (" +
+      (sitePages[0] ?? (/^https?:\/\//.test(siteDomain) ? siteDomain : `https://${siteDomain}`)) +
+      ") with descriptive anchor text. Do not link to any other page of the site and do not invent paths. Do not link to external sites."
+  ];
+}
+
 export function buildSystemPrompt(context: ArticleGenerationContext) {
   const brand = context.brandProfile;
   const contentLanguage = valueOrFallback(brand.contentLanguage, "English");
@@ -40,7 +57,7 @@ export function buildSystemPrompt(context: ArticleGenerationContext) {
     "Image Style: " + valueOrFallback(brand.imageStyle),
     "-----------------",
     "",
-    "Include 2 to 4 natural, contextual inline Markdown links [anchor](...) that point to the site domain above. Prefer the root domain and plausible category paths (e.g. /courses, /pricing, /about, /contact) derived from the business type and themes. Use descriptive anchor text, never bare URLs. Do not link to external sites.",
+    ...internalLinkInstructions(context.sitePages ?? [], siteDomain),
     "Also generate 5 to 7 SEO-friendly keyword suggestions based on the finished article title, article content, and Brand DNA. Each keyword must be a short phrase of 2 to 5 words.",
     "Ensure the article is useful, coherent, aligned with the brand guidance, and entirely written in the requested content language."
   ].join("\n");

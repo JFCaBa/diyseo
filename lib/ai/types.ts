@@ -6,6 +6,8 @@ export type ArticleGenerationContext = {
     name: string;
     domain: string;
   };
+  /** The site's real pages (from its sitemap). Generated articles may only link to these. */
+  sitePages?: string[];
   brandProfile: {
     contentLanguage?: string | null;
     businessType?: string | null;

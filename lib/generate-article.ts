@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getAIGenerationService } from "@/lib/ai";
 import { commitArticleCredit, releaseArticleCredit, reserveArticleCredit } from "@/lib/quota";
 import { renderMarkdownToHtml } from "@/lib/markdown";
+import { sanitizeInternalLinks } from "@/lib/internal-links";
+import { fetchSitePages, siteOrigin } from "@/lib/site-pages";
 import { GenerateArticleRequestSchema } from "@/lib/validations";
 import type { ArticleGenerationSource, ArticleStatus } from "@prisma/client";
 
@@ -114,11 +116,18 @@ async function writeGeneratedArticle(
   usageId: string
 ) {
   const generator = getAIGenerationService();
+  const sitePages = await fetchSitePages(site.domain);
   const generated = await generator.generateArticle({
     keyword: input.keyword,
     site: { name: site.name, domain: site.domain },
+    sitePages,
     brandProfile: site.brandProfile
   });
+  // The model can still invent a path: links to the site that are not real pages become plain text.
+  const origin = siteOrigin(site.domain);
+  const contentMarkdown = origin
+    ? sanitizeInternalLinks(generated.contentMarkdown, origin, sitePages).markdown
+    : generated.contentMarkdown;
 
   const slug = await createUniqueArticleSlug(site.id, generated.title, "generated-article");
   const keywordTerms = Array.from(new Set(generated.keywords.map((keyword) => normalizeKeywordTerm(keyword)))).slice(0, 7);
@@ -134,8 +143,8 @@ async function writeGeneratedArticle(
         title: generated.title,
         slug,
         excerpt: generated.excerpt,
-        contentHtml: renderMarkdownToHtml(generated.contentMarkdown),
-        contentMarkdown: generated.contentMarkdown,
+        contentHtml: renderMarkdownToHtml(contentMarkdown),
+        contentMarkdown,
         seoTitle: generated.seoTitle,
         seoDescription: generated.seoDescription,
         status,

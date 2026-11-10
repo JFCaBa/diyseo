@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { decideExtendTrial, decideGrantComp, decideRevokeComp, EXTEND_PRESETS } from "../lib/admin-plan-rules";
+import { checkoutBlocksGrant, decideExtendTrial, decideGrantComp, decideRevokeComp, EXTEND_PRESETS } from "../lib/admin-plan-rules";
 
 const now = new Date("2026-11-10T12:00:00Z");
 const future = new Date("2026-11-15T12:00:00Z");
@@ -78,4 +78,15 @@ test("revoke and extend allowed when the owner is not listed", () => {
 
 test("grant COMP is unaffected by ownerListed", () => {
   assert.equal(decideGrantComp(ws("TRIAL", future, null, true)).ok, true);
+});
+
+test("checkoutBlocksGrant: open blocks, unverified blocks, complete/expired/none do not", () => {
+  const open = checkoutBlocksGrant("open", true);
+  assert.equal(open.blocked, true);
+  assert.match(open.reason ?? "", /Checkout is in progress/);
+  const unverified = checkoutBlocksGrant(undefined, false);
+  assert.equal(unverified.blocked, true);
+  assert.match(unverified.reason ?? "", /Could not verify/);
+  assert.equal(checkoutBlocksGrant("open", false).blocked, true);
+  for (const s of ["complete", "expired", null, undefined]) assert.deepEqual(checkoutBlocksGrant(s, true), { blocked: false });
 });

@@ -93,7 +93,6 @@ export function AdminPlanActions(props: AdminPlanActionsProps) {
   const grantOp = useOpId(grantState);
   const revokeOp = useOpId(revokeState);
 
-  const incompleteStripe = subscriptionStatus !== null && ["incomplete", "unpaid", "paused"].includes(subscriptionStatus);
   const hidden = (opId: string) => (
     <>
       <input type="hidden" name="workspaceId" value={workspaceId} />
@@ -129,12 +128,6 @@ export function AdminPlanActions(props: AdminPlanActionsProps) {
           <div className="flex flex-wrap items-center gap-3">
             <ConfirmButton label="Give COMP plan" disabled={!grantOp || !grant.ok} pending={grantPending} state={grantState} />
             {!grant.ok ? <span className="text-xs text-slate-400">{grant.reason}</span> : null}
-            {grant.ok && incompleteStripe ? (
-              <span className="text-xs text-amber-300">
-                Stripe shows status {subscriptionStatus}; if that subscription completes the customer will still be
-                billed.
-              </span>
-            ) : null}
           </div>
           <Feedback state={grantState} />
         </form>

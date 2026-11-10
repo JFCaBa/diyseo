@@ -53,3 +53,19 @@ export function decideExtendTrial(ws: WorkspaceState, days: number, now: Date): 
   const base = ws.trialEndsAt && ws.trialEndsAt.getTime() > now.getTime() ? ws.trialEndsAt : now;
   return { ok: true, plan: "TRIAL", trialEndsAt: new Date(base.getTime() + days * DAY_MS) };
 }
+
+/**
+ * A Grant COMP must not race a Stripe Checkout the customer can still pay.
+ * `status` is the pending Checkout Session's status (null/undefined when the
+ * workspace has none); `verified` is false when Stripe could not be queried.
+ */
+export function checkoutBlocksGrant(
+  status: string | null | undefined,
+  verified: boolean
+): { blocked: boolean; reason?: string } {
+  if (!verified) return { blocked: true, reason: "Could not verify the Stripe Checkout state; try again in a minute." };
+  if (status === "open") {
+    return { blocked: true, reason: "A Stripe Checkout is in progress for this workspace; wait until it completes or expires." };
+  }
+  return { blocked: false };
+}

@@ -4,9 +4,11 @@ import { revalidatePath } from "next/cache";
 
 import { requireAdminAction } from "@/lib/admin-auth";
 import { isListedEmail } from "@/lib/access";
+import { checkoutBlocksGrant } from "@/lib/admin-plan-rules";
 import { applyPlanChange, type PlanAction, type PlanTx } from "@/lib/admin-plan-service";
 import { prisma } from "@/lib/prisma";
 import { lockWorkspace } from "@/lib/quota";
+import { getStripe } from "@/lib/stripe";
 import { adminExtendTrialSchema, adminWorkspaceActionSchema } from "@/lib/validations";
 
 export type AdminArticleToggleState = {
@@ -119,6 +121,28 @@ export async function adminGrantComp(
   const admin = await requireAdminAction();
   const parsed = adminWorkspaceActionSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: "Invalid request." };
+
+  // Read-only look at an in-flight Checkout before any write; no audit row if blocked.
+  const pending = await prisma.workspace.findUnique({
+    where: { id: parsed.data.workspaceId },
+    select: { pendingCheckoutSessionId: true }
+  });
+  if (pending?.pendingCheckoutSessionId) {
+    let status: string | null = null;
+    let verified = true;
+    try {
+      const session = await getStripe().checkout.sessions.retrieve(pending.pendingCheckoutSessionId, undefined, {
+        timeout: 10_000,
+        maxNetworkRetries: 0
+      });
+      status = session.status;
+    } catch {
+      verified = false;
+    }
+    const check = checkoutBlocksGrant(status, verified);
+    if (check.blocked) return { error: check.reason };
+  }
+
   return runPlanAction("GRANT_COMP", admin, parsed.data);
 }
 

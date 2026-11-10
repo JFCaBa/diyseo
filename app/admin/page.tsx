@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { requireAdmin } from "@/lib/admin-auth";
+import { TRIALS_ENDING_DAYS, trialEndingWindow } from "@/lib/admin-metrics";
+import { monthStartUtc } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
 
 function formatCount(value: number) {
@@ -10,8 +12,19 @@ function formatCount(value: number) {
 export default async function AdminPage() {
   await requireAdmin();
 
-  const [totalUsers, totalSites, totalArticles, totalKeywords, connectedSearchConsoleSites, articleStatusCounts, newestSites] =
+  const now = new Date();
+  const window = trialEndingWindow(now);
+
+  const [newUsersThisMonth, endingTrials, totalUsers, totalSites, totalArticles, totalKeywords, connectedSearchConsoleSites, articleStatusCounts, newestSites] =
     await Promise.all([
+      prisma.user.count({
+        where: { workspace: { isNot: null }, createdAt: { gte: monthStartUtc(now) } }
+      }),
+      prisma.workspace.findMany({
+        where: { plan: "TRIAL", trialEndsAt: { gt: window.from, lte: window.to } },
+        orderBy: { trialEndsAt: "asc" },
+        select: { id: true, trialEndsAt: true, owner: { select: { id: true, email: true } } }
+      }),
       prisma.user.count(),
       prisma.siteProject.count(),
       prisma.article.count(),
@@ -70,6 +83,31 @@ export default async function AdminPage() {
           <p className="mt-1 max-w-3xl text-sm text-slate-400">
             Real platform-wide counts for users, sites, content, keywords, and Search Console connections.
           </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl">
+          <p className="text-sm text-slate-400">Revenue this month</p>
+          <p className="mt-3 text-3xl font-semibold text-white">—</p>
+        </div>
+        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl">
+          <p className="text-sm text-slate-400">New users this month</p>
+          <p className="mt-3 text-3xl font-semibold text-white">{formatCount(newUsersThisMonth)}</p>
+        </div>
+        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl">
+          <p className="text-sm text-slate-400">Trials ending in {TRIALS_ENDING_DAYS} days</p>
+          <p className="mt-3 text-3xl font-semibold text-white">{formatCount(endingTrials.length)}</p>
+          <ul className="mt-3 space-y-1 text-sm">
+            {endingTrials.map((ws) => (
+              <li key={ws.id} className="flex justify-between gap-3">
+                <Link href={`/admin/users/${ws.owner.id}`} className="truncate text-teal-400 hover:underline">
+                  {ws.owner.email}
+                </Link>
+                <span className="shrink-0 text-slate-500">{ws.trialEndsAt?.toISOString().slice(0, 10)}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
 

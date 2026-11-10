@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { TRIALS_ENDING_DAYS, bucketByWeekUtc, countByEffectivePlan, trialEndingWindow } from "../lib/admin-metrics";
+import { TRIALS_ENDING_DAYS, bucketByWeekUtc, countByEffectivePlan, fillMonthlyUsage, trialEndingWindow } from "../lib/admin-metrics";
 
 const now = new Date("2026-11-10T12:00:00Z"); // Tuesday
 
@@ -45,4 +45,30 @@ test("countByEffectivePlan applies effective plan rules", () => {
     now
   );
   assert.deepEqual(out, { TRIAL: 1, STARTER: 0, PRO: 0, AGENCY: 0, COMP: 1, NONE: 3 });
+});
+
+test("fillMonthlyUsage: empty input gives zero entries, oldest first", () => {
+  const out = fillMonthlyUsage([], now, 6);
+  assert.equal(out.length, 6);
+  assert.equal(out[0].month.toISOString(), "2026-06-01T00:00:00.000Z");
+  assert.equal(out[5].month.toISOString(), "2026-11-01T00:00:00.000Z");
+  assert.ok(out.every((m) => m.total === 0 && Object.keys(m.counts).length === 0));
+});
+
+test("fillMonthlyUsage: rows land in their UTC month and window-outside rows are ignored", () => {
+  const out = fillMonthlyUsage(
+    [
+      { month: new Date("2026-11-01T00:00:00Z"), kind: "ARTICLE", count: 3 },
+      { month: new Date("2026-11-01T00:00:00Z"), kind: "BRAND", count: 1 },
+      { month: new Date("2026-06-01T00:00:00Z"), kind: "ARTICLE", count: 2 },
+      { month: new Date("2026-05-01T00:00:00Z"), kind: "ARTICLE", count: 99 },
+      { month: new Date("2026-12-01T00:00:00Z"), kind: "ARTICLE", count: 99 }
+    ],
+    now,
+    6
+  );
+  assert.deepEqual(out[5].counts, { ARTICLE: 3, BRAND: 1 });
+  assert.equal(out[5].total, 4);
+  assert.deepEqual(out[0].counts, { ARTICLE: 2 });
+  assert.equal(out.reduce((s, m) => s + m.total, 0), 6);
 });

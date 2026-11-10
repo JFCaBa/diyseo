@@ -36,3 +36,34 @@ export function countByEffectivePlan(
   for (const ws of workspaces) counts[effectivePlan(ws, now)] += 1;
   return counts;
 }
+
+export type MonthlyUsage = { month: Date; counts: Record<string, number>; total: number };
+
+function monthStartOf(date: Date): number {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1);
+}
+
+/** First instant (UTC) of the oldest month in a `months`-long window ending with the month of `now`. */
+export function usageWindowStartUtc(now: Date, months: number): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1), 1));
+}
+
+/** UTC calendar months, oldest first, always `months` entries; rows outside the window are ignored. */
+export function fillMonthlyUsage(
+  rows: { month: Date; kind: string; count: number }[],
+  now: Date,
+  months: number
+): MonthlyUsage[] {
+  const out: MonthlyUsage[] = Array.from({ length: months }, (_, i) => ({
+    month: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (months - 1 - i), 1)),
+    counts: {},
+    total: 0
+  }));
+  for (const row of rows) {
+    const entry = out.find((m) => m.month.getTime() === monthStartOf(row.month));
+    if (!entry) continue;
+    entry.counts[row.kind] = (entry.counts[row.kind] ?? 0) + row.count;
+    entry.total += row.count;
+  }
+  return out;
+}

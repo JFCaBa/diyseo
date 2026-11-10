@@ -108,6 +108,7 @@ export default async function AdminPage() {
           ) : (
             <p className="mt-3 text-3xl font-semibold text-slate-400">Stripe unavailable</p>
           )}
+          {revenue.ok ? <p className="mt-3 text-xs text-slate-500">Updated {revenue.fetchedAt.toISOString().slice(11, 16)} UTC</p> : null}
           <p className="mt-3 text-sm text-slate-500">Estimate from plans: {formatMinor(planEstimate * 100, "GBP")}</p>
         </div>
         <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl">

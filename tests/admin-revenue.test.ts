@@ -83,3 +83,12 @@ test("formatMinor uses the currency's own fraction digits", () => {
   assert.match(jpy, /2,900/);
   assert.ok(!jpy.includes("."));
 });
+
+test("formatMinor does not throw on a malformed currency code", () => {
+  let out = "";
+  assert.doesNotThrow(() => {
+    out = formatMinor(1234, "xx");
+  });
+  assert.ok(out.includes("12.34"));
+  assert.ok(out.includes("XX"));
+});

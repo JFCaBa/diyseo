@@ -41,7 +41,11 @@ export function createTtlCache<T>(ttlMs: number, now: () => number = Date.now) {
 
 /** Converts Stripe minor units using the currency's own fraction digits (GBP /100, JPY /1). */
 export function formatMinor(amountMinor: number, currency: string, locale = "en-GB"): string {
-  const format = new Intl.NumberFormat(locale, { style: "currency", currency: currency.toUpperCase() });
-  const digits = format.resolvedOptions().maximumFractionDigits ?? 2;
-  return format.format(amountMinor / 10 ** digits);
+  try {
+    const format = new Intl.NumberFormat(locale, { style: "currency", currency: currency.toUpperCase() });
+    const digits = format.resolvedOptions().maximumFractionDigits ?? 2;
+    return format.format(amountMinor / 10 ** digits);
+  } catch {
+    return `${(amountMinor / 100).toFixed(2)} ${currency.toUpperCase()}`;
+  }
 }

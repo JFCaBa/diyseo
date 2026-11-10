@@ -40,7 +40,7 @@ export function AdminShell({ children }: AdminShellProps) {
         <div className="mt-8">
           <Link
             href="/"
-            className="rounded-2xl px-4 py-3 text-sm font-medium text-slate-400 transition hover:bg-slate-900 hover:text-white"
+            className="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-400 transition hover:bg-slate-900 hover:text-white"
           >
             Back to app
           </Link>

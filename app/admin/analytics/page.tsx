@@ -4,14 +4,15 @@ import { prisma } from "@/lib/prisma";
 
 const WEEKS = 12;
 const MONTHS = 6;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 function formatCount(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
 }
 
 function barWidth(value: number, max: number) {
-  return max > 0 ? `${Math.round((value / max) * 100)}%` : "0%";
+  if (max <= 0 || value <= 0) return "0%";
+  // A nonzero value always shows a sliver, so 1 against 300 stays visible.
+  return `${Math.max(2, Math.round((value / max) * 100))}%`;
 }
 
 function Block({ title, caption, children }: { title: string; caption: string; children: React.ReactNode }) {

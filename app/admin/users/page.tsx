@@ -127,7 +127,10 @@ export default async function AdminUsersPage({
                   <p className="truncate text-teal-300">{user.email || "No email"}</p>
                   <p className="truncate">{user.name || "Unknown"}</p>
                   <p>{formatDate(user.createdAt)}</p>
-                  <p>{ws ? effectivePlan(ws, now) : "-"}</p>
+                  <p>
+                    {ws ? effectivePlan(ws, now) : "-"}
+                    {!user.workspace && ws ? <span className="text-slate-500"> (member)</span> : null}
+                  </p>
                   <p className="truncate">{ws?.subscriptionStatus ?? "-"}</p>
                   <p>{ws?._count.sites ?? 0}</p>
                 </Link>

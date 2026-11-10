@@ -74,7 +74,7 @@ export async function getMonthRevenue(now: Date = new Date()): Promise<MonthReve
 
 export type SubscriptionRow = {
   id: string;
-  customerId: string;
+  customerId: string | null;
   status: string;
   plan: PlanId | null;
   interval: string | null;
@@ -121,7 +121,7 @@ async function loadPaymentsOverview(now: Date) {
       const ends = sub.items.data.map((i) => i.current_period_end).filter((n): n is number => typeof n === "number");
       return {
         id: sub.id,
-        customerId: idOf(sub.customer) ?? "",
+        customerId: idOf(sub.customer),
         status: sub.status,
         plan: planFromPrice(item?.price),
         interval: item?.price.recurring?.interval ?? null,

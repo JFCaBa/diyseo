@@ -4,6 +4,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const TRIALS_ENDING_DAYS = 7;
 
+// `from` is exclusive and `to` inclusive (the dashboard query uses gt / lte).
 export function trialEndingWindow(now: Date): { from: Date; to: Date } {
   return { from: now, to: new Date(now.getTime() + TRIALS_ENDING_DAYS * DAY_MS) };
 }

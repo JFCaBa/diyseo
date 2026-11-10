@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { requireAdmin } from "@/lib/admin-auth";
+import { formatClock } from "@/lib/admin-format";
 import { TRIALS_ENDING_DAYS, countByEffectivePlan, trialEndingWindow } from "@/lib/admin-metrics";
 import { estimateMonthlyFromPlans, formatMinor } from "@/lib/admin-revenue";
 import { getMonthRevenue } from "@/lib/admin-stripe";
@@ -108,7 +109,7 @@ export default async function AdminPage() {
           ) : (
             <p className="mt-3 text-3xl font-semibold text-slate-400">Stripe unavailable</p>
           )}
-          {revenue.ok ? <p className="mt-3 text-xs text-slate-500">Updated {revenue.fetchedAt.toISOString().slice(11, 16)} UTC</p> : null}
+          {revenue.ok ? <p className="mt-3 text-xs text-slate-500">Updated {formatClock(revenue.fetchedAt)}</p> : null}
           <p className="mt-3 text-sm text-slate-500">Estimate from plans: {formatMinor(planEstimate * 100, "GBP")}</p>
         </div>
         <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl">
@@ -122,7 +123,7 @@ export default async function AdminPage() {
             {endingTrials.map((ws) => (
               <li key={ws.id} className="flex justify-between gap-3">
                 <Link href={`/admin/users/${ws.owner.id}`} className="truncate text-teal-400 hover:underline">
-                  {ws.owner.email}
+                  {ws.owner.email ?? ws.owner.id}
                 </Link>
                 <span className="shrink-0 text-slate-500">{ws.trialEndsAt?.toISOString().slice(0, 10)}</span>
               </li>

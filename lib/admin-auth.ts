@@ -1,6 +1,7 @@
 import "server-only";
 
 import { notFound } from "next/navigation";
+import { cache } from "react";
 
 import { isAdminEmail } from "@/lib/admin-access";
 import { auth } from "@/lib/auth";
@@ -8,7 +9,8 @@ import { auth } from "@/lib/auth";
 export type AdminUser = { id: string; email: string };
 
 /** The signed-in admin, or null. Admin = Google session whose email is in ADMIN_EMAILS. */
-export async function getAdmin(): Promise<AdminUser | null> {
+// cache(): auth() runs once per request render (layout + page share it); outside a render it just calls through.
+export const getAdmin = cache(async (): Promise<AdminUser | null> => {
   const session = await auth();
   const id = session?.user?.id;
   const email = session?.user?.email;
@@ -18,7 +20,7 @@ export async function getAdmin(): Promise<AdminUser | null> {
   }
 
   return { id, email };
-}
+});
 
 /** Pages and layouts: anyone else gets a 404, so /admin does not reveal itself. */
 export async function requireAdmin(): Promise<AdminUser> {

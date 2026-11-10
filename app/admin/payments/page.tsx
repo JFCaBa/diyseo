@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { requireAdmin } from "@/lib/admin-auth";
+import { formatClock } from "@/lib/admin-format";
 import { formatMinor } from "@/lib/admin-revenue";
 import { getPaymentsOverview } from "@/lib/admin-stripe";
 import { prisma } from "@/lib/prisma";
@@ -12,10 +13,6 @@ function formatDate(value: Date | null) {
 
 function formatDateTime(value: Date) {
   return `${value.toISOString().slice(0, 16).replace("T", " ")} UTC`;
-}
-
-function formatClock(value: Date) {
-  return `${value.toISOString().slice(11, 16)} UTC`;
 }
 
 const card = "rounded-3xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl";
@@ -127,7 +124,7 @@ export default async function AdminPaymentsPage() {
       >
         {overview.subscriptions.map((s) => (
           <tr key={s.id}>
-            <td className={td}>{customer(s.customerId || null)}</td>
+            <td className={td}>{customer(s.customerId)}</td>
             <td className={td}>
               {s.plan ?? "-"}
               {s.interval ? ` / ${s.interval}` : ""}

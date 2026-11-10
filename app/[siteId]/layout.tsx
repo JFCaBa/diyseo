@@ -6,6 +6,7 @@ import { SignOutButton } from "@/components/auth-buttons";
 import { BlogOnly } from "@/components/blog-only";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { SiteSelector } from "@/components/site-selector";
+import { isAdminEmail } from "@/lib/admin-access";
 import { auth } from "@/lib/auth";
 import { effectivePlan } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
@@ -62,7 +63,7 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
         <div className="mb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-accent">DIYSEO</p>
         </div>
-        <SidebarNav siteId={siteId} satellites={satellites} />
+        <SidebarNav siteId={siteId} satellites={satellites} isAdmin={isAdminEmail(session.user.email)} />
         <div className="mt-6 border-t border-line pt-6 dark:border-slate-800">
           <SignOutButton className="flex w-full items-center rounded-2xl px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-ink dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100" />
         </div>

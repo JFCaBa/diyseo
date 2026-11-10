@@ -34,14 +34,21 @@ const accountGroup: NavGroup = {
 /** Items with sub-pages (e.g. Articles) stay active below them; group roots ("", "/ads") only on themselves. */
 const NESTED = new Set(["/brand-dna", "/calendar", "/articles", "/keywords", "/analytics", "/api"]);
 
+/** Absolute: not prefixed with the site id. */
+const ADMIN_HREF = "/admin";
+
 type SidebarNavProps = {
   siteId: string;
   satellites: SatelliteGroup[];
+  isAdmin?: boolean;
 };
 
-export function SidebarNav({ siteId, satellites }: SidebarNavProps) {
+export function SidebarNav({ siteId, satellites, isAdmin = false }: SidebarNavProps) {
   const pathname = usePathname();
-  const groups: NavGroup[] = [blogGroup, ...satellites, accountGroup];
+  const account: NavGroup = isAdmin
+    ? { ...accountGroup, items: [...accountGroup.items, { label: "Admin", href: ADMIN_HREF }] }
+    : accountGroup;
+  const groups: NavGroup[] = [blogGroup, ...satellites, account];
 
   return (
     <nav className="space-y-6">
@@ -52,7 +59,7 @@ export function SidebarNav({ siteId, satellites }: SidebarNavProps) {
           </p>
           <div className="space-y-1">
             {group.items.map((item) => {
-              const href = `/${siteId}${item.href}`;
+              const href = item.href === ADMIN_HREF ? ADMIN_HREF : `/${siteId}${item.href}`;
               const path = href.split("?")[0];
               const active = pathname === path || (NESTED.has(item.href) && pathname.startsWith(`${path}/`));
 

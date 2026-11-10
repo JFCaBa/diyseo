@@ -1,7 +1,11 @@
 import Link from "next/link";
 
-import { AdminPasswordForm } from "@/components/admin-password-form";
-import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
+import { formatClock } from "@/lib/admin-format";
+import { TRIALS_ENDING_DAYS, countByEffectivePlan, trialEndingWindow } from "@/lib/admin-metrics";
+import { estimateMonthlyFromPlans, formatMinor } from "@/lib/admin-revenue";
+import { getMonthRevenue } from "@/lib/admin-stripe";
+import { monthStartUtc } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
 
 function formatCount(value: number) {
@@ -9,19 +13,24 @@ function formatCount(value: number) {
 }
 
 export default async function AdminPage() {
-  const authenticated = await isAdminAuthenticated();
-  const isConfigured = Boolean(process.env.ADMIN_PASSWORD?.trim());
+  await requireAdmin();
 
-  if (!authenticated) {
-    return (
-      <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-md items-center justify-center">
-        <AdminPasswordForm isConfigured={isConfigured} />
-      </div>
-    );
-  }
+  const now = new Date();
+  const window = trialEndingWindow(now);
 
-  const [totalUsers, totalSites, totalArticles, totalKeywords, connectedSearchConsoleSites, articleStatusCounts, newestSites] =
+  const [revenue, workspacePlans, newUsersThisMonth, endingTrials, totalUsers, totalSites, totalArticles, totalKeywords, connectedSearchConsoleSites, articleStatusCounts, newestSites, endingTrialsTotal] =
     await Promise.all([
+      getMonthRevenue(now),
+      prisma.workspace.findMany({ select: { plan: true, trialEndsAt: true } }),
+      prisma.user.count({
+        where: { workspace: { isNot: null }, createdAt: { gte: monthStartUtc(now) } }
+      }),
+      prisma.workspace.findMany({
+        where: { plan: "TRIAL", trialEndsAt: { gt: window.from, lte: window.to } },
+        orderBy: { trialEndsAt: "asc" },
+        take: 20,
+        select: { id: true, trialEndsAt: true, owner: { select: { id: true, email: true } } }
+      }),
       prisma.user.count(),
       prisma.siteProject.count(),
       prisma.article.count(),
@@ -54,12 +63,15 @@ export default async function AdminPage() {
             }
           }
         }
-      })
+      }),
+      prisma.workspace.count({ where: { plan: "TRIAL", trialEndsAt: { gt: window.from, lte: window.to } } })
     ]);
 
   const publishedArticles = articleStatusCounts.find((item) => item.status === "PUBLISHED")?._count.id ?? 0;
   const draftArticles = articleStatusCounts.find((item) => item.status === "DRAFT")?._count.id ?? 0;
   const articleMix = totalArticles > 0 ? Math.round((publishedArticles / totalArticles) * 100) : 0;
+
+  const planEstimate = estimateMonthlyFromPlans(countByEffectivePlan(workspacePlans, now));
 
   const cards = [
     { label: "Total users", value: totalUsers },
@@ -80,6 +92,45 @@ export default async function AdminPage() {
           <p className="mt-1 max-w-3xl text-sm text-slate-400">
             Real platform-wide counts for users, sites, content, keywords, and Search Console connections.
           </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl">
+          <p className="text-sm text-slate-400">Charges this month, net of refunds on them</p>
+          {revenue.ok ? (
+            revenue.totals.length > 0 ? (
+              revenue.totals.map((t) => (
+                <p key={t.currency} className="mt-3 text-3xl font-semibold text-white">
+                  {formatMinor(t.amountMinor, t.currency)}
+                </p>
+              ))
+            ) : (
+              <p className="mt-3 text-3xl font-semibold text-white">{formatMinor(0, "GBP")}</p>
+            )
+          ) : (
+            <p className="mt-3 text-3xl font-semibold text-slate-400">Stripe unavailable</p>
+          )}
+          {revenue.ok ? <p className="mt-3 text-xs text-slate-500">Updated {formatClock(revenue.fetchedAt)}</p> : null}
+          <p className="mt-3 text-sm text-slate-500">Estimate from plans: {formatMinor(planEstimate * 100, "GBP")}</p>
+        </div>
+        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl">
+          <p className="text-sm text-slate-400">New users this month</p>
+          <p className="mt-3 text-3xl font-semibold text-white">{formatCount(newUsersThisMonth)}</p>
+        </div>
+        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl">
+          <p className="text-sm text-slate-400">Trials ending in {TRIALS_ENDING_DAYS} days</p>
+          <p className="mt-3 text-3xl font-semibold text-white">{formatCount(endingTrialsTotal)}</p>
+          <ul className="mt-3 space-y-1 text-sm">
+            {endingTrials.map((ws) => (
+              <li key={ws.id} className="flex justify-between gap-3">
+                <Link href={`/admin/users/${ws.owner.id}`} className="truncate text-teal-400 hover:underline">
+                  {ws.owner.email ?? ws.owner.id}
+                </Link>
+                <span className="shrink-0 text-slate-500">{ws.trialEndsAt?.toISOString().slice(0, 10)}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
 

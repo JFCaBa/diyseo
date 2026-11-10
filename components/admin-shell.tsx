@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
-import { AdminLogoutForm } from "@/components/admin-logout-form";
-
 type AdminShellProps = {
   children: ReactNode;
 };
@@ -12,6 +10,8 @@ const navItems = [
   { href: "/admin/users", label: "Users" },
   { href: "/admin/sites", label: "Sites" },
   { href: "/admin/content", label: "Content" },
+  { href: "/admin/payments", label: "Payments" },
+  { href: "/admin/analytics", label: "Analytics" },
   { href: "/admin/backups", label: "Backups" }
 ];
 
@@ -22,7 +22,7 @@ export function AdminShell({ children }: AdminShellProps) {
         <div className="mb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-teal-400">DIYSEO</p>
           <h1 className="mt-2 text-xl font-semibold text-white">Platform Admin</h1>
-          <p className="mt-1 text-sm text-slate-400">Internal read-only operations area.</p>
+          <p className="mt-1 text-sm text-slate-400">Internal operations area.</p>
         </div>
 
         <nav className="grid gap-2">
@@ -38,7 +38,12 @@ export function AdminShell({ children }: AdminShellProps) {
         </nav>
 
         <div className="mt-8">
-          <AdminLogoutForm />
+          <Link
+            href="/"
+            className="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-400 transition hover:bg-slate-900 hover:text-white"
+          >
+            Back to app
+          </Link>
         </div>
       </aside>
 

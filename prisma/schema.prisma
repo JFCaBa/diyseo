@@ -260,3 +260,18 @@ model WaitlistEntry {
   consentAt DateTime @default(now())
   createdAt DateTime @default(now())
 }
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  opId        String   @unique
+  actorUserId String
+  actorEmail  String
+  // No relation: the trail must outlive a deleted workspace.
+  workspaceId String
+  action      String
+  before      Json
+  after       Json
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, createdAt])
+}

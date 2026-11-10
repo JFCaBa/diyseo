@@ -3,7 +3,7 @@ import { Readable } from "node:stream";
 
 import { NextResponse } from "next/server";
 
-import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { adminRouteGuard } from "@/lib/admin-auth";
 import { getBackupDirectoryPath, isValidStoredBackupFilename } from "@/lib/backup-utils";
 
 export const runtime = "nodejs";
@@ -14,9 +14,8 @@ type RouteContext = {
 };
 
 export async function GET(_request: Request, context: RouteContext) {
-  if (!(await isAdminAuthenticated())) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+  const admin = await adminRouteGuard();
+  if (admin instanceof Response) return admin;
 
   const { filename } = await context.params;
 

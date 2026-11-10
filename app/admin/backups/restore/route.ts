@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { adminRouteGuard } from "@/lib/admin-auth";
 import { createDatabaseBackup, restoreDatabaseFromSqlBuffer } from "@/lib/backup-utils";
 
 export const runtime = "nodejs";
@@ -34,9 +34,8 @@ function toSafeRestoreErrorMessage(error: unknown) {
 }
 
 export async function POST(request: Request) {
-  if (!(await isAdminAuthenticated())) {
-    return NextResponse.redirect(new URL("/admin", request.url));
-  }
+  const admin = await adminRouteGuard();
+  if (admin instanceof Response) return admin;
 
   const formData = await request.formData();
   const confirmRestore = typeof formData.get("confirmRestore") === "string" ? formData.get("confirmRestore")!.toString().trim() : "";

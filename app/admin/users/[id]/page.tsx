@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 
 function formatDate(value: Date | null | undefined) {
   if (!value) return "-";
-  return new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric" }).format(value);
+  return new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }).format(value);
 }
 
 function formatDateTime(value: Date | null | undefined) {

@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 const PAGE_SIZE = 50;
 
 function formatDate(value: Date) {
-  return new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric" }).format(value);
+  return new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }).format(value);
 }
 
 function parsePage(raw: string | string[] | undefined): number {

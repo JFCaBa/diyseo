@@ -1,5 +1,5 @@
-import type { WorkspacePlan } from "./entitlements";
-import { PLANS } from "./plans";
+import { planFromLookupKey, planFromProductId, type WorkspacePlan } from "./entitlements";
+import { PLANS, type PlanId } from "./plans";
 
 export type ChargeLike = { amount: number; amountRefunded: number; paid: boolean; currency: string };
 
@@ -48,4 +48,43 @@ export function formatMinor(amountMinor: number, currency: string, locale = "en-
   } catch {
     return `${(amountMinor / 100).toFixed(2)} ${currency.toUpperCase()}`;
   }
+}
+
+/** Same fallback as lib/billing-rules.ts: lookup key first, then the price's product id (string or expanded). */
+export function planFromPrice(
+  price: { lookup_key?: string | null; product?: string | { id: string } | null } | null | undefined
+): PlanId | null {
+  if (!price) return null;
+  const productId = typeof price.product === "string" ? price.product : price.product?.id;
+  return planFromLookupKey(price.lookup_key) ?? planFromProductId(productId);
+}
+
+/** Remembers failures per key for ttlMs, so a down upstream is not retried on every page load. */
+export function createNegativeCache(ttlMs: number, now: () => number = Date.now) {
+  const failedAt = new Map<string, number>();
+  return {
+    isBlocked(key: string): boolean {
+      const at = failedAt.get(key);
+      if (at === undefined) return false;
+      if (now() - at < ttlMs) return true;
+      failedAt.delete(key);
+      return false;
+    },
+    mark(key: string) {
+      failedAt.set(key, now());
+    }
+  };
+}
+
+type PagedSource<T> = { autoPagingEach(cb: (item: T) => boolean | void | Promise<boolean | void>): Promise<void> };
+
+/** Collects up to `cap` items; paging stops (callback returns false) once `stop.stopped` is set or the cap is hit. */
+export async function collectPaged<T>(source: PagedSource<T>, stop: { stopped: boolean }, cap: number): Promise<T[]> {
+  const items: T[] = [];
+  await source.autoPagingEach((item) => {
+    if (stop.stopped || items.length >= cap) return false;
+    items.push(item);
+    if (items.length >= cap) return false;
+  });
+  return items;
 }

@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import { requireAdmin } from "@/lib/admin-auth";
-import { TRIALS_ENDING_DAYS, trialEndingWindow } from "@/lib/admin-metrics";
+import { TRIALS_ENDING_DAYS, countByEffectivePlan, trialEndingWindow } from "@/lib/admin-metrics";
+import { estimateMonthlyFromPlans, formatMinor } from "@/lib/admin-revenue";
+import { getMonthRevenue } from "@/lib/admin-stripe";
 import { monthStartUtc } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
 
@@ -15,8 +17,10 @@ export default async function AdminPage() {
   const now = new Date();
   const window = trialEndingWindow(now);
 
-  const [newUsersThisMonth, endingTrials, totalUsers, totalSites, totalArticles, totalKeywords, connectedSearchConsoleSites, articleStatusCounts, newestSites] =
+  const [revenue, workspacePlans, newUsersThisMonth, endingTrials, totalUsers, totalSites, totalArticles, totalKeywords, connectedSearchConsoleSites, articleStatusCounts, newestSites] =
     await Promise.all([
+      getMonthRevenue(now),
+      prisma.workspace.findMany({ select: { plan: true, trialEndsAt: true } }),
       prisma.user.count({
         where: { workspace: { isNot: null }, createdAt: { gte: monthStartUtc(now) } }
       }),
@@ -64,6 +68,8 @@ export default async function AdminPage() {
   const draftArticles = articleStatusCounts.find((item) => item.status === "DRAFT")?._count.id ?? 0;
   const articleMix = totalArticles > 0 ? Math.round((publishedArticles / totalArticles) * 100) : 0;
 
+  const planEstimate = estimateMonthlyFromPlans(countByEffectivePlan(workspacePlans, now));
+
   const cards = [
     { label: "Total users", value: totalUsers },
     { label: "Total sites", value: totalSites },
@@ -88,8 +94,21 @@ export default async function AdminPage() {
 
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl">
-          <p className="text-sm text-slate-400">Revenue this month</p>
-          <p className="mt-3 text-3xl font-semibold text-white">—</p>
+          <p className="text-sm text-slate-400">Charges this month, net of refunds on them</p>
+          {revenue.ok ? (
+            revenue.totals.length > 0 ? (
+              revenue.totals.map((t) => (
+                <p key={t.currency} className="mt-3 text-3xl font-semibold text-white">
+                  {formatMinor(t.amountMinor, t.currency)}
+                </p>
+              ))
+            ) : (
+              <p className="mt-3 text-3xl font-semibold text-white">{formatMinor(0, "GBP")}</p>
+            )
+          ) : (
+            <p className="mt-3 text-3xl font-semibold text-slate-400">Stripe unavailable</p>
+          )}
+          <p className="mt-3 text-sm text-slate-500">Estimate from plans: {formatMinor(planEstimate * 100, "GBP")}</p>
         </div>
         <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl">
           <p className="text-sm text-slate-400">New users this month</p>

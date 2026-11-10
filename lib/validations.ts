@@ -392,8 +392,8 @@ export function parseWaitlistForm(formData: FormData): WaitlistSubmission {
 }
 
 export const adminWorkspaceActionSchema = z.object({
-  workspaceId: z.string().trim().min(1),
-  userId: z.string().trim().min(1),
+  workspaceId: z.string().trim().min(1).max(100),
+  userId: z.string().trim().min(1).max(100),
   opId: z.string().trim().min(1).max(100)
 });
 

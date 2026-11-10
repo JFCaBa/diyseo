@@ -36,10 +36,12 @@ function useOpId(state: AdminPlanActionState) {
 function ConfirmButton({
   label,
   disabled,
+  pending,
   state
 }: {
   label: string;
   disabled: boolean;
+  pending: boolean;
   state: AdminPlanActionState;
 }) {
   const [armed, setArmed] = useState(false);
@@ -50,7 +52,7 @@ function ConfirmButton({
   return (
     <button
       type="submit"
-      disabled={disabled}
+      disabled={disabled || pending}
       onClick={(event) => {
         if (!armed) {
           event.preventDefault();
@@ -62,7 +64,7 @@ function ConfirmButton({
         armed ? "bg-amber-500 text-slate-950 hover:bg-amber-400" : "bg-teal-600 text-white hover:bg-teal-500"
       }`}
     >
-      {armed ? "Confirm" : label}
+      {pending ? "Working..." : armed ? "Confirm" : label}
     </button>
   );
 }
@@ -85,12 +87,12 @@ export function AdminPlanActions(props: AdminPlanActionsProps) {
   const revoke = decideRevokeComp(ws, now);
   const extend = decideExtendTrial(ws, EXTEND_PRESETS[0], now);
 
-  const [grantState, grantAction] = useActionState(adminGrantComp, initialState);
-  const [revokeState, revokeAction] = useActionState(adminRevokeComp, initialState);
+  const [grantState, grantAction, grantPending] = useActionState(adminGrantComp, initialState);
+  const [revokeState, revokeAction, revokePending] = useActionState(adminRevokeComp, initialState);
   const grantOp = useOpId(grantState);
   const revokeOp = useOpId(revokeState);
 
-  const incompleteStripe = subscriptionStatus !== null && subscriptionStatus !== "canceled";
+  const incompleteStripe = subscriptionStatus !== null && ["incomplete", "unpaid", "paused"].includes(subscriptionStatus);
   const hidden = (opId: string) => (
     <>
       <input type="hidden" name="workspaceId" value={workspaceId} />
@@ -115,7 +117,7 @@ export function AdminPlanActions(props: AdminPlanActionsProps) {
         <form action={revokeAction} className="space-y-2">
           {hidden(revokeOp)}
           <div className="flex flex-wrap items-center gap-3">
-            <ConfirmButton label="Revoke COMP" disabled={!revokeOp || !revoke.ok} state={revokeState} />
+            <ConfirmButton label="Revoke COMP" disabled={!revokeOp || !revoke.ok} pending={revokePending} state={revokeState} />
             {!revoke.ok ? <span className="text-xs text-slate-400">{revoke.reason}</span> : null}
           </div>
           <Feedback state={revokeState} />
@@ -124,7 +126,7 @@ export function AdminPlanActions(props: AdminPlanActionsProps) {
         <form action={grantAction} className="space-y-2">
           {hidden(grantOp)}
           <div className="flex flex-wrap items-center gap-3">
-            <ConfirmButton label="Give COMP plan" disabled={!grantOp || !grant.ok} state={grantState} />
+            <ConfirmButton label="Give COMP plan" disabled={!grantOp || !grant.ok} pending={grantPending} state={grantState} />
             {!grant.ok ? <span className="text-xs text-slate-400">{grant.reason}</span> : null}
             {grant.ok && incompleteStripe ? (
               <span className="text-xs text-amber-300">
@@ -164,14 +166,14 @@ function ExtendForm({
   hidden: (opId: string) => React.ReactNode;
   disabled: boolean;
 }) {
-  const [state, formAction] = useActionState(adminExtendTrial, initialState);
+  const [state, formAction, pending] = useActionState(adminExtendTrial, initialState);
   const opId = useOpId(state);
 
   return (
     <form action={formAction} className="space-y-2">
       {hidden(opId)}
       <input type="hidden" name="days" value={days} />
-      <ConfirmButton label={`Extend ${days} days`} disabled={!opId || disabled} state={state} />
+      <ConfirmButton label={`Extend ${days} days`} disabled={!opId || disabled} pending={pending} state={state} />
       <Feedback state={state} />
     </form>
   );

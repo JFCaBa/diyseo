@@ -24,7 +24,7 @@ export type PlanTx = {
   lock(workspaceId: string): Promise<void>;
   findWorkspace(workspaceId: string): Promise<WorkspaceState | null>;
   updateWorkspace(workspaceId: string, data: { plan: string; trialEndsAt: Date | null }): Promise<void>;
-  findAudit(opId: string): Promise<{ action: string; after: unknown } | null>;
+  findAudit(opId: string): Promise<{ action: string; workspaceId: string; after: unknown } | null>;
   createAudit(row: AuditRow): Promise<void>;
 };
 
@@ -55,7 +55,12 @@ export async function applyPlanChange(tx: PlanTx, input: PlanChangeInput): Promi
   await tx.lock(input.workspaceId);
 
   const existing = await tx.findAudit(input.opId);
-  if (existing) return { success: messageFor(existing.action, existing.after) };
+  if (existing) {
+    if (existing.workspaceId !== input.workspaceId || existing.action !== input.action) {
+      return { error: "Invalid request." };
+    }
+    return { success: messageFor(existing.action, existing.after) };
+  }
 
   const ws = await tx.findWorkspace(input.workspaceId);
   if (!ws) return { error: "Workspace not found." };

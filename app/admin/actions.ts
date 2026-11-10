@@ -59,7 +59,9 @@ async function runPlanAction(
   admin: { id: string; email: string },
   parsed: { workspaceId: string; userId: string; opId: string; days?: number }
 ): Promise<AdminPlanActionState> {
-  const result = await prisma.$transaction((tx) => {
+  let result: AdminPlanActionState;
+  try {
+    result = await prisma.$transaction((tx) => {
     const adapter: PlanTx = {
       lock: (workspaceId) => lockWorkspace(tx, workspaceId),
       findWorkspace: (workspaceId) =>
@@ -70,7 +72,7 @@ async function runPlanAction(
       updateWorkspace: async (workspaceId, data) => {
         await tx.workspace.update({ where: { id: workspaceId }, data });
       },
-      findAudit: (opId) => tx.adminAuditLog.findUnique({ where: { opId }, select: { action: true, after: true } }),
+      findAudit: (opId) => tx.adminAuditLog.findUnique({ where: { opId }, select: { action: true, workspaceId: true, after: true } }),
       createAudit: async (row) => {
         await tx.adminAuditLog.create({ data: row });
       }
@@ -85,6 +87,13 @@ async function runPlanAction(
       now: new Date()
     });
   });
+  } catch (error) {
+    // The same opId raced in for another workspace: unique violation.
+    if (typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002") {
+      return { error: "Invalid request." };
+    }
+    throw error;
+  }
 
   if (result.success) {
     revalidatePath("/admin");

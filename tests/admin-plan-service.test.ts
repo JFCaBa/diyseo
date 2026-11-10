@@ -30,7 +30,8 @@ function fake(ws: WsRow | null) {
     },
     async findAudit(opId) {
       const row = state.audits.find((a) => a.opId === opId);
-      return row ? { action: row.action, after: row.after } : null;
+      calls.push("findAudit");
+      return row ? { action: row.action, workspaceId: row.workspaceId, after: row.after } : null;
     },
     async createAudit(row) {
       state.audits.push(row);
@@ -131,6 +132,7 @@ test("lock is taken before the workspace is read", async () => {
   const { tx, state } = fake({ plan: "TRIAL", trialEndsAt: null, subscriptionStatus: null });
   await applyPlanChange(tx, input("GRANT_COMP", "op"));
   assert.equal(state.calls[0], "lock");
+  assert.ok(state.calls.indexOf("lock") < state.calls.indexOf("findAudit"));
   assert.ok(state.calls.indexOf("lock") < state.calls.indexOf("find"));
 });
 
@@ -139,4 +141,30 @@ test("unknown workspace returns an error", async () => {
   const r = await applyPlanChange(tx, input("GRANT_COMP", "op"));
   assert.equal(r.error, "Workspace not found.");
   assert.equal(state.audits.length, 0);
+});
+
+test("opId reused for a different workspace or action is refused and changes nothing", async () => {
+  const { tx, state } = fake({ plan: "TRIAL", trialEndsAt: null, subscriptionStatus: null });
+  await applyPlanChange(tx, input("GRANT_COMP", "shared"));
+  const wsBefore = { ...state.ws! };
+
+  const otherWs = await applyPlanChange(tx, { ...input("GRANT_COMP", "shared"), workspaceId: "w2" });
+  assert.equal(otherWs.error, "Invalid request.");
+  assert.equal(otherWs.success, undefined);
+
+  const otherAction = await applyPlanChange(tx, input("REVOKE_COMP", "shared"));
+  assert.equal(otherAction.error, "Invalid request.");
+  assert.equal(otherAction.success, undefined);
+
+  assert.equal(state.audits.length, 1);
+  assert.equal(state.updates, 1);
+  assert.deepEqual(state.ws, wsBefore);
+});
+
+test("extending an already expired trial starts from now", async () => {
+  const { tx, state } = fake({ plan: "TRIAL", trialEndsAt: new Date(now.getTime() - 3 * day), subscriptionStatus: null });
+  const r = await applyPlanChange(tx, input("EXTEND_TRIAL", "exp", 14));
+  assert.ok(r.success);
+  assert.equal(state.ws!.plan, "TRIAL");
+  assert.equal(state.ws!.trialEndsAt!.getTime(), now.getTime() + 14 * day);
 });

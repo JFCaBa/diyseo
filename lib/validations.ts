@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EXTEND_PRESETS } from "@/lib/admin-plan-rules";
 import { isPlanId, type PlanId } from "@/lib/plans";
 import { SEARCH_COUNTRY_OPTIONS, SEARCH_LANGUAGE_OPTIONS } from "@/lib/search-locale";
 import { TRANSLATION_LANGUAGE_OPTIONS } from "@/lib/translations";
@@ -389,3 +390,13 @@ export function parseWaitlistForm(formData: FormData): WaitlistSubmission {
 
   return { kind: "ok", email: email.data, plan: isPlanId(plan) ? plan : null };
 }
+
+export const adminWorkspaceActionSchema = z.object({
+  workspaceId: z.string().trim().min(1),
+  userId: z.string().trim().min(1),
+  opId: z.string().trim().min(1).max(100)
+});
+
+export const adminExtendTrialSchema = adminWorkspaceActionSchema.extend({
+  days: z.coerce.number().refine((n) => (EXTEND_PRESETS as readonly number[]).includes(n))
+});

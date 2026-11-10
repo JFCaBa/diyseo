@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AdminPlanActions } from "@/components/admin-plan-actions";
 import { requireAdmin } from "@/lib/admin-auth";
 import { effectivePlan, monthStartUtc } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
@@ -13,6 +14,13 @@ function formatDate(value: Date | null | undefined) {
 function formatDateTime(value: Date | null | undefined) {
   if (!value) return "-";
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(value) + " UTC";
+}
+
+function summarizeAudit(value: unknown) {
+  const v = (value ?? {}) as { plan?: unknown; trialEndsAt?: unknown };
+  const plan = typeof v.plan === "string" ? v.plan : "-";
+  const ends = typeof v.trialEndsAt === "string" ? formatDate(new Date(v.trialEndsAt)) : null;
+  return ends ? `${plan} (trial ends ${ends})` : plan;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -93,6 +101,15 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
       })
     : [];
 
+  const auditLog = workspace
+    ? await prisma.adminAuditLog.findMany({
+        where: { workspaceId: workspace.id },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: { id: true, action: true, actorEmail: true, createdAt: true, before: true, after: true }
+      })
+    : [];
+
   const role = user.workspace ? "OWNER" : (user.membership?.role ?? null);
   const providers = Array.from(new Set(user.accounts.map((a) => a.provider)));
 
@@ -153,7 +170,41 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
         )}
       </Card>
 
-      {/* TODO(Task 6): plan actions for workspace `workspace.id` go here, beneath the workspace section. */}
+      {workspace ? (
+        <>
+          <Card title="Plan actions">
+            <AdminPlanActions
+              workspaceId={workspace.id}
+              userId={user.id}
+              plan={workspace.plan}
+              effectivePlan={effectivePlan(workspace, now)}
+              trialEndsAt={workspace.trialEndsAt ? workspace.trialEndsAt.toISOString() : null}
+              subscriptionStatus={workspace.subscriptionStatus}
+              isMemberView={workspace.owner.id !== user.id}
+              nowIso={now.toISOString()}
+            />
+          </Card>
+
+          <Card title="Plan change history">
+            <ul className="divide-y divide-slate-800 text-sm text-slate-300">
+              {auditLog.map((row) => (
+                <li key={row.id} className="py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold text-slate-200">{row.action}</span>
+                    <span className="text-xs text-slate-500">
+                      {row.actorEmail} - {formatDateTime(row.createdAt)}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-xs text-slate-400">
+                    {summarizeAudit(row.before)} to {summarizeAudit(row.after)}
+                  </div>
+                </li>
+              ))}
+              {auditLog.length === 0 ? <li className="py-2 text-slate-400">No plan changes yet.</li> : null}
+            </ul>
+          </Card>
+        </>
+      ) : null}
 
       {workspace ? (
         <>

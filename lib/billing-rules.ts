@@ -6,6 +6,11 @@ import type { PlanId } from "@/lib/plans";
 /** Statuses that keep a paid plan. past_due keeps it while Stripe retries the card. */
 const LIVE_STATUSES = new Set(["active", "trialing", "past_due"]);
 
+/** True when a Stripe subscription status still keeps a paid plan. */
+export function isLiveStatus(status: string | null | undefined): boolean {
+  return status != null && LIVE_STATUSES.has(status);
+}
+
 export type SubscriptionSummary = { status: string; lookupKey: string | null; productId?: string | null };
 
 /**

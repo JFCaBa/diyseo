@@ -1,7 +1,6 @@
 import Link from "next/link";
 
-import { AdminPasswordForm } from "@/components/admin-password-form";
-import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 
 function formatCount(value: number) {
@@ -9,16 +8,7 @@ function formatCount(value: number) {
 }
 
 export default async function AdminPage() {
-  const authenticated = await isAdminAuthenticated();
-  const isConfigured = Boolean(process.env.ADMIN_PASSWORD?.trim());
-
-  if (!authenticated) {
-    return (
-      <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-md items-center justify-center">
-        <AdminPasswordForm isConfigured={isConfigured} />
-      </div>
-    );
-  }
+  await requireAdmin();
 
   const [totalUsers, totalSites, totalArticles, totalKeywords, connectedSearchConsoleSites, articleStatusCounts, newestSites] =
     await Promise.all([

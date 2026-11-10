@@ -1,4 +1,4 @@
-import { requireAdminAuth } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 
 function formatDate(value: Date) {
@@ -10,7 +10,7 @@ function formatDate(value: Date) {
 }
 
 export default async function AdminUsersPage() {
-  await requireAdminAuth();
+  await requireAdmin();
 
   const users = await prisma.user.findMany({
     orderBy: {

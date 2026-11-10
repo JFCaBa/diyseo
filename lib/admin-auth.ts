@@ -1,51 +1,54 @@
 import "server-only";
 
-import { createHash, timingSafeEqual } from "node:crypto";
+import { notFound } from "next/navigation";
 
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { isAdminEmail } from "@/lib/admin-access";
+import { auth } from "@/lib/auth";
 
-export const ADMIN_COOKIE_NAME = "diyseo-admin-session";
-export const ADMIN_COOKIE_MAX_AGE = 60 * 60 * 12;
+export type AdminUser = { id: string; email: string };
 
-export function getConfiguredAdminPassword() {
-  return process.env.ADMIN_PASSWORD?.trim() || null;
-}
+/** The signed-in admin, or null. Admin = Google session whose email is in ADMIN_EMAILS. */
+export async function getAdmin(): Promise<AdminUser | null> {
+  const session = await auth();
+  const id = session?.user?.id;
+  const email = session?.user?.email;
 
-export function buildAdminSessionValue(password: string) {
-  return createHash("sha256").update(`diyseo-admin:${password}`).digest("hex");
-}
-
-function safeEqualHex(left: string, right: string) {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-
-  if (leftBuffer.length !== rightBuffer.length) {
-    return false;
+  if (!id || !email || !isAdminEmail(email)) {
+    return null;
   }
 
-  return timingSafeEqual(leftBuffer, rightBuffer);
+  return { id, email };
 }
 
-export async function isAdminAuthenticated() {
-  const password = getConfiguredAdminPassword();
+/** Pages and layouts: anyone else gets a 404, so /admin does not reveal itself. */
+export async function requireAdmin(): Promise<AdminUser> {
+  const admin = await getAdmin();
 
-  if (!password) {
-    return false;
+  if (!admin) {
+    notFound();
   }
 
-  const cookieStore = await cookies();
-  const sessionValue = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
-
-  if (!sessionValue) {
-    return false;
-  }
-
-  return safeEqualHex(sessionValue, buildAdminSessionValue(password));
+  return admin;
 }
 
-export async function requireAdminAuth() {
-  if (!(await isAdminAuthenticated())) {
-    redirect("/admin");
+/** Server actions: throws instead of redirecting. */
+export async function requireAdminAction(): Promise<AdminUser> {
+  const admin = await getAdmin();
+
+  if (!admin) {
+    throw new Error("Forbidden");
   }
+
+  return admin;
+}
+
+/** Route handlers: returns a 404 Response for non-admins, the admin otherwise. */
+export async function adminRouteGuard(): Promise<AdminUser | Response> {
+  const admin = await getAdmin();
+
+  if (!admin) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  return admin;
 }

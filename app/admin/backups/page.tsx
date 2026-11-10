@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { requireAdminAuth } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import { listStoredBackups } from "@/lib/backup-utils";
 
 type AdminBackupsPageProps = {
@@ -38,7 +38,7 @@ function formatFileSize(bytes: number) {
 }
 
 export default async function AdminBackupsPage({ searchParams }: AdminBackupsPageProps) {
-  await requireAdminAuth();
+  await requireAdmin();
 
   const restoreState = searchParams ? await searchParams : undefined;
   const storedBackups = await listStoredBackups();

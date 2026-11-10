@@ -1,5 +1,5 @@
 import { AdminArticleStatusToggle } from "@/components/admin-article-status-toggle";
-import { requireAdminAuth } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 
 function formatDateTime(value: Date | null) {
@@ -17,7 +17,7 @@ function formatDateTime(value: Date | null) {
 }
 
 export default async function AdminContentPage() {
-  await requireAdminAuth();
+  await requireAdmin();
 
   const articles = await prisma.article.findMany({
     orderBy: {

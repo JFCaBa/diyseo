@@ -3,7 +3,7 @@ import { createGzip } from "node:zlib";
 
 import { NextResponse } from "next/server";
 
-import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { adminRouteGuard } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,9 +21,8 @@ function formatBackupFilename(date = new Date()) {
 }
 
 export async function GET() {
-  if (!(await isAdminAuthenticated())) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+  const admin = await adminRouteGuard();
+  if (admin instanceof Response) return admin;
 
   const databaseUrl = process.env.DATABASE_URL?.trim();
 

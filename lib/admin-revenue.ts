@@ -88,3 +88,25 @@ export async function collectPaged<T>(source: PagedSource<T>, stop: { stopped: b
   });
   return items;
 }
+
+/**
+ * Races `work` against a timeout. On timeout the stop flag is set (so paging stops) and a late
+ * rejection of the abandoned work is swallowed instead of becoming an unhandled rejection.
+ */
+export async function withTimeout<T>(work: (stop: { stopped: boolean }) => Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const stop = { stopped: false };
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      stop.stopped = true;
+      reject(new Error("Stripe request timed out"));
+    }, ms);
+  });
+  const running = work(stop);
+  running.catch(() => {});
+  try {
+    return await Promise.race([running, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}

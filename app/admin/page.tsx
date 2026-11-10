@@ -18,7 +18,7 @@ export default async function AdminPage() {
   const now = new Date();
   const window = trialEndingWindow(now);
 
-  const [revenue, workspacePlans, newUsersThisMonth, endingTrials, totalUsers, totalSites, totalArticles, totalKeywords, connectedSearchConsoleSites, articleStatusCounts, newestSites] =
+  const [revenue, workspacePlans, newUsersThisMonth, endingTrials, totalUsers, totalSites, totalArticles, totalKeywords, connectedSearchConsoleSites, articleStatusCounts, newestSites, endingTrialsTotal] =
     await Promise.all([
       getMonthRevenue(now),
       prisma.workspace.findMany({ select: { plan: true, trialEndsAt: true } }),
@@ -28,6 +28,7 @@ export default async function AdminPage() {
       prisma.workspace.findMany({
         where: { plan: "TRIAL", trialEndsAt: { gt: window.from, lte: window.to } },
         orderBy: { trialEndsAt: "asc" },
+        take: 20,
         select: { id: true, trialEndsAt: true, owner: { select: { id: true, email: true } } }
       }),
       prisma.user.count(),
@@ -62,7 +63,8 @@ export default async function AdminPage() {
             }
           }
         }
-      })
+      }),
+      prisma.workspace.count({ where: { plan: "TRIAL", trialEndsAt: { gt: window.from, lte: window.to } } })
     ]);
 
   const publishedArticles = articleStatusCounts.find((item) => item.status === "PUBLISHED")?._count.id ?? 0;
@@ -118,7 +120,7 @@ export default async function AdminPage() {
         </div>
         <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-2xl">
           <p className="text-sm text-slate-400">Trials ending in {TRIALS_ENDING_DAYS} days</p>
-          <p className="mt-3 text-3xl font-semibold text-white">{formatCount(endingTrials.length)}</p>
+          <p className="mt-3 text-3xl font-semibold text-white">{formatCount(endingTrialsTotal)}</p>
           <ul className="mt-3 space-y-1 text-sm">
             {endingTrials.map((ws) => (
               <li key={ws.id} className="flex justify-between gap-3">

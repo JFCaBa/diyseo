@@ -80,7 +80,7 @@ test("grant COMP is unaffected by ownerListed", () => {
   assert.equal(decideGrantComp(ws("TRIAL", future, null, true)).ok, true);
 });
 
-test("checkoutBlocksGrant: open blocks, unverified blocks, complete/expired/none do not", () => {
+test("checkoutBlocksGrant: open blocks, unverified blocks, complete reconciles, expired/none do not", () => {
   const open = checkoutBlocksGrant("open", true);
   assert.equal(open.blocked, true);
   assert.match(open.reason ?? "", /Checkout is in progress/);
@@ -88,5 +88,8 @@ test("checkoutBlocksGrant: open blocks, unverified blocks, complete/expired/none
   assert.equal(unverified.blocked, true);
   assert.match(unverified.reason ?? "", /Could not verify/);
   assert.equal(checkoutBlocksGrant("open", false).blocked, true);
-  for (const s of ["complete", "expired", null, undefined]) assert.deepEqual(checkoutBlocksGrant(s, true), { blocked: false });
+  for (const s of ["expired", null, undefined]) assert.deepEqual(checkoutBlocksGrant(s, true), { blocked: false });
+  // A complete session may not have reached subscriptionStatus yet: reconcile first, then the rules decide.
+  assert.deepEqual(checkoutBlocksGrant("complete", true), { blocked: false, reconcile: true });
+  assert.equal(checkoutBlocksGrant("open", true).reconcile, undefined);
 });

@@ -1,4 +1,4 @@
-import { collectPaged, createNegativeCache, createTtlCache, netRevenueByCurrency, planFromPrice } from "./admin-revenue";
+import { collectPaged, createNegativeCache, createTtlCache, netRevenueByCurrency, planFromPrice, withTimeout } from "./admin-revenue";
 import { monthStartUtc } from "./entitlements";
 import type { PlanId } from "./plans";
 import { getStripe } from "./stripe";
@@ -38,24 +38,7 @@ async function loadMonthRevenue(now: Date) {
     };
   };
 
-  return withTimeout(work);
-}
-
-/** On timeout the stop flag is set, so paging stops instead of running on in the background. */
-async function withTimeout<T>(work: (stop: { stopped: boolean }) => Promise<T>): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const stop = { stopped: false };
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => {
-      stop.stopped = true;
-      reject(new Error("Stripe request timed out"));
-    }, TIMEOUT_MS);
-  });
-  try {
-    return await Promise.race([work(stop), timeout]);
-  } finally {
-    clearTimeout(timer);
-  }
+  return withTimeout(work, TIMEOUT_MS);
 }
 
 /** Never throws; a failure returns { ok: false }, remembered for 30 s. */
@@ -153,7 +136,7 @@ async function loadPaymentsOverview(now: Date) {
     };
   };
 
-  return withTimeout(work);
+  return withTimeout(work, TIMEOUT_MS);
 }
 
 /** Read-only. Never throws; a failure returns { ok: false }, remembered for 30 s. */

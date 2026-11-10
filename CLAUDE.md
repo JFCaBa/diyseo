@@ -41,6 +41,7 @@ Operator panel (dashboard, users, per-user plan actions, payments, analytics), s
 - Gated by `ADMIN_EMAILS` (comma separated, case-insensitive; unset means nobody is admin) through the four helpers in `lib/admin-auth.ts`: `getAdmin`, `requireAdmin` (pages/layout), `requireAdminAction` (server actions), `adminRouteGuard` (route handlers).
 - Middleware does not make the admin decision (it only sees a cookie and skips URLs with a dot), so every admin page, route handler and action must call its helper.
 - Deploy: an `ADMIN_EMAILS` address must also be able to sign in (listed in `ALLOWED_EMAILS`, or `SIGNUP_OPEN=true`). `ADMIN_EMAILS` must be set in the server `.env` before deploying: unset fails closed, and `/admin` (including backups and restore) returns 404 for everyone.
+- Grant COMP checks the workspace's pending Stripe Checkout (read-only) before its transaction; a `complete` session is reconciled via `syncWorkspaceFromStripe` first. Accepted race: a Checkout can still be created in the milliseconds between that pre-check and the plan transaction (`startCheckout` takes `lockWorkspace`, the admin check runs before it).
 - Stripe is read-only from the admin; revenue and payments are cached 5 minutes.
 - Plan actions (grant/revoke COMP, extend trial) go through `lib/admin-plan-service.ts` under `lockWorkspace`, with an idempotent `opId` and an `AdminAuditLog` row.
 

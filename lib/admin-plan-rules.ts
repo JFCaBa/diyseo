@@ -58,14 +58,17 @@ export function decideExtendTrial(ws: WorkspaceState, days: number, now: Date): 
  * A Grant COMP must not race a Stripe Checkout the customer can still pay.
  * `status` is the pending Checkout Session's status (null/undefined when the
  * workspace has none); `verified` is false when Stripe could not be queried.
+ * `reconcile`: the caller must sync the workspace from Stripe before running the rules.
  */
 export function checkoutBlocksGrant(
   status: string | null | undefined,
   verified: boolean
-): { blocked: boolean; reason?: string } {
+): { blocked: boolean; reason?: string; reconcile?: boolean } {
   if (!verified) return { blocked: true, reason: "Could not verify the Stripe Checkout state; try again in a minute." };
   if (status === "open") {
     return { blocked: true, reason: "A Stripe Checkout is in progress for this workspace; wait until it completes or expires." };
   }
+  // The customer has just paid; the webhook may not have updated subscriptionStatus yet.
+  if (status === "complete") return { blocked: false, reconcile: true };
   return { blocked: false };
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { collectPaged, createNegativeCache, createTtlCache, planFromPrice, estimateMonthlyFromPlans, formatMinor, netRevenueByCurrency } from "../lib/admin-revenue";
+import { collectPaged, createNegativeCache, createTtlCache, planFromPrice, withTimeout, estimateMonthlyFromPlans, formatMinor, netRevenueByCurrency } from "../lib/admin-revenue";
 
 const charge = (over: Partial<{ amount: number; amountRefunded: number; paid: boolean; currency: string }> = {}) => ({
   amount: 2900,
@@ -136,4 +136,26 @@ test("collectPaged stops at the cap and once the stop flag is set", async () => 
   };
   await collectPaged(stoppable, stop, 100);
   assert.deepEqual(seen, [0, 1, 2]);
+});
+
+test("withTimeout: timeout wins, stop flag set, a late rejection of the work is handled", async () => {
+  const unhandled: unknown[] = [];
+  const onUnhandled = (reason: unknown) => unhandled.push(reason);
+  process.on("unhandledRejection", onUnhandled);
+  let flag: { stopped: boolean } | undefined;
+  try {
+    await assert.rejects(
+      withTimeout((stop) => {
+        flag = stop;
+        return new Promise<never>((_, reject) => setTimeout(() => reject(new Error("late")), 30));
+      }, 5),
+      /timed out/
+    );
+    assert.equal(flag!.stopped, true);
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    assert.deepEqual(unhandled, []);
+  } finally {
+    process.off("unhandledRejection", onUnhandled);
+  }
+  assert.equal(await withTimeout(async () => 7, 50), 7);
 });

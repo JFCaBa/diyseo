@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireAdminAction } from "@/lib/admin-auth";
+import { syncWorkspaceFromStripe } from "@/lib/billing";
 import { isListedEmail } from "@/lib/access";
 import { checkoutBlocksGrant } from "@/lib/admin-plan-rules";
 import { applyPlanChange, type PlanAction, type PlanTx } from "@/lib/admin-plan-service";
@@ -108,6 +109,7 @@ async function runPlanAction(
 
   if (result.success) {
     revalidatePath("/admin");
+    revalidatePath("/admin/users");
     revalidatePath("/admin/users/" + parsed.userId);
   }
 
@@ -125,8 +127,10 @@ export async function adminGrantComp(
   // Read-only look at an in-flight Checkout before any write; no audit row if blocked.
   const pending = await prisma.workspace.findUnique({
     where: { id: parsed.data.workspaceId },
-    select: { pendingCheckoutSessionId: true }
+    select: { pendingCheckoutSessionId: true, stripeCustomerId: true }
   });
+  // Accepted race: a Checkout can still be created in the milliseconds between this pre-check and the
+  // plan transaction (startCheckout takes lockWorkspace, but this check runs before it).
   if (pending?.pendingCheckoutSessionId) {
     let status: string | null = null;
     let verified = true;
@@ -136,11 +140,30 @@ export async function adminGrantComp(
         maxNetworkRetries: 0
       });
       status = session.status;
-    } catch {
+    } catch (error) {
       verified = false;
+      // Name and code only: never ids or messages.
+      console.error("admin_grant_checkout_verify_failed", {
+        name: error instanceof Error ? error.name : "unknown",
+        code: (error as { code?: string } | null)?.code ?? "unknown"
+      });
     }
     const check = checkoutBlocksGrant(status, verified);
     if (check.blocked) return { error: check.reason };
+    if (check.reconcile) {
+      // Paid but maybe not yet reflected in subscriptionStatus: our DB write from a Stripe read, then the rules decide.
+      const unverifiable = checkoutBlocksGrant(null, false).reason;
+      if (!pending.stripeCustomerId) return { error: unverifiable };
+      try {
+        await syncWorkspaceFromStripe(pending.stripeCustomerId);
+      } catch (error) {
+        console.error("admin_grant_checkout_verify_failed", {
+          name: error instanceof Error ? error.name : "unknown",
+          code: (error as { code?: string } | null)?.code ?? "unknown"
+        });
+        return { error: unverifiable };
+      }
+    }
   }
 
   return runPlanAction("GRANT_COMP", admin, parsed.data);

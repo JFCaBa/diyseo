@@ -6,7 +6,7 @@ const now = new Date("2026-11-10T12:00:00Z");
 const day = 24 * 60 * 60 * 1000;
 const actor = { id: "admin1", email: "admin@example.com" };
 
-type WsRow = { plan: string; trialEndsAt: Date | null; subscriptionStatus: string | null };
+type WsRow = { plan: string; trialEndsAt: Date | null; subscriptionStatus: string | null; ownerListed?: boolean };
 
 function fake(ws: WsRow | null) {
   const calls: string[] = [];
@@ -22,7 +22,7 @@ function fake(ws: WsRow | null) {
     },
     async findWorkspace() {
       calls.push("find");
-      return state.ws ? { ...state.ws } : null;
+      return state.ws ? { ownerListed: false, ...state.ws } : null;
     },
     async updateWorkspace(_id, data) {
       state.updates += 1;
@@ -167,4 +167,19 @@ test("extending an already expired trial starts from now", async () => {
   assert.ok(r.success);
   assert.equal(state.ws!.plan, "TRIAL");
   assert.equal(state.ws!.trialEndsAt!.getTime(), now.getTime() + 14 * day);
+});
+
+test("a listed owner refuses revoke and extend, writing nothing", async () => {
+  for (const [ws, inp] of [
+    [{ plan: "COMP", trialEndsAt: null, subscriptionStatus: null, ownerListed: true }, input("REVOKE_COMP", "l1")],
+    [{ plan: "TRIAL", trialEndsAt: null, subscriptionStatus: null, ownerListed: true }, input("EXTEND_TRIAL", "l2", 7)]
+  ] as Array<[WsRow, ReturnType<typeof input>]>) {
+    const { tx, state } = fake(ws);
+    const before = { ...state.ws! };
+    const r = await applyPlanChange(tx, inp);
+    assert.match(r.error ?? "", /ALLOWED_EMAILS/);
+    assert.equal(state.audits.length, 0);
+    assert.equal(state.updates, 0);
+    assert.deepEqual(state.ws, before);
+  }
 });

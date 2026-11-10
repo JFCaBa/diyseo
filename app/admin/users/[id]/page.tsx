@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AdminPlanActions } from "@/components/admin-plan-actions";
+import { isListedEmail } from "@/lib/access";
 import { requireAdmin } from "@/lib/admin-auth";
 import { effectivePlan, monthStartUtc } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
@@ -181,6 +182,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ id: 
               trialEndsAt={workspace.trialEndsAt ? workspace.trialEndsAt.toISOString() : null}
               subscriptionStatus={workspace.subscriptionStatus}
               isMemberView={workspace.owner.id !== user.id}
+              ownerListed={isListedEmail(workspace.owner.email)}
               nowIso={now.toISOString()}
             />
           </Card>

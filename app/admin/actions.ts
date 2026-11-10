@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireAdminAction } from "@/lib/admin-auth";
+import { isListedEmail } from "@/lib/access";
 import { applyPlanChange, type PlanAction, type PlanTx } from "@/lib/admin-plan-service";
 import { prisma } from "@/lib/prisma";
 import { lockWorkspace } from "@/lib/quota";
@@ -64,11 +65,19 @@ async function runPlanAction(
     result = await prisma.$transaction((tx) => {
     const adapter: PlanTx = {
       lock: (workspaceId) => lockWorkspace(tx, workspaceId),
-      findWorkspace: (workspaceId) =>
-        tx.workspace.findUnique({
+      findWorkspace: async (workspaceId) => {
+        const ws = await tx.workspace.findUnique({
           where: { id: workspaceId },
-          select: { plan: true, trialEndsAt: true, subscriptionStatus: true }
-        }),
+          select: { plan: true, trialEndsAt: true, subscriptionStatus: true, owner: { select: { email: true } } }
+        });
+        if (!ws) return null;
+        return {
+          plan: ws.plan,
+          trialEndsAt: ws.trialEndsAt,
+          subscriptionStatus: ws.subscriptionStatus,
+          ownerListed: isListedEmail(ws.owner.email)
+        };
+      },
       updateWorkspace: async (workspaceId, data) => {
         await tx.workspace.update({ where: { id: workspaceId }, data });
       },

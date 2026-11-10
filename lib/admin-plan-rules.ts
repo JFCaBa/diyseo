@@ -4,7 +4,16 @@ import { isLiveStatus } from "@/lib/billing-rules";
 
 export const EXTEND_PRESETS = [7, 14] as const;
 
-export type WorkspaceState = { plan: string; trialEndsAt: Date | null; subscriptionStatus: string | null };
+export type WorkspaceState = {
+  plan: string;
+  trialEndsAt: Date | null;
+  subscriptionStatus: string | null;
+  /** Computed server-side: the workspace owner's email is in ALLOWED_EMAILS (sign-in re-promotes them to COMP). */
+  ownerListed: boolean;
+};
+
+const LISTED_OWNER_REASON =
+  "The owner is listed in ALLOWED_EMAILS, so sign-in puts them back on COMP; remove them from that list first.";
 
 export type Decision =
   | { ok: true; plan: "COMP" | "TRIAL" | "NONE"; trialEndsAt: Date | null }
@@ -22,6 +31,7 @@ export function decideGrantComp(ws: WorkspaceState): Decision {
 
 export function decideRevokeComp(ws: WorkspaceState, now: Date): Decision {
   if (ws.plan !== "COMP") return { ok: false, reason: "Workspace is not COMP." };
+  if (ws.ownerListed) return { ok: false, reason: LISTED_OWNER_REASON };
   if (isLiveStatus(ws.subscriptionStatus)) {
     return { ok: false, reason: "Workspace has a live subscription: resolve it in Stripe first." };
   }
@@ -36,6 +46,7 @@ export function decideExtendTrial(ws: WorkspaceState, days: number, now: Date): 
     return { ok: false, reason: `Extension must be one of ${EXTEND_PRESETS.join(", ")} days.` };
   }
   if (ws.plan === "COMP") return { ok: false, reason: "COMP workspaces have no trial to extend." };
+  if (ws.ownerListed) return { ok: false, reason: LISTED_OWNER_REASON };
   if (isLiveStatus(ws.subscriptionStatus)) {
     return { ok: false, reason: "Workspace has a live subscription: a trial cannot be extended." };
   }

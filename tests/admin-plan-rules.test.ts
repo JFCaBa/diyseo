@@ -6,7 +6,7 @@ const now = new Date("2026-11-10T12:00:00Z");
 const future = new Date("2026-11-15T12:00:00Z");
 const past = new Date("2026-11-01T12:00:00Z");
 const day = 24 * 60 * 60 * 1000;
-const ws = (plan: string, trialEndsAt: Date | null = null, subscriptionStatus: string | null = null) => ({ plan, trialEndsAt, subscriptionStatus });
+const ws = (plan: string, trialEndsAt: Date | null = null, subscriptionStatus: string | null = null, ownerListed = false) => ({ plan, trialEndsAt, subscriptionStatus, ownerListed });
 
 test("presets", () => assert.deepEqual([...EXTEND_PRESETS], [7, 14]));
 
@@ -58,4 +58,24 @@ test("extend refusals", () => {
   assert.equal(decideExtendTrial(ws("COMP"), 7, now).ok, false);
   assert.equal(decideExtendTrial(ws("TRIAL", future, "active"), 7, now).ok, false);
   for (const d of [0, -7, 30, 7.5, NaN]) assert.equal(decideExtendTrial(ws("TRIAL", future), d, now).ok, false);
+});
+
+const LISTED = /ALLOWED_EMAILS/;
+
+test("revoke and extend refused when the owner is listed in ALLOWED_EMAILS", () => {
+  const r = decideRevokeComp(ws("COMP", future, null, true), now);
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.match(r.reason, LISTED);
+  const e = decideExtendTrial(ws("TRIAL", future, null, true), 7, now);
+  assert.equal(e.ok, false);
+  if (!e.ok) assert.match(e.reason, LISTED);
+});
+
+test("revoke and extend allowed when the owner is not listed", () => {
+  assert.equal(decideRevokeComp(ws("COMP", future, null, false), now).ok, true);
+  assert.equal(decideExtendTrial(ws("TRIAL", future, null, false), 7, now).ok, true);
+});
+
+test("grant COMP is unaffected by ownerListed", () => {
+  assert.equal(decideGrantComp(ws("TRIAL", future, null, true)).ok, true);
 });

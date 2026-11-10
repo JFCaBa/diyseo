@@ -18,6 +18,7 @@ type AdminPlanActionsProps = {
   trialEndsAt: string | null;
   subscriptionStatus: string | null;
   isMemberView: boolean;
+  ownerListed: boolean;
   nowIso: string;
 };
 
@@ -79,9 +80,9 @@ function Feedback({ state }: { state: AdminPlanActionState }) {
 }
 
 export function AdminPlanActions(props: AdminPlanActionsProps) {
-  const { workspaceId, userId, plan, effectivePlan, trialEndsAt, subscriptionStatus, isMemberView, nowIso } = props;
+  const { workspaceId, userId, plan, effectivePlan, trialEndsAt, subscriptionStatus, isMemberView, ownerListed, nowIso } = props;
   const now = new Date(nowIso);
-  const ws = { plan, trialEndsAt: trialEndsAt ? new Date(trialEndsAt) : null, subscriptionStatus };
+  const ws = { plan, trialEndsAt: trialEndsAt ? new Date(trialEndsAt) : null, subscriptionStatus, ownerListed };
 
   const grant = decideGrantComp(ws);
   const revoke = decideRevokeComp(ws, now);

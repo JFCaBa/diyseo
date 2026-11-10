@@ -8,7 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev                      # Next.js dev server on :3000
 npm run build                    # production build
 npm run start                    # run the built app
-npm run lint                     # next lint
+npm run lint                     # next lint (not configured; do not rely on it)
+npm test                         # tsx --test tests/*.test.ts
 
 npm run prisma:generate          # regenerate Prisma client (also runs postinstall)
 npm run prisma:migrate           # create + apply a new dev migration
@@ -16,7 +17,7 @@ npm run prisma:migrate:deploy    # apply committed migrations (prod + CI)
 npm run prisma:seed              # run prisma/seed.ts (demo workspace/site/articles)
 ```
 
-There is no test runner configured.
+Tests are plain `node:test` files run through `tsx` (`npm test`). `npm run lint` is not configured.
 
 `prisma.config.ts` manually loads `.env.local` then `.env` before invoking Prisma, so Prisma CLI commands pick up `DATABASE_URL` without a separate dotenv step. `postinstall` runs `prisma generate`, so after `npm install` the client is always in sync with `prisma/schema.prisma`.
 
@@ -28,10 +29,19 @@ Next.js 15 App Router + React 19 + Prisma (PostgreSQL) + Tailwind + Zod. TypeScr
 
 The app serves two distinct audiences from the same Next process, split by route prefix:
 
-- **Admin workspace** — auth-gated. Routes at `/`, `/settings`, `/new-site`, and the multi-tenant tree under `app/[siteId]/...` (dashboard, `brand-dna`, `articles`, `articles/[articleId]`, `articles/new`, `keywords`, `calendar`, `analytics`). `[siteId]` is the active site within the user's workspace; admin pages must always scope Prisma queries by both `workspaceId` (from session) and `siteId` (from the route param).
+- **User workspace** — auth-gated. Routes at `/`, `/settings`, `/new-site`, and the multi-tenant tree under `app/[siteId]/...` (dashboard, `brand-dna`, `articles`, `articles/[articleId]`, `articles/new`, `keywords`, `calendar`, `analytics`). `[siteId]` is the active site within the user's workspace; admin pages must always scope Prisma queries by both `workspaceId` (from session) and `siteId` (from the route param).
 - **Public blog + widget feed** — unauthenticated. Routes under `app/blog/...` (`/blog`, `/blog/[siteId]`, `/blog/[siteId]/[slug]`, plus `rss.xml`, `atom.xml`, `sitemap.xml`, and `/blog/robots.txt`), and JSON endpoints under `app/api/public/sites/[siteId]/{articles,config}`. These must only ever return `PUBLISHED` articles and must not leak workspace-internal fields.
 
 `public/embed.js` is the third-party widget script served at `/embed.js`. It reads `data-site` / `data-base-path` / `data-theme` / `data-title` from the `<script>` tag and fetches from `/api/public/sites/:siteId/{articles,config}`. The public API response shape (see README) and the embed script's attribute contract are load-bearing — downstream sites depend on them, so don't change field names or status semantics without intent.
+
+### Admin area (`/admin`)
+
+Operator panel (dashboard, users, per-user plan actions, payments, analytics), separate from the user workspace above.
+
+- Gated by `ADMIN_EMAILS` (comma separated, case-insensitive; unset means nobody is admin) through the four helpers in `lib/admin-auth.ts`: `getAdmin`, `requireAdmin` (pages/layout), `requireAdminAction` (server actions), `adminRouteGuard` (route handlers).
+- Middleware does not make the admin decision (it only sees a cookie and skips URLs with a dot), so every admin page, route handler and action must call its helper.
+- Stripe is read-only from the admin; revenue and payments are cached 5 minutes.
+- Plan actions (grant/revoke COMP, extend trial) go through `lib/admin-plan-service.ts` under `lockWorkspace`, with an idempotent `opId` and an `AdminAuditLog` row.
 
 ### Auth and middleware
 

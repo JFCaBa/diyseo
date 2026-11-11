@@ -19,3 +19,6 @@ prisma/dev.db
 
 # TypeScript incremental build cache
 tsconfig.tsbuildinfo
+
+# Local planning notes
+/plans/

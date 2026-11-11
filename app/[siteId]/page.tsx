@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/page-header";
 import { WidgetInstallCard } from "@/components/widget-install-card";
+import { exportFingerprint, hasChangesSinceExport } from "@/lib/install-methods/export-status";
 import { prisma } from "@/lib/prisma";
 import { requireSitePage } from "@/lib/workspace-context";
 
@@ -67,6 +68,20 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     },
     { total: 0, published: 0, draft: 0 }
   );
+
+  const updatedSinceExportCount = site.staticExportedAt
+    ? await prisma.article.count({
+        where: { siteProjectId: siteId, status: "PUBLISHED", updatedAt: { gt: site.staticExportedAt } }
+      })
+    : 0;
+  const changedSinceExport = hasChangesSinceExport({
+    exportedAt: site.staticExportedAt,
+    exportedCount: site.staticExportedCount,
+    publishedCount: articleCounts.published,
+    updatedSinceCount: updatedSinceExportCount,
+    exportedFingerprint: site.staticExportedFingerprint,
+    currentFingerprint: exportFingerprint(site)
+  });
 
   const keywordCounts = keywordMetrics.reduce(
     (acc, metric) => {
@@ -309,6 +324,10 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         siteDomain={site.domain}
         initialTheme={site.widgetTheme === "dark" ? "dark" : "light"}
         widgetInstalledAt={site.widgetInstalledAt ? site.widgetInstalledAt.toISOString() : null}
+        proxyVerifiedAt={site.proxyVerifiedAt ? site.proxyVerifiedAt.toISOString() : null}
+        staticExportedAt={site.staticExportedAt ? site.staticExportedAt.toISOString() : null}
+        staticExportedCount={site.staticExportedCount}
+        changedSinceExport={changedSinceExport}
       />
     </section>
   );

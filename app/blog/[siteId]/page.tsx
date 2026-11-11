@@ -52,6 +52,8 @@ export async function generateMetadata({ params }: PublicBlogIndexPageProps): Pr
     title,
     description,
     robots: urls.isTenant ? undefined : { index: false, follow: false },
+    // Marker read by the proxy verification (lib/install-methods/verify-proxy.ts).
+    other: { "diyseo-site": data.site.id },
     alternates: {
       canonical: urls.indexUrl,
       types: {

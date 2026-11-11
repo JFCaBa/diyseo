@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 
+import { InstallReverseProxyPanel } from "@/components/install-reverse-proxy-panel";
+import { InstallStaticExportPanel } from "@/components/install-static-export-panel";
 import { updateWidgetInstalledState, updateWidgetTheme, type ActionState } from "@/lib/actions";
 
 type WidgetTheme = "light" | "dark";
@@ -20,24 +22,30 @@ type WidgetInstallCardProps = {
   siteDomain?: string | null;
   initialTheme?: WidgetTheme | null;
   widgetInstalledAt?: string | null;
+  proxyVerifiedAt?: string | null;
+  staticExportedAt?: string | null;
+  staticExportedCount?: number | null;
+  changedSinceExport?: boolean;
   id?: string;
 };
 
 const initialState: ActionState = {};
 
-function formatRouteDomain(value?: string | null) {
-  if (!value) {
-    return "clientdomain.com";
-  }
+type InstallMethod = "proxy" | "static";
 
-  try {
-    return new URL(value).host.replace(/\/$/, "");
-  } catch {
-    return value.replace(/^https?:\/\//, "").replace(/\/$/, "");
-  }
-}
-
-export function WidgetInstallCard({ baseUrl, siteId, siteDomain, initialTheme, widgetInstalledAt, id }: WidgetInstallCardProps) {
+export function WidgetInstallCard({
+  baseUrl,
+  siteId,
+  siteDomain,
+  initialTheme,
+  widgetInstalledAt,
+  proxyVerifiedAt,
+  staticExportedAt,
+  staticExportedCount,
+  changedSinceExport = false,
+  id
+}: WidgetInstallCardProps) {
+  const [method, setMethod] = useState<InstallMethod>(staticExportedAt && !proxyVerifiedAt ? "static" : "proxy");
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [theme, setTheme] = useState<WidgetTheme>(initialTheme === "dark" ? "dark" : "light");
   const formRef = useRef<HTMLFormElement>(null);
@@ -46,8 +54,6 @@ export function WidgetInstallCard({ baseUrl, siteId, siteDomain, initialTheme, w
   const [state, formAction] = useActionState(updateWidgetThemeForSite, initialState);
   const [installState, installFormAction] = useActionState(updateWidgetInstalledStateForSite, initialState);
   const embedUrl = `${baseUrl}/embed.js`;
-  const routeDomain = formatRouteDomain(siteDomain);
-  const recommendedRoute = `${routeDomain}/blog*`;
   const snippet = `<div id="soro-widget-container"></div>
 <script
   src="${embedUrl}"
@@ -55,66 +61,6 @@ export function WidgetInstallCard({ baseUrl, siteId, siteDomain, initialTheme, w
   data-base-path="/blog"
   data-theme="${theme}"
 ></script>`;
-  const workerScript = `const DIYSEO_ORIGIN = "${baseUrl}";
-const SITE_ID = "${siteId}";
-const BLOG_BASE = "/blog";
-
-export default {
-  async fetch(request) {
-    const url = new URL(request.url);
-
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      return new Response("Method not allowed", {
-        status: 405,
-        headers: {
-          Allow: "GET, HEAD"
-        }
-      });
-    }
-
-    if (!url.pathname.startsWith(BLOG_BASE)) {
-      return new Response("Not found", { status: 404 });
-    }
-
-    let originPath = "";
-
-    if (url.pathname === BLOG_BASE || url.pathname === BLOG_BASE + "/") {
-      originPath = "/blog/" + SITE_ID;
-    } else if (url.pathname === BLOG_BASE + "/sitemap.xml") {
-      originPath = "/blog/" + SITE_ID + "/sitemap.xml";
-    } else if (url.pathname === BLOG_BASE + "/rss.xml") {
-      originPath = "/blog/" + SITE_ID + "/rss.xml";
-    } else if (url.pathname === BLOG_BASE + "/atom.xml") {
-      originPath = "/blog/" + SITE_ID + "/atom.xml";
-    } else {
-      const remainder = url.pathname.slice((BLOG_BASE + "/").length);
-
-      if (!remainder || remainder.includes("/")) {
-        return new Response("Not found", { status: 404 });
-      }
-
-      originPath = "/blog/" + SITE_ID + "/" + remainder;
-    }
-
-    const originUrl = new URL(originPath + url.search, DIYSEO_ORIGIN);
-    const headers = new Headers(request.headers);
-    headers.set("x-forwarded-host", url.host);
-    headers.set("x-forwarded-proto", "https");
-    headers.set("x-diyseo-site-id", SITE_ID);
-
-    const response = await fetch(originUrl.toString(), {
-      method: request.method,
-      headers,
-      redirect: "manual"
-    });
-
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers
-    });
-  }
-};`;
   const installedDateLabel = widgetInstalledAt
     ? new Intl.DateTimeFormat("en-US", {
         year: "numeric",
@@ -210,76 +156,47 @@ export default {
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <div className="rounded-2xl border border-dashed border-line bg-white/60 p-4 opacity-80">
-            <p className="text-sm font-semibold text-ink">Reverse proxy</p>
-            <p className="mt-1 text-xs text-slate-500">Serve blog routes through the client domain.</p>
-          </div>
-          <div className="rounded-2xl border border-dashed border-line bg-white/60 p-4 opacity-80">
-            <p className="text-sm font-semibold text-ink">Static export</p>
-            <p className="mt-1 text-xs text-slate-500">Publish generated pages directly to the client site.</p>
-          </div>
-        </div>
-
-        <div className="mt-4 rounded-2xl border border-line bg-white/90 p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div>
-              <h4 className="text-sm font-semibold text-ink">Cloudflare Worker publishing</h4>
-              <p className="mt-1 text-sm text-slate-600">
-                Advanced option: proxy your DIYSEO blog under the client domain at `/blog`.
-              </p>
-              <p className="mt-2 text-xs font-medium text-slate-500">
-                Important: creating the Worker is not enough. You must also attach a route so `/blog*` traffic
-                actually runs through this Worker.
-              </p>
-            </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2" role="tablist" aria-label="SEO-optimized install method">
+          {(
+            [
+              { id: "proxy", title: "Reverse proxy", text: "Serve blog routes through the client domain.", done: Boolean(proxyVerifiedAt) },
+              { id: "static", title: "Static export", text: "Publish generated pages directly to the client site.", done: Boolean(staticExportedAt) }
+            ] as const
+          ).map((item) => (
             <button
+              key={item.id}
               type="button"
-              onClick={() => copyField("worker", workerScript)}
-              className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
+              role="tab"
+              aria-selected={method === item.id}
+              onClick={() => setMethod(item.id)}
+              className={`rounded-2xl border p-4 text-left transition ${
+                method === item.id ? "border-accent bg-white shadow-sm" : "border-dashed border-line bg-white/60 hover:bg-white"
+              }`}
             >
-              {copiedField === "worker" ? "Copied" : "Copy Worker Script"}
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-ink">{item.title}</p>
+                {item.done ? (
+                  <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
+                    {item.id === "proxy" ? "Verified" : "Exported"}
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-1 text-xs text-slate-500">{item.text}</p>
             </button>
-          </div>
-
-          <dl className="mt-4 grid gap-3 text-sm text-slate-600 md:grid-cols-3">
-            <div>
-              <dt className="font-semibold text-ink">Site ID</dt>
-              <dd className="mt-1 break-all">{siteId}</dd>
-            </div>
-            <div>
-              <dt className="font-semibold text-ink">DIYSEO origin</dt>
-              <dd className="mt-1 break-all">{baseUrl}</dd>
-            </div>
-            <div>
-              <dt className="font-semibold text-ink">Recommended route</dt>
-              <dd className="mt-1 break-all">{recommendedRoute}</dd>
-            </div>
-          </dl>
-
-          <ol className="mt-4 grid gap-2 text-sm text-slate-600">
-            <li>1. Create a Cloudflare Worker and paste this script.</li>
-            <li>2. Attach a Cloudflare route to `{recommendedRoute}` and point it to this Worker.</li>
-            <li>3. Deploy the Worker after the route is attached.</li>
-            <li>4. Test `/blog`, `/blog/sitemap.xml`, `/blog/rss.xml`, and one article URL.</li>
-          </ol>
-
-          <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-sand/70">
-            <div className="flex items-center justify-between gap-3 border-b border-line/70 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Worker script</p>
-              <button
-                type="button"
-                onClick={() => copyField("worker", workerScript)}
-                className="inline-flex items-center justify-center rounded-xl border border-line bg-white px-3 py-2 text-xs font-semibold text-ink transition hover:bg-mist"
-              >
-                {copiedField === "worker" ? "Copied" : "Copy script"}
-              </button>
-            </div>
-            <pre className="overflow-x-auto p-4 text-sm text-ink">
-            <code>{workerScript}</code>
-            </pre>
-          </div>
+          ))}
         </div>
+
+        {method === "proxy" ? (
+          <InstallReverseProxyPanel baseUrl={baseUrl} siteId={siteId} siteDomain={siteDomain} proxyVerifiedAt={proxyVerifiedAt} />
+        ) : (
+          <InstallStaticExportPanel
+            siteId={siteId}
+            siteDomain={siteDomain}
+            staticExportedAt={staticExportedAt}
+            staticExportedCount={staticExportedCount}
+            changedSinceExport={changedSinceExport}
+          />
+        )}
 
         <div className="mt-4 rounded-2xl border border-line bg-white/90 p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">

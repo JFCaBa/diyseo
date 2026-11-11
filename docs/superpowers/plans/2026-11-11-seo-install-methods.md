@@ -42,3 +42,15 @@ Verification: `npm test`, `npx tsc --noEmit`, `npx next build` succeed.
 
 ## Task 6: Docs
 Modify `CLAUDE.md` (a short "Install methods" note: verify guard, export approach, marker meta).
+
+## Amendments after consenso (codex + agy; opencode did not participate)
+These override the task text above.
+- **Task 1:** Apache config also sets `ProxyAddHeaders On`, `RequestHeader set X-Forwarded-Proto "https"` and lists required modules (proxy, proxy_http, ssl, rewrite, headers); tests assert them. Nginx/Apache rules already forward feeds (`/blog/rss.xml` maps to `/blog/<siteId>/rss.xml`) and the query string; add a test per feed path.
+- **Task 3:** one absolute deadline (8 s) covering DNS, connect and body (request destroyed on expiry); follow at most ONE redirect, only when `Location` resolves to https on the same host (trailing-slash/scheme normalization), re-validated by the same guard.
+- **Task 4:** 
+  - Slugs must match `^[a-z0-9]+(?:-[a-z0-9]+)*$` and be ≤ 100 chars; otherwise the export aborts naming the slug. URL segment built with `encodeURIComponent`.
+  - CSS is fetched only from `https` URLs under the configured app origin and path `/_next/static/`, no redirects; any other stylesheet href aborts the export.
+  - Limits: 200 articles, 2 MB per response, 40 MB total, concurrency 4, 90 s overall deadline; abort before zipping when exceeded. One export at a time per site (in-memory lock, 429 otherwise).
+  - After fetching the index, run the canonical/marker check from Task 3 on it; abort with "forwarded host not applied" if the canonical is not on the client host. Test: exported HTML never contains `/blog/<siteId>`.
+  - Ruling (agy): keep the HTTP self-fetch; the app runs on a long-lived PM2 Node process, and it guarantees the export equals what the proxy serves. Ruling (agy): no link rewriting needed, tenant mode already emits `/blog/<slug>` and client-host canonicals.
+- **Task 5:** `staticExportedAt` is the START of the export, persisted only after success; add `staticExportedCount Int?` (published articles included). "Changed since export" = never exported, or published count differs, or any published article has `updatedAt > staticExportedAt`. Ruling (agy): verify still sets `widgetInstalledAt` when null, because the onboarding step means "installed", whichever method.

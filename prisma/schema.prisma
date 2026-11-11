@@ -130,6 +130,10 @@ model SiteProject {
   requireReview              Boolean      @default(true)
   widgetTheme                String?
   widgetInstalledAt          DateTime?
+  proxyVerifiedAt            DateTime?
+  staticExportedAt           DateTime?
+  staticExportedCount        Int?
+  staticExportedFingerprint  String?
   searchConsolePropertyUrl   String?
   searchConsoleConnectedAt   DateTime?
   defaultSearchCountry       String       @default("es")

@@ -45,6 +45,14 @@ Operator panel (dashboard, users, per-user plan actions, payments, analytics), s
 - Stripe is read-only from the admin; revenue and payments are cached 5 minutes.
 - Plan actions (grant/revoke COMP, extend trial) go through `lib/admin-plan-service.ts` under `lockWorkspace`, with an idempotent `opId` and an `AdminAuditLog` row.
 
+### Install methods (SEO attribution)
+
+The install card on the site dashboard offers the widget snippet plus two ways to serve the blog under the client domain.
+
+- **Reverse proxy:** configs for Cloudflare, Nginx and Apache are generated in `lib/install-methods/proxy-configs.ts`. The proxy must send `X-Forwarded-Host`; `lib/public-urls.ts` then emits client-host canonicals. `POST /api/internal/sites/[siteId]/verify-proxy` fetches `https://<site domain>/blog` and checks the `diyseo-site` meta marker (emitted by the blog index) and the canonical host. `SiteProject.domain` is user-controlled, so the fetch is SSRF-guarded (`isVerifiableHost`, public-address check at connect time, one absolute deadline, one same-host redirect). Do not weaken that guard.
+- **Static export:** `POST /api/internal/sites/[siteId]/export` renders the site's public pages through the app's own origin with the client `x-forwarded-host`, inlines the stylesheets, strips scripts and returns a ZIP (limits in `EXPORT_LIMITS`). `staticExportedAt` is the start of the export; "changed since export" is computed in `lib/install-methods/export-status.ts`.
+- Both routes sit under `/api/internal/sites`, which middleware does not protect, so each calls `denyUnlessSiteOwner` first (`tests/install-guards.test.ts`).
+
 ### Auth and middleware
 
 NextAuth v5 (beta) with Google provider, database session strategy, Prisma adapter.

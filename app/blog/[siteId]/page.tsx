@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
+import { PublicBlogHeader } from "@/components/public-blog-header";
 import { PublicBlogMetaLinks } from "@/components/public-blog-meta-links";
 import { getCoverImageProxyUrl } from "@/lib/cover-image-url";
 import { getPublicSite, getPublishedArticles } from "@/lib/articles";
 import { getPublicBlogTheme } from "@/lib/public-blog-theme";
-import { getPublicUrls } from "@/lib/public-urls";
+import { getAppHost, getPublicUrls } from "@/lib/public-urls";
+import { searchSuffix, siteOriginFromDomain, tenantBlogRedirect } from "@/lib/tenant-redirect";
 import { cn } from "@/lib/utils";
 import { PublicBlogIndexRouteParamsSchema } from "@/lib/validations";
 
@@ -14,6 +16,7 @@ export const dynamic = "force-dynamic";
 
 type PublicBlogIndexPageProps = {
   params: Promise<{ siteId: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 async function getIndexData(params: PublicBlogIndexPageProps["params"]) {
@@ -82,7 +85,7 @@ export async function generateMetadata({ params }: PublicBlogIndexPageProps): Pr
   };
 }
 
-export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPageProps) {
+export default async function PublicBlogIndexPage({ params, searchParams }: PublicBlogIndexPageProps) {
   const data = await getIndexData(params);
 
   if (!data) {
@@ -90,10 +93,27 @@ export default async function PublicBlogIndexPage({ params }: PublicBlogIndexPag
   }
 
   const urls = await getPublicUrls(data.site.id);
+
+  const redirectTo = tenantBlogRedirect({
+    isTenant: urls.isTenant,
+    domain: data.site.domain,
+    proxyVerifiedAt: data.site.proxyVerifiedAt,
+    appHost: getAppHost(),
+    search: searchSuffix(searchParams ? await searchParams : undefined)
+  });
+
+  if (redirectTo) {
+    redirect(redirectTo);
+  }
+
   const theme = getPublicBlogTheme(data.site.widgetTheme);
+  const siteOrigin = urls.isTenant ? siteOriginFromDomain(data.site.domain) : null;
 
   return (
     <main className={cn("min-h-screen px-4 py-10 sm:px-6 sm:py-12", theme.page)}>
+      {siteOrigin ? (
+        <PublicBlogHeader siteName={data.site.name} siteOrigin={siteOrigin} blogPath={urls.indexPath} theme={theme} className="max-w-4xl" />
+      ) : null}
       <section className={cn("mx-auto max-w-4xl rounded-[2rem] border px-5 py-7 shadow-panel backdrop-blur sm:px-8 md:px-10 md:py-10", theme.shell)}>
         <div className={cn("space-y-4 border-b pb-7", theme.divider)}>
           <p className={cn("text-[11px] font-semibold uppercase tracking-[0.28em]", theme.eyebrow)}>Public Blog</p>

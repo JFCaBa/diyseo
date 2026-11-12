@@ -84,7 +84,8 @@ export async function getPublicSite(siteId: string) {
       id: true,
       name: true,
       domain: true,
-      widgetTheme: true
+      widgetTheme: true,
+      proxyVerifiedAt: true
     }
   });
 }

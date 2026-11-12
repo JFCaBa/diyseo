@@ -1,5 +1,10 @@
 import { headers } from "next/headers";
 
+/** Host of the hub itself (from NEXT_PUBLIC_APP_URL); "" when unset or invalid. */
+export function getAppHost() {
+  return getDefaultHost();
+}
+
 function getDefaultHost() {
   try {
     return new URL(process.env.NEXT_PUBLIC_APP_URL ?? "").host;

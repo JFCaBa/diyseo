@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
+import { PublicBlogHeader } from "@/components/public-blog-header";
 import { PublicBlogMetaLinks } from "@/components/public-blog-meta-links";
 import { getCoverImageProxyPath, getCoverImageProxyUrl } from "@/lib/cover-image-url";
-import { getAdjacentPublishedArticles, getPublishedArticleBySlugWithTranslation } from "@/lib/articles";
+import { getAdjacentPublishedArticles, getPublicSite, getPublishedArticleBySlugWithTranslation } from "@/lib/articles";
 import { getArticleRenderedHtml } from "@/lib/markdown";
 import { getPublicBlogTheme } from "@/lib/public-blog-theme";
-import { getPublicUrls } from "@/lib/public-urls";
+import { getAppHost, getPublicUrls } from "@/lib/public-urls";
+import { searchSuffix, siteOriginFromDomain, tenantBlogRedirect } from "@/lib/tenant-redirect";
 import { getRequestedTranslationLanguage, getTranslationQuerySuffix, pickArticleTranslation } from "@/lib/translations";
 import { cn } from "@/lib/utils";
 import { PublicArticleRouteParamsSchema } from "@/lib/validations";
@@ -16,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 type PublicArticlePageProps = {
   params: Promise<{ siteId: string; slug: string }>;
-  searchParams?: Promise<{ lang?: string }>;
+  searchParams?: Promise<{ lang?: string; [key: string]: string | string[] | undefined }>;
 };
 
 async function getArticleFromParams(params: PublicArticlePageProps["params"], searchParams?: PublicArticlePageProps["searchParams"]) {
@@ -95,6 +97,24 @@ export default async function PublicArticlePage({ params, searchParams }: Public
   const translation = pickArticleTranslation(article);
 
   const urls = await getPublicUrls(article.siteProjectId);
+  const site = await getPublicSite(article.siteProjectId);
+
+  const redirectTo = site
+    ? tenantBlogRedirect({
+        isTenant: urls.isTenant,
+        domain: site.domain,
+        proxyVerifiedAt: site.proxyVerifiedAt,
+        appHost: getAppHost(),
+        slug: article.slug,
+        search: searchSuffix(resolvedSearchParams)
+      })
+    : null;
+
+  if (redirectTo) {
+    redirect(redirectTo);
+  }
+
+  const siteOrigin = site && urls.isTenant ? siteOriginFromDomain(site.domain) : null;
 
   const { previousArticle, nextArticle } = await getAdjacentPublishedArticles(article.siteProjectId, {
     publishedAt: article.publishedAt ? new Date(article.publishedAt) : null,
@@ -117,6 +137,9 @@ export default async function PublicArticlePage({ params, searchParams }: Public
 
   return (
     <main className={cn("min-h-screen px-4 py-10 sm:px-6 sm:py-12", theme.page)}>
+      {site && siteOrigin ? (
+        <PublicBlogHeader siteName={site.name} siteOrigin={siteOrigin} blogPath={urls.indexPath} theme={theme} className="max-w-3xl" />
+      ) : null}
       <article
         className={cn(
           "mx-auto max-w-3xl rounded-[2rem] border px-5 py-7 shadow-panel backdrop-blur sm:px-8 md:px-10 md:py-10",

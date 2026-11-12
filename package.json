@@ -15,6 +15,7 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "mint:api-key": "tsx scripts/mint-publishing-api-key.ts",
     "backup:database": "tsx scripts/backup-database.ts",
+    "backup:gdrive-auth": "tsx scripts/backup-gdrive-auth.ts",
     "test": "tsx --test --test-concurrency=1 tests/*.test.ts",
     "sso:keygen": "tsx scripts/generate-sso-key.ts"
   },

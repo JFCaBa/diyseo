@@ -84,6 +84,15 @@ export async function createDatabaseBackup() {
     stderrChunks.push(Buffer.from(chunk));
   });
 
+  // Listen from the start: if pg_dump closes while the stream copy below is still
+  // being awaited, a listener attached afterwards would never fire and this
+  // function would hang (the process then exits 0 without finishing).
+  const exited = new Promise<number>((resolve, reject) => {
+    pgDump.on("error", () => reject(new Error("pg_dump is not available on this server.")));
+    pgDump.on("close", (code) => resolve(code ?? 1));
+  });
+  exited.catch(() => undefined);
+
   const fileStream = createWriteStream(absolutePath, { encoding: "utf8" });
 
   try {
@@ -97,10 +106,13 @@ export async function createDatabaseBackup() {
     throw new Error("Failed to write database backup.");
   }
 
-  const exitCode = await new Promise<number>((resolve, reject) => {
-    pgDump.on("error", () => reject(new Error("pg_dump is not available on this server.")));
-    pgDump.on("close", resolve);
-  });
+  let exitCode: number;
+  try {
+    exitCode = await exited;
+  } catch (error) {
+    await fs.rm(absolutePath, { force: true });
+    throw error;
+  }
 
   if (exitCode !== 0) {
     await fs.rm(absolutePath, { force: true });

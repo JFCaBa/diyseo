@@ -11,8 +11,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Nothing reaches production unless the tests pass and the app builds: `deploy` waits for this job.
+  verify:
+    name: Verify (tests and build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm test
+      - run: npm run build
+
   deploy:
     name: Deploy to production
+    needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { exportJWK, generateKeyPair } from "jose";
 import { signPass, verifyPass, type PassClaims } from "../lib/sso/pass";
-import { serviceForSecret, ssoService } from "../lib/sso/services";
+import { serviceForSecret, isTrustedLogoutRequest, ssoLogoutDestination, ssoService } from "../lib/sso/services";
 
 const claims: PassClaims = {
   sub: "u1",
@@ -126,4 +126,19 @@ test("a callback URL that is not https (or local http) disables the service", ()
   assert.equal(withUrl("https://mcp.example/cb")?.callbackUrl, "https://mcp.example/cb");
   assert.ok(withUrl("http://localhost:3001/cb"));
   assert.ok(withUrl("http://127.0.0.1:3001/cb"));
+});
+
+test("logout always lands on the service's own login page, whatever the callback path", () => {
+  const service = ssoService("ads", { ...fullEnv, SSO_ADS_CALLBACK_URL: "https://ads.example/sso/callback?x=1" });
+  assert.equal(ssoLogoutDestination(service!), "https://ads.example/login");
+});
+
+test("logout is refused for cross-site requests that do not come from the service", () => {
+  const service = ssoService("ads", fullEnv)!;
+  const h = (v: Record<string, string>) => new Headers(v);
+  assert.equal(isTrustedLogoutRequest(h({}), service), true);
+  assert.equal(isTrustedLogoutRequest(h({ "sec-fetch-site": "same-site" }), service), true);
+  assert.equal(isTrustedLogoutRequest(h({ "sec-fetch-site": "cross-site", referer: "https://ads.example/" }), service), true);
+  assert.equal(isTrustedLogoutRequest(h({ "sec-fetch-site": "cross-site", referer: "https://evil.example/x" }), service), false);
+  assert.equal(isTrustedLogoutRequest(h({ "sec-fetch-site": "cross-site" }), service), false);
 });

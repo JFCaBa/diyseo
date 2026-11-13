@@ -44,3 +44,21 @@ export function serviceForSecret(secret: string, env: Env = process.env): SsoSer
   }
   return found;
 }
+
+/** Where the hub sends the browser after ending its own session: the service's own sign-in page. Fixed per service, never taken from the request. */
+export function ssoLogoutDestination(service: SsoService): string {
+  return `${new URL(service.callbackUrl).origin}/login`;
+}
+
+/**
+ * Logout CSRF guard: a request that a browser marks cross-site is honoured only when it comes from the service itself
+ * (its Referer origin). Same-site/same-origin requests and clients that send no Fetch Metadata are let through.
+ */
+export function isTrustedLogoutRequest(headers: Pick<Headers, "get">, service: SsoService): boolean {
+  if (headers.get("sec-fetch-site") !== "cross-site") return true;
+  try {
+    return new URL(headers.get("referer") ?? "").origin === new URL(service.callbackUrl).origin;
+  } catch {
+    return false;
+  }
+}

@@ -574,53 +574,53 @@ test("an expired Checkout clears only the workspace that still points at it", { 
 });
 
 test("the main owner promotes a member to co-owner and back; co-owners cannot appoint", { skip }, async () => {
-  await soloWorkspace("t50");
-  await addMember("w_t50", "c50");
-  await addMember("w_t50", "d50");
+  await soloWorkspace("co0");
+  await addMember("w_co0", "co0c");
+  await addMember("w_co0", "co0d");
 
-  assert.equal(await teams.setMemberRole("w_t50", "u_t50", "u_c50", "OWNER"), null);
-  assert.equal((await m.getMembership("u_c50"))?.role, "OWNER");
+  assert.equal(await teams.setMemberRole("w_co0", "u_co0", "u_co0c", "OWNER"), null);
+  assert.equal((await m.getMembership("u_co0c"))?.role, "OWNER");
   // The primary owner stays the billing holder.
-  assert.equal((await prisma.workspace.findUniqueOrThrow({ where: { id: "w_t50" } })).ownerId, "u_t50");
+  assert.equal((await prisma.workspace.findUniqueOrThrow({ where: { id: "w_co0" } })).ownerId, "u_co0");
 
-  assert.equal(await teams.setMemberRole("w_t50", "u_c50", "u_d50", "OWNER"), "primary_only");
-  assert.equal(await teams.setMemberRole("w_t50", "u_c50", "u_t50", "MEMBER"), "primary_owner");
-  assert.equal(await teams.setMemberRole("w_t50", "u_t50", "u_c50", "OWNER"), "unchanged");
-  assert.equal(await teams.setMemberRole("w_t50", "u_t50", "u_nobody", "OWNER"), "not_found");
+  assert.equal(await teams.setMemberRole("w_co0", "u_co0c", "u_co0d", "OWNER"), "primary_only");
+  assert.equal(await teams.setMemberRole("w_co0", "u_co0c", "u_co0", "MEMBER"), "primary_owner");
+  assert.equal(await teams.setMemberRole("w_co0", "u_co0", "u_co0c", "OWNER"), "unchanged");
+  assert.equal(await teams.setMemberRole("w_co0", "u_co0", "u_nobody", "OWNER"), "not_found");
 
   // A co-owner can step down on their own.
-  assert.equal(await teams.setMemberRole("w_t50", "u_c50", "u_c50", "MEMBER"), null);
-  assert.equal((await m.getMembership("u_c50"))?.role, "MEMBER");
+  assert.equal(await teams.setMemberRole("w_co0", "u_co0c", "u_co0c", "MEMBER"), null);
+  assert.equal((await m.getMembership("u_co0c"))?.role, "MEMBER");
   // Once demoted they can no longer act as an owner.
-  assert.equal(await teams.setMemberRole("w_t50", "u_c50", "u_d50", "OWNER"), "not_found");
+  assert.equal(await teams.setMemberRole("w_co0", "u_co0c", "u_co0d", "OWNER"), "not_found");
 });
 
 test("a co-owner accepting an invite elsewhere is refused and their shared workspace survives", { skip }, async () => {
-  await soloWorkspace("t51");
-  await addMember("w_t51", "c51");
-  assert.equal(await teams.setMemberRole("w_t51", "u_t51", "u_c51", "OWNER"), null);
-  await soloWorkspace("x51");
-  const token = await invite("w_x51", "c51@test.io");
+  await soloWorkspace("co1");
+  await addMember("w_co1", "co1c");
+  assert.equal(await teams.setMemberRole("w_co1", "u_co1", "u_co1c", "OWNER"), null);
+  await soloWorkspace("co1x");
+  const token = await invite("w_co1x", "co1c@test.io");
 
-  assert.deepEqual(await teams.acceptInvite(token, user("c51"), T0), { error: "has_team" });
-  assert.notEqual(await prisma.workspace.findUnique({ where: { id: "w_t51" } }), null);
-  assert.equal((await m.getMembership("u_c51"))?.workspaceId, "w_t51");
+  assert.deepEqual(await teams.acceptInvite(token, user("co1c"), T0), { error: "has_team" });
+  assert.notEqual(await prisma.workspace.findUnique({ where: { id: "w_co1" } }), null);
+  assert.equal((await m.getMembership("u_co1c"))?.workspaceId, "w_co1");
 });
 
 test("isTeamMemberEmail covers a co-owner but not the main owner", { skip }, async () => {
-  await soloWorkspace("t52");
-  await addMember("w_t52", "c52");
-  assert.equal(await teams.setMemberRole("w_t52", "u_t52", "u_c52", "OWNER"), null);
+  await soloWorkspace("co2");
+  await addMember("w_co2", "co2c");
+  assert.equal(await teams.setMemberRole("w_co2", "u_co2", "u_co2c", "OWNER"), null);
 
-  assert.equal(await teams.isTeamMemberEmail("c52@test.io"), true);
-  assert.equal(await teams.isTeamMemberEmail("t52@test.io"), false);
+  assert.equal(await teams.isTeamMemberEmail("co2c@test.io"), true);
+  assert.equal(await teams.isTeamMemberEmail("co2@test.io"), false);
 });
 
 test("findOwnedWorkspaceId ignores co-owners", { skip }, async () => {
-  await soloWorkspace("t53");
-  await addMember("w_t53", "c53");
-  assert.equal(await teams.setMemberRole("w_t53", "u_t53", "u_c53", "OWNER"), null);
+  await soloWorkspace("co3");
+  await addMember("w_co3", "co3c");
+  assert.equal(await teams.setMemberRole("w_co3", "u_co3", "u_co3c", "OWNER"), null);
 
-  assert.equal(await provisioning.findOwnedWorkspaceId("u_t53"), "w_t53");
-  assert.equal(await provisioning.findOwnedWorkspaceId("u_c53"), null);
+  assert.equal(await provisioning.findOwnedWorkspaceId("u_co3"), "w_co3");
+  assert.equal(await provisioning.findOwnedWorkspaceId("u_co3c"), null);
 });

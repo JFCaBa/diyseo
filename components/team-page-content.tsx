@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { RemoveMemberButton, RevokeInviteButton, TeamInviteForm } from "@/components/team-forms";
+import { ChangeRoleButton, RemoveMemberButton, RevokeInviteButton, TeamInviteForm } from "@/components/team-forms";
 import { prisma } from "@/lib/prisma";
 import { listTeam } from "@/lib/teams";
 import { requireWorkspace } from "@/lib/workspace-context";
@@ -28,6 +28,8 @@ export async function TeamPageContent() {
 
   const isOwner = member.role === "OWNER";
   const team = await listTeam(member.workspaceId);
+  // Only the main owner (billing holder) appoints or revokes co-owners; a co-owner can only step down.
+  const isPrimary = member.userId === team.primaryOwnerId;
   const now = new Date();
 
   return (
@@ -60,8 +62,14 @@ export async function TeamPageContent() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                  {person.role === "OWNER" ? "Owner" : "Member"}
+                  {person.role === "MEMBER" ? "Member" : person.userId === team.primaryOwnerId && team.members.some((m) => m.role === "OWNER" && m.userId !== team.primaryOwnerId) ? "Main owner" : "Owner"}
                 </span>
+                {isPrimary && person.role === "MEMBER" ? (
+                  <ChangeRoleButton userId={person.userId} role="OWNER" label={person.name || person.email} />
+                ) : null}
+                {isOwner && person.role === "OWNER" && person.userId !== team.primaryOwnerId && (isPrimary || person.userId === member.userId) ? (
+                  <ChangeRoleButton userId={person.userId} role="MEMBER" label={person.name || person.email} />
+                ) : null}
                 {isOwner && person.role !== "OWNER" ? <RemoveMemberButton userId={person.userId} label={person.name || person.email} /> : null}
               </div>
             </li>

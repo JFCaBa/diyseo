@@ -4,7 +4,7 @@ import { join, relative, sep } from "node:path";
 import { test } from "node:test";
 
 const root = join(__dirname, "..");
-// Workspace.ownerId is only a mirror of the OWNER member; only these files may write it.
+// Workspace.ownerId is the primary owner (a mirror of one OWNER member; co-owners are other OWNER rows); only these files may read or write it.
 const allowed = new Set(["lib/workspace-provisioning.ts", "lib/teams.ts"]);
 
 function sourceFiles(dir: string): string[] {

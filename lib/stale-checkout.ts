@@ -1,7 +1,7 @@
 import { staleCheckoutAction } from "@/lib/billing-rules";
 import { prisma } from "@/lib/prisma";
+import { findOwnedWorkspaceId } from "@/lib/workspace-provisioning";
 import { getStripe } from "@/lib/stripe";
-import { getMembership } from "@/lib/workspace-membership";
 
 /**
  * Before a user joins a team: an abandoned Checkout on the workspace they own
@@ -10,11 +10,11 @@ import { getMembership } from "@/lib/workspace-membership";
  * stays blocked rather than dropping a session that might still be paid.
  */
 export async function releaseStaleCheckout(userId: string): Promise<void> {
-  // Only the workspace the user owns is dropped on joining; a member has nothing to release.
-  const membership = await getMembership(userId);
-  if (membership?.role !== "OWNER") return;
+  // Only the workspace the user is the primary owner of is dropped on joining; members and co-owners have nothing to release.
+  const ownedId = await findOwnedWorkspaceId(userId);
+  if (!ownedId) return;
   const workspace = await prisma.workspace.findUnique({
-    where: { id: membership.workspaceId },
+    where: { id: ownedId },
     select: { id: true, pendingCheckoutSessionId: true }
   });
   const sessionId = workspace?.pendingCheckoutSessionId;

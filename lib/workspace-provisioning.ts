@@ -113,8 +113,8 @@ export async function getOrCreateWorkspaceIdForUser(
   return (await resolveOrCreateMembership(userId, userName, email, false)).workspaceId;
 }
 
-/** Workspace whose OWNER member is this user, or null. */
+/** Workspace this user is the primary owner of (Workspace.ownerId), or null. A co-owner owns none. */
 export async function findOwnedWorkspaceId(userId: string): Promise<string | null> {
-  const membership = await getMembership(userId);
-  return membership?.role === "OWNER" ? membership.workspaceId : null;
+  const workspace = await prisma.workspace.findUnique({ where: { ownerId: userId }, select: { id: true } });
+  return workspace?.id ?? null;
 }

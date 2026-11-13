@@ -11,7 +11,8 @@ import { sendInviteEmail } from "@/lib/mailer";
 import { prisma } from "@/lib/prisma";
 import { memberLimit } from "@/lib/satellite-entitlements";
 import { releaseStaleCheckout } from "@/lib/stale-checkout";
-import { acceptInvite, createInvite, inviteForToken, removeMember, revokeInvite } from "@/lib/teams";
+import { ROLE_ERRORS } from "@/lib/team-roles";
+import { acceptInvite, createInvite, inviteForToken, removeMember, revokeInvite, setMemberRole } from "@/lib/teams";
 import { inviteMemberSchema } from "@/lib/validations";
 import { requireOwner } from "@/lib/workspace-context";
 
@@ -98,6 +99,28 @@ export async function removeTeamMember(_prevState: TeamActionState, formData: Fo
     if (message === "Not found") return { error: "That person is no longer on this team." };
     if (message === "The owner cannot be removed.") return { error: message };
     console.error("team_remove_failed", { code: (error as { code?: string }).code ?? "unknown" });
+    return { error: RETRY_MESSAGE };
+  }
+
+  revalidatePath("/team");
+  revalidatePath("/[siteId]/team", "page");
+  return {};
+}
+
+export async function setTeamMemberRole(_prevState: TeamActionState, formData: FormData): Promise<TeamActionState> {
+  const owner = await ownerOrNull();
+  if (!owner) return { error: OWNER_ONLY };
+
+  const userId = formData.get("userId");
+  const role = formData.get("role");
+  if (typeof userId !== "string" || !userId || (role !== "OWNER" && role !== "MEMBER")) return { error: RETRY_MESSAGE };
+
+  try {
+    const refusal = await setMemberRole(owner.workspaceId, owner.userId, userId, role);
+    if (refusal === "not_found") return { error: "That person is no longer on this team, or you are no longer an owner." };
+    if (refusal) return { error: ROLE_ERRORS[refusal] };
+  } catch (error) {
+    console.error("team_role_failed", { code: (error as { code?: string }).code ?? "unknown" });
     return { error: RETRY_MESSAGE };
   }
 

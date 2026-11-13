@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { inviteMember, removeTeamMember, revokeTeamInvite, type TeamActionState } from "@/lib/team-actions";
+import { inviteMember, removeTeamMember, revokeTeamInvite, setTeamMemberRole, type TeamActionState } from "@/lib/team-actions";
 
 const initialState: TeamActionState = {};
 
@@ -123,6 +123,33 @@ export function RemoveMemberButton({ userId, label }: { userId: string; label: s
         idle="Remove"
         busy="Removing..."
         className="rounded-xl border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50"
+      />
+      {state.error ? <p className="text-xs text-red-700">{state.error}</p> : null}
+    </form>
+  );
+}
+
+export function ChangeRoleButton({ userId, role, label }: { userId: string; role: "OWNER" | "MEMBER"; label: string }) {
+  const [state, formAction] = useActionState(setTeamMemberRole, initialState);
+  const promote = role === "OWNER";
+
+  return (
+    <form
+      action={formAction}
+      onSubmit={(event) => {
+        const message = promote
+          ? `Make ${label} an owner? They will be able to manage the team, billing and sites. Only you can appoint or remove owners.`
+          : `Remove the owner role from ${label}? They stay on the team as a member.`;
+        if (!window.confirm(message)) event.preventDefault();
+      }}
+      className="flex items-center gap-2"
+    >
+      <input type="hidden" name="userId" value={userId} />
+      <input type="hidden" name="role" value={role} />
+      <SubmitButton
+        idle={promote ? "Make owner" : "Make member"}
+        busy="Saving..."
+        className="rounded-xl border border-line px-3 py-1.5 text-sm font-semibold text-ink hover:bg-mist"
       />
       {state.error ? <p className="text-xs text-red-700">{state.error}</p> : null}
     </form>

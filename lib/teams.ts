@@ -6,6 +6,7 @@ import { effectivePlan, limitsFor } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
 import { lockWorkspace } from "@/lib/quota";
 import { memberLimit } from "@/lib/satellite-entitlements";
+import { canChangeRole, type RoleChangeError, type TeamRole } from "@/lib/team-roles";
 import { getMembership, type WorkspaceRole } from "@/lib/workspace-membership";
 
 type Tx = Prisma.TransactionClient;
@@ -154,11 +155,8 @@ export async function createInvite(
   });
 }
 
-/** The workspace the user leaves when joining: the one they own, if any. */
+/** The workspace the user leaves when joining: the one they are the primary owner of, if any. A co-owner owns nothing. */
 async function ownedWorkspaceForJoin(tx: Tx | typeof prisma, userId: string) {
-  const membership = await tx.workspaceMember.findUnique({ where: { userId }, select: { workspaceId: true } });
-  if (membership) return membership.workspaceId;
-  // A legacy workspace without its OWNER member row.
   const owned = await tx.workspace.findUnique({ where: { ownerId: userId }, select: { id: true } });
   return owned?.id ?? null;
 }
@@ -215,9 +213,10 @@ export async function acceptInvite(
       return { error: "limit_reached" as const };
     }
 
-    if (membership && membership.role !== "OWNER") return { error: "has_team" as const };
-
     const source = await ownedWorkspaceForJoin(tx, user.id);
+    // Members and co-owners of a team have no workspace of their own to fold in.
+    if (membership && !source) return { error: "has_team" as const };
+
     // A legacy owner without a member row, invited to their own workspace.
     if (source === invite.workspaceId) return { error: "already_member" as const };
     if (source) {
@@ -318,12 +317,52 @@ export async function removeMember(workspaceId: string, userId: string): Promise
   });
 }
 
+/**
+ * Appoints or revokes a co-owner (see canChangeRole). The actor is re-read inside the lock, so an owner demoted a moment
+ * ago cannot still act. Returns the refusal, or null when the role changed.
+ */
+export async function setMemberRole(
+  workspaceId: string,
+  actorUserId: string,
+  targetUserId: string,
+  nextRole: TeamRole
+): Promise<RoleChangeError | "not_found" | null> {
+  return inTeamTransaction([workspaceId], async (tx) => {
+    const workspace = await tx.workspace.findUnique({ where: { id: workspaceId }, select: { ownerId: true } });
+    const members = await tx.workspaceMember.findMany({
+      where: { workspaceId, userId: { in: [actorUserId, targetUserId] } },
+      select: { id: true, userId: true, role: true }
+    });
+    const actor = members.find((m) => m.userId === actorUserId);
+    const target = members.find((m) => m.userId === targetUserId);
+    if (!workspace || !target || actor?.role !== "OWNER") return "not_found" as const;
+
+    const decision = canChangeRole({
+      actorUserId,
+      primaryOwnerId: workspace.ownerId,
+      targetUserId,
+      targetRole: target.role as TeamRole,
+      nextRole
+    });
+    if (!decision.ok) return decision.error;
+
+    const { count } = await tx.workspaceMember.updateMany({
+      where: { id: target.id, workspaceId, role: target.role },
+      data: { role: nextRole }
+    });
+    return count === 1 ? null : ("not_found" as const);
+  });
+}
+
 /** Members (owner first) and invites not yet accepted, expired ones included. */
 export async function listTeam(workspaceId: string): Promise<{
+  /** The main owner (billing holder); every other OWNER member is a co-owner. */
+  primaryOwnerId: string | null;
   members: { userId: string; email: string; name: string | null; role: WorkspaceRole }[];
   invites: { id: string; email: string; expiresAt: Date }[];
 }> {
-  const [members, invites] = await Promise.all([
+  const [workspace, members, invites] = await Promise.all([
+    prisma.workspace.findUnique({ where: { id: workspaceId }, select: { ownerId: true } }),
     prisma.workspaceMember.findMany({
       where: { workspaceId },
       orderBy: { createdAt: "asc" },
@@ -337,6 +376,7 @@ export async function listTeam(workspaceId: string): Promise<{
   ]);
 
   return {
+    primaryOwnerId: workspace?.ownerId ?? null,
     members: members
       .map((m) => ({ userId: m.userId, email: m.user.email ?? "", name: m.user.name, role: m.role as WorkspaceRole }))
       .sort((a, b) => Number(b.role === "OWNER") - Number(a.role === "OWNER")),
@@ -379,15 +419,18 @@ export async function hasPendingInvite(email: string | null | undefined, now: Da
   return invite !== null;
 }
 
-/** True when a user with this email is a MEMBER of a team, so they keep signing in after accepting while sign-up is closed. */
+/**
+ * True when a user with this email is a member or co-owner of a team, so they keep signing in after accepting while
+ * sign-up is closed. A workspace's primary owner is not covered: they sign in through the usual access list.
+ */
 export async function isTeamMemberEmail(email: string | null | undefined): Promise<boolean> {
   const normalized = email ? normalizeEmail(email) : "";
   if (!normalized) return false;
   const member = await prisma.workspaceMember.findFirst({
-    where: { role: "MEMBER", user: { email: { equals: normalized, mode: "insensitive" } } },
-    select: { id: true }
+    where: { user: { email: { equals: normalized, mode: "insensitive" } } },
+    select: { userId: true, role: true, workspace: { select: { ownerId: true } } }
   });
-  return member !== null;
+  return member !== null && (member.role === "MEMBER" || member.workspace.ownerId !== member.userId);
 }
 
 /** For token introspection by the satellites: the user's current membership, if any. */

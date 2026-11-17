@@ -4,7 +4,11 @@ import { notFound } from "next/navigation";
 import { ArticleTranslationForm } from "@/components/article-translation-form";
 import { ArticleEditorForm } from "@/components/article-editor-form";
 import { PageHeader } from "@/components/page-header";
+import { SocialPostsPanel } from "@/components/social-posts-panel";
 import { prisma } from "@/lib/prisma";
+import { effectiveStatus } from "@/lib/social/rules";
+import { isLocalCover } from "@/lib/social/social-image";
+import { articleShareUrl } from "@/lib/social/urls";
 import { requireSitePage } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +47,9 @@ export default async function ArticleEditorPage({ params }: ArticleEditorPagePro
             language: true,
             updatedAt: true
           }
+        },
+        socialPosts: {
+          select: { id: true, network: true, text: true, status: true, updatedAt: true, error: true, externalUrl: true }
         }
       }
     }),
@@ -51,8 +58,12 @@ export default async function ArticleEditorPage({ params }: ArticleEditorPagePro
         id: siteId
       },
       select: {
+        id: true,
+        domain: true,
+        proxyVerifiedAt: true,
         translationsEnabled: true,
-        translationLanguages: true
+        translationLanguages: true,
+        socialConnection: { select: { pageName: true, instagramUsername: true, instagramAccountId: true } }
       }
     })
   ]);
@@ -60,6 +71,8 @@ export default async function ArticleEditorPage({ params }: ArticleEditorPagePro
   if (!article || !site) {
     notFound();
   }
+
+  const now = new Date();
 
   return (
     <section className="space-y-8">
@@ -86,6 +99,30 @@ export default async function ArticleEditorPage({ params }: ArticleEditorPagePro
         }
       />
       <ArticleEditorForm article={article} siteId={siteId} />
+      <SocialPostsPanel
+        siteId={siteId}
+        articleId={article.id}
+        articleStatus={article.status}
+        shareUrl={articleShareUrl(site, article.slug)}
+        hasLocalCover={isLocalCover(article.coverImageUrl)}
+        connection={
+          site.socialConnection
+            ? {
+                pageName: site.socialConnection.pageName,
+                instagramUsername: site.socialConnection.instagramUsername,
+                hasInstagram: Boolean(site.socialConnection.instagramAccountId)
+              }
+            : null
+        }
+        posts={article.socialPosts.map((post) => ({
+          id: post.id,
+          network: post.network,
+          text: post.text,
+          status: effectiveStatus(post, now),
+          error: post.error,
+          externalUrl: post.externalUrl
+        }))}
+      />
       {site.translationsEnabled ? (
         <ArticleTranslationForm
           articleId={article.id}

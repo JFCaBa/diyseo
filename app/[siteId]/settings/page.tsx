@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { SiteAutoPublishForm } from "@/components/site-auto-publish-form";
 import { SiteDeleteForm } from "@/components/site-delete-form";
 import { SiteSearchLocaleForm } from "@/components/site-search-locale-form";
+import { SiteSocialConnectionForm } from "@/components/site-social-connection-form";
 import { SiteTranslationSettingsForm } from "@/components/site-translation-settings-form";
 import { SiteTransferForm } from "@/components/site-transfer-form";
 import { auth } from "@/lib/auth";
@@ -48,7 +49,8 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
         defaultSearchCountry: true,
         defaultSearchLanguage: true,
         translationsEnabled: true,
-        translationLanguages: true
+        translationLanguages: true,
+        socialConnection: { select: { pageId: true, pageName: true, instagramUsername: true, tokenLast4: true } }
       }
     }),
     prisma.workspace.findUnique({
@@ -172,6 +174,8 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
         initialTranslationsEnabled={currentSite.translationsEnabled}
         initialTranslationLanguages={currentSite.translationLanguages}
       />
+
+      <SiteSocialConnectionForm siteId={currentSite.id} isOwner={role === "OWNER"} connection={currentSite.socialConnection} />
 
       <section className="rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
         <div className="max-w-3xl">

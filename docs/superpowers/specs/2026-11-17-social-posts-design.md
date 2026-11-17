@@ -159,3 +159,4 @@ Every action and route scopes by `workspaceId` (session) and `siteId`, per CLAUD
 - **Hashtags:** 3–8 applies only to AI output. Manual edits are capped at Instagram's real maximum of 30.
 - **Regenerate:** confirmation, plus per-network regenerate.
 - **Settings:** "Test connection". No `expiresAt` in v1.
+- **Image route path (implementation):** `/api/public/sites/[siteId]/social-image/[articleId]`, because `articles/[articleId]` clashes with the existing `articles/[slug]` route.

@@ -45,6 +45,20 @@ Operator panel (dashboard, users, per-user plan actions, payments, analytics), s
 - Stripe is read-only from the admin; revenue and payments are cached 5 minutes.
 - Plan actions (grant/revoke COMP, extend trial) go through `lib/admin-plan-service.ts` under `lockWorkspace`, with an idempotent `opId` and an `AdminAuditLog` row.
 
+### Social posts
+
+The article page can turn an article into Facebook, Instagram, X and LinkedIn posts (spec: `docs/superpowers/specs/2026-11-17-social-posts-design.md`).
+
+- Models: `SiteSocialConnection` (one per site; holds the Meta **Page** token, AES-256-GCM with `SOCIAL_TOKEN_KEY`; only `tokenLast4` ever reaches a page) and `SocialPost` (one per article and network, `@@unique([articleId, network])`).
+- Code: pure helpers in `lib/social/*` (limits, rules, crypto, Graph client with injectable `fetch`, image crop, share URLs), actions in `lib/social-actions.ts`, UI in `components/social-posts-panel.tsx` and `components/site-social-connection-form.tsx`.
+- Facebook and Instagram publish through the Graph API. X and LinkedIn only open their compose screens (intent URLs): there is no API.
+- No double posting:
+  - every post write is conditional on its status;
+  - publish claims first (`claimSocialPost`) and writes the result under its `attemptId`;
+  - a 5xx, timeout or network error on the publishing call leaves the post PUBLISHING, and after 5 minutes it shows as UNKNOWN for the user to resolve. It is never retried automatically.
+- `GET /api/public/sites/[siteId]/social-image/[articleId]` is public: it serves a JPEG of the cover of PUBLISHED articles only, from local `/uploads` covers only (no remote fetch).
+- Deploy needs `SOCIAL_TOKEN_KEY` (`openssl rand -base64 32`); without it connecting and publishing fail closed, and drafts still work. Photo posts also need an absolute `NEXT_PUBLIC_APP_URL`, because Meta fetches the image from it.
+
 ### Install methods (SEO attribution)
 
 The install card on the site dashboard offers the widget snippet plus two ways to serve the blog under the client domain.

@@ -74,9 +74,13 @@ export async function transferSiteInWorkspace(
 
   const targetWorkspaceId = await getOrCreateWorkspaceIdForUser(targetUser.id, targetUser.name, email);
 
-  await withSiteSlot(targetWorkspaceId, (tx) =>
-    tx.siteProject.update({ where: { id: site.id }, data: { workspaceId: targetWorkspaceId } })
-  );
+  await withSiteSlot(targetWorkspaceId, async (tx) => {
+    // Move (and lock) the site first, then drop the previous owner's Meta connection: a concurrent connect waits on
+    // the site lock and then finds the site in another workspace (lib/social/connection.ts).
+    const moved = await tx.siteProject.update({ where: { id: site.id }, data: { workspaceId: targetWorkspaceId } });
+    await tx.siteSocialConnection.deleteMany({ where: { siteProjectId: site.id } });
+    return moved;
+  });
 
   return { siteName: site.name };
 }

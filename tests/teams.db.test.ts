@@ -131,8 +131,13 @@ test("only the owner transfers a site, and never inside its own workspace", { sk
 
   // To another workspace's owner, with a free slot, it moves.
   await prisma.workspace.update({ where: { id: "w_b" }, data: { plan: "COMP" } });
+  // The previous owner's Meta connection must not travel with the site.
+  await prisma.siteSocialConnection.create({
+    data: { siteProjectId: "s_a", pageId: "123456", pageName: "P", accessTokenEncrypted: "v1:x:y:z", tokenLast4: "abcd", connectedByUserId: "u_a" }
+  });
   assert.deepEqual(await ops.transferSiteInWorkspace("u_a", "w_a", "s_a", "b@test.io"), { siteName: "Site a" });
   assert.equal(await siteWorkspace(), "w_b");
+  assert.equal(await prisma.siteSocialConnection.findUnique({ where: { siteProjectId: "s_a" } }), null);
 });
 
 test("only the owner deletes a site", { skip }, async () => {

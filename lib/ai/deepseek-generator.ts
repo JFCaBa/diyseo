@@ -5,7 +5,8 @@ import {
   buildSystemPrompt,
   buildUserPrompt
 } from "@/lib/ai/prompts";
-import type { AIGenerationService, ArticleGenerationContext, BrandDNAGenerationContext } from "@/lib/ai/types";
+import { requestSocialPosts } from "@/lib/ai/social";
+import type { AIGenerationService, SocialPostsGenerationContext, ArticleGenerationContext, BrandDNAGenerationContext } from "@/lib/ai/types";
 
 type DeepSeekResponse = {
   choices?: Array<{
@@ -83,5 +84,9 @@ export class DeepSeekGenerator implements AIGenerationService {
     return GeneratedBrandDNASchema.parse(
       await this.requestJson(buildBrandDNASystemPrompt(), buildBrandDNAUserPrompt(context))
     );
+  }
+
+  async generateSocialPosts(context: SocialPostsGenerationContext) {
+    return requestSocialPosts((system, user) => this.requestJson(system, user), context);
   }
 }

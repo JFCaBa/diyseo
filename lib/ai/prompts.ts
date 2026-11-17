@@ -1,7 +1,8 @@
 import type {
   ArticleCoverImageGenerationContext,
   ArticleGenerationContext,
-  BrandDNAGenerationContext
+  BrandDNAGenerationContext,
+  SocialPostsGenerationContext
 } from "@/lib/ai/types";
 import { getTranslationLanguageLabel } from "@/lib/translations";
 
@@ -200,4 +201,39 @@ export function buildArticleCoverImageNegativePrompt() {
     ].join(" "),
     500
   );
+}
+
+export function buildSocialPostsSystemPrompt(context: SocialPostsGenerationContext) {
+  const brand = context.brandProfile;
+  const language = valueOrFallback(brand.contentLanguage, "English");
+  return [
+    "You are a social media copywriter. You turn one blog article into one post per network.",
+    `Write every post in this exact language: ${language}.`,
+    "State only facts found in the article below. Never invent prices, plans, limits, coverage, guarantees, statistics or testimonials.",
+    "No fake urgency or scarcity, no absolute claims (\"the best\", \"100%\", \"guaranteed\"), no clickbait.",
+    `Brand voice and tone: ${valueOrFallback(brand.brandVoiceTone)}.`,
+    `Target audience: ${valueOrFallback(brand.targetAudience)}.`,
+    `Topics to avoid entirely: ${valueOrFallback(brand.topicsToAvoid, "none")}.`,
+    "",
+    "Posts (each value is the full post text; the limits are hard maximums in characters):",
+    "- facebook: at most 1500 characters. A hook in the first line, short lines, a short list of ✅ points is welcome. End with the article link on its own line.",
+    "- instagram: at most 2000 characters. No links (they are not clickable): say 'link in bio' in the post language. End with 3 to 8 relevant hashtags.",
+    "- x: at most 250 characters. No link and no hashtags beyond one: the link is added automatically after the text.",
+    "- linkedin: at most 1800 characters. Professional, useful tone, 2 to 4 short paragraphs. End with the article link on its own line.",
+    "",
+    'Reply with a single JSON object only: {"facebook": "...", "instagram": "...", "x": "...", "linkedin": "..."}'
+  ].join("\n");
+}
+
+export function buildSocialPostsUserPrompt(context: SocialPostsGenerationContext) {
+  return [
+    `Site: ${valueOrFallback(context.site.name)} (${valueOrFallback(context.site.domain)})`,
+    `Language: ${valueOrFallback(context.brandProfile.contentLanguage, "English")}`,
+    `Article link: ${context.articleUrl}`,
+    `Title: ${context.article.title}`,
+    `Excerpt: ${valueOrFallback(context.article.excerpt)}`,
+    "--- ARTICLE ---",
+    context.article.markdown,
+    "---------------"
+  ].join("\n");
 }

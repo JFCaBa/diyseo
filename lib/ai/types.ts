@@ -1,4 +1,4 @@
-import type { GeneratedArticleInput, GeneratedBrandDNAInput } from "@/lib/validations";
+import type { GeneratedArticleInput, GeneratedBrandDNAInput, GeneratedSocialPosts } from "@/lib/validations";
 
 export type ArticleGenerationContext = {
   keyword?: string;
@@ -63,8 +63,16 @@ export type GeneratedCoverImageAsset = {
 export interface AIGenerationService {
   generateArticle(context: ArticleGenerationContext): Promise<GeneratedArticleInput>;
   generateBrandDNA(context: BrandDNAGenerationContext): Promise<GeneratedBrandDNAInput>;
+  generateSocialPosts(context: SocialPostsGenerationContext): Promise<GeneratedSocialPosts>;
 }
 
 export interface AIImageGenerationService {
   generateArticleCoverImage(context: ArticleCoverImageGenerationContext): Promise<GeneratedCoverImageAsset>;
 }
+
+export type SocialPostsGenerationContext = {
+  article: { title: string; excerpt: string | null; markdown: string };
+  articleUrl: string;
+  site: { name: string; domain: string };
+  brandProfile: ArticleGenerationContext["brandProfile"];
+};

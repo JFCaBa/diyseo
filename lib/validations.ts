@@ -3,6 +3,7 @@ import { EXTEND_PRESETS } from "@/lib/admin-plan-rules";
 import { isPlanId, type PlanId } from "@/lib/plans";
 import { SEARCH_COUNTRY_OPTIONS, SEARCH_LANGUAGE_OPTIONS } from "@/lib/search-locale";
 import { TRANSLATION_LANGUAGE_OPTIONS } from "@/lib/translations";
+import { SOCIAL_LIMITS, countHashtags } from "@/lib/social/limits";
 
 function normalizeGeneratedText(value: string) {
   return value.trim().replace(/\s+/g, " ");
@@ -399,4 +400,47 @@ export const adminWorkspaceActionSchema = z.object({
 
 export const adminExtendTrialSchema = adminWorkspaceActionSchema.extend({
   days: z.coerce.number().refine((n) => (EXTEND_PRESETS as readonly number[]).includes(n))
+});
+
+const socialText = (max: number) => z.string().trim().min(1).max(max);
+
+export const GeneratedSocialPostsSchema = z.object({
+  facebook: socialText(SOCIAL_LIMITS.FACEBOOK),
+  instagram: socialText(SOCIAL_LIMITS.INSTAGRAM).refine((t) => {
+    const n = countHashtags(t);
+    return n >= 3 && n <= 8;
+  }, "instagram needs 3 to 8 hashtags"),
+  x: socialText(SOCIAL_LIMITS.X),
+  linkedin: socialText(SOCIAL_LIMITS.LINKEDIN)
+});
+export type GeneratedSocialPosts = z.infer<typeof GeneratedSocialPostsSchema>;
+
+const socialNetworkSchema = z.enum(["FACEBOOK", "INSTAGRAM", "X", "LINKEDIN"]);
+
+export const ConnectMetaSchema = z.object({
+  siteId: z.string().min(1),
+  pageId: z.string().trim().regex(/^\d{5,30}$/, "Enter the numeric Page ID."),
+  accessToken: z.string().trim().min(20, "Paste the full access token.").max(1000)
+});
+
+export const SiteIdSchema = z.object({ siteId: z.string().min(1) });
+
+export const GenerateSocialPostsSchema = z.object({
+  siteId: z.string().min(1),
+  articleId: z.string().min(1),
+  network: socialNetworkSchema.optional()
+});
+
+export const SaveSocialPostSchema = z.object({
+  siteId: z.string().min(1),
+  postId: z.string().min(1),
+  text: z.string().max(3000)
+});
+
+export const SocialPostIdSchema = z.object({ siteId: z.string().min(1), postId: z.string().min(1) });
+
+export const ResolveUnknownSchema = z.object({
+  siteId: z.string().min(1),
+  postId: z.string().min(1),
+  outcome: z.enum(["published", "retry"])
 });

@@ -5,7 +5,25 @@ import { test } from "node:test";
 import ts from "typescript";
 
 /** Files already moved onto lib/i18n: they must not contain raw English UI text. Append-only per task. */
-const MIGRATED_FILES: string[] = ["components/locale-switcher.tsx", "components/sidebar-nav.tsx"];
+const MIGRATED_FILES: string[] = [
+  "components/locale-switcher.tsx",
+  "components/sidebar-nav.tsx",
+  // Task 2: app shell and onboarding
+  "app/[siteId]/layout.tsx",
+  "components/app-i18n.tsx",
+  "components/site-selector.tsx",
+  "components/auth-buttons.tsx",
+  "components/page-header.tsx",
+  "components/empty-state.tsx",
+  "components/blog-only.tsx",
+  "components/standalone-page.tsx",
+  "components/satellite-page.tsx",
+  "app/new-site/page.tsx",
+  "components/create-site-form.tsx",
+  "app/invite/[token]/page.tsx",
+  "app/sso/login/page.tsx",
+  "app/not-found.tsx"
+];
 
 /** Proper names and symbols that may appear untranslated. */
 const ALLOWED_TEXT = [

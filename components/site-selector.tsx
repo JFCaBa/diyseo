@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useTransition } from "react";
+import { useT } from "@/components/i18n-provider";
 import { usePathname, useRouter } from "next/navigation";
 
 type SiteSelectorProps = {
@@ -10,6 +11,7 @@ type SiteSelectorProps = {
 };
 
 export function SiteSelector({ currentSiteId, sites }: SiteSelectorProps) {
+  const t = useT();
   const pathname = usePathname();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -17,7 +19,7 @@ export function SiteSelector({ currentSiteId, sites }: SiteSelectorProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <label className="flex items-center gap-3 rounded-2xl border border-line bg-white px-4 py-3 text-sm shadow-sm">
-        <span className="text-slate-500">Site</span>
+        <span className="text-slate-500">{t("shell.site")}</span>
         <select
           className="min-w-44 bg-transparent font-medium text-ink outline-none"
           defaultValue={currentSiteId}
@@ -42,7 +44,7 @@ export function SiteSelector({ currentSiteId, sites }: SiteSelectorProps) {
         href="/new-site"
         className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink shadow-sm transition hover:bg-mist"
       >
-        Add Site
+        {t("shell.addSite")}
       </Link>
     </div>
   );

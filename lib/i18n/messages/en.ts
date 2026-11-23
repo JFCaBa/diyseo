@@ -27,6 +27,65 @@ export const en = {
     en: "English",
     es: "Español"
   },
+  shell: {
+    tagline: "Self-hosted SEO workspace",
+    managing: "Managing {name}",
+    viewBlog: "View Blog",
+    newArticle: "New Article",
+    site: "Site",
+    addSite: "Add Site",
+    logOut: "Log out",
+    signInWithGoogle: "Sign in with Google",
+    pageEyebrow: "Admin",
+    createFirstSite: "Create your first site",
+    notFoundEyebrow: "Not Found",
+    notFoundTitle: "This site route does not exist.",
+    notFoundBody: "Pick an existing Site Project from settings or seed the database with the demo workspace.",
+    notFoundAction: "Go to Settings"
+  },
+  satellite: {
+    mcp: "SEO data",
+    ads: "Ads",
+    connectAi: "Connect AI",
+    sources: "Sources",
+    crawls: "Crawls",
+    connectedApps: "Connected apps",
+    clientsCampaigns: "Clients & campaigns",
+    adConnections: "Ad connections",
+    upgradeToUnlock: "Upgrade to unlock"
+  },
+  onboarding: {
+    addWebsiteTitle: "Add Website",
+    addWebsiteDescription:
+      "Create a new website, set its domain and primary content language, then continue directly into its dashboard.",
+    siteName: "Site name",
+    siteNamePlaceholder: "Acme Blog",
+    domain: "Domain",
+    domainPlaceholder: "https://example.com",
+    domainHint: "Use the canonical site URL, including protocol.",
+    contentLanguage: "Content language",
+    contentLanguageHint: "Short code is fine here, for example `en`, `en-US`, or `es`.",
+    back: "Back",
+    creating: "Creating...",
+    createWebsite: "Create Website",
+    signIn: "Sign in",
+    ssoTitle: "Sign in to continue",
+    ssoBody: "Use your DIYSEO account to open this service.",
+    continueWithGoogle: "Continue with Google"
+  },
+  invite: {
+    title: "Team invite",
+    join: "Join {workspaceName}",
+    invited: "You've been invited to work on this team's sites in DIYSEO.",
+    switchAccount: "Sign out and switch account",
+    replacesWorkspace: "Joining replaces your current workspace. Its site settings and API keys will be deleted.",
+    emailMismatch: "This invite is for {email}. Sign in with that Google account.",
+    expired: "This invite has expired. Ask the owner for a new one.",
+    hasData: "Your account already has a workspace with data. Write to info@diyseo.online and we'll move it for you.",
+    hasTeam: "You're already part of another team. Ask its owner to remove you first, or write to info@diyseo.online.",
+    limitReached: "This team is full on its current plan. Ask the owner to upgrade.",
+    retry: "Something went wrong, please try again."
+  },
   errors: {
     // Zod defaults emitted by lib/validations.ts
     required: "Required",

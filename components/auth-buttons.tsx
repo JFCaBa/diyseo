@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import { signIn, signOut } from "@/lib/auth";
 
 type SignInButtonProps = {
@@ -6,9 +7,10 @@ type SignInButtonProps = {
 };
 
 export async function SignInButton({
-  label = "Sign in with Google",
+  label,
   className = "inline-flex items-center justify-center rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
 }: SignInButtonProps) {
+  const t = await getT();
   return (
     <form
       action={async () => {
@@ -17,7 +19,7 @@ export async function SignInButton({
       }}
     >
       <button type="submit" className={className}>
-        {label}
+        {label ?? t("shell.signInWithGoogle")}
       </button>
     </form>
   );
@@ -30,6 +32,7 @@ type SignOutButtonProps = {
 export async function SignOutButton({
   className = "inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
 }: SignOutButtonProps) {
+  const t = await getT();
   return (
     <form
       action={async () => {
@@ -38,7 +41,7 @@ export async function SignOutButton({
       }}
     >
       <button type="submit" className={className}>
-        Log out
+        {t("shell.logOut")}
       </button>
     </form>
   );

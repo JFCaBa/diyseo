@@ -2,13 +2,16 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { type ReactNode } from "react";
 
+import { AppI18n } from "@/components/app-i18n";
 import { SignOutButton } from "@/components/auth-buttons";
 import { BlogOnly } from "@/components/blog-only";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { SiteSelector } from "@/components/site-selector";
 import { isAdminEmail } from "@/lib/admin-access";
 import { auth } from "@/lib/auth";
 import { effectivePlan } from "@/lib/entitlements";
+import { getT } from "@/lib/i18n/server";
 import { prisma } from "@/lib/prisma";
 import { satelliteGrant } from "@/lib/satellite-entitlements";
 import { satelliteGroups } from "@/lib/sso/satellite-links";
@@ -22,6 +25,7 @@ type SiteLayoutProps = {
 
 export default async function SiteLayout({ children, params }: SiteLayoutProps) {
   const { siteId } = await params;
+  const t = await getT();
   const session = await auth();
 
   const workspaceId = session?.user?.workspaceId;
@@ -58,6 +62,7 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
   const satellites = workspace ? satelliteGroups(satelliteGrant(effectivePlan(workspace, new Date())), isOwner) : [];
 
   return (
+    <AppI18n>
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
       <aside className="border-b border-line bg-white p-6 dark:border-slate-800 dark:bg-slate-900 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-b-0 lg:border-r">
         <div className="mb-8">
@@ -65,6 +70,7 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
         </div>
         <SidebarNav siteId={siteId} satellites={satellites} isAdmin={isAdminEmail(session.user.email)} />
         <div className="mt-6 border-t border-line pt-6 dark:border-slate-800">
+          <LocaleSwitcher className="mb-3 px-4" />
           <SignOutButton className="flex w-full items-center rounded-2xl px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-ink dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100" />
         </div>
       </aside>
@@ -74,8 +80,8 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
         <header className="border-b border-line bg-white/70 px-6 py-4 backdrop-blur">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500">Self-hosted SEO workspace</p>
-              <p className="text-lg font-semibold text-ink">Managing {currentSite.name}</p>
+              <p className="text-sm font-medium text-slate-500">{t("shell.tagline")}</p>
+              <p className="text-lg font-semibold text-ink">{t("shell.managing", { name: currentSite.name })}</p>
             </div>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
               <div className="flex items-center gap-3">
@@ -83,13 +89,13 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
                   href={`/${siteId}/preview`}
                   className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink shadow-sm transition hover:bg-mist"
                 >
-                  View Blog
+                  {t("shell.viewBlog")}
                 </Link>
                 <Link
                   href={`/${siteId}/articles/new`}
                   className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
                 >
-                  New Article
+                  {t("shell.newArticle")}
                 </Link>
               </div>
               <SiteSelector currentSiteId={siteId} sites={sites} />
@@ -100,5 +106,6 @@ export default async function SiteLayout({ children, params }: SiteLayoutProps) 
         <main className="min-w-0 flex-1 px-6 py-8">{children}</main>
       </div>
     </div>
+    </AppI18n>
   );
 }

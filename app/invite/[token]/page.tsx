@@ -2,28 +2,30 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { auth, signIn, signOut } from "@/lib/auth";
+import { getT } from "@/lib/i18n/server";
+import type { MessageKey } from "@/lib/i18n/translate";
 import { acceptTeamInvite } from "@/lib/team-actions";
 import { inviteForToken } from "@/lib/teams";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Team invite",
-  robots: { index: false, follow: false },
-  referrer: "no-referrer"
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return {
+    title: t("invite.title"),
+    robots: { index: false, follow: false },
+    referrer: "no-referrer"
+  };
+}
 
-const EXPIRED = "This invite has expired. Ask the owner for a new one.";
-const HAS_DATA = "Your account already has a workspace with data. Write to info@diyseo.online and we'll move it for you.";
-
-const ERRORS: Record<string, string> = {
-  has_content: HAS_DATA,
-  has_subscription: HAS_DATA,
-  has_team: "You're already part of another team. Ask its owner to remove you first, or write to info@diyseo.online.",
-  limit_reached: "This team is full on its current plan. Ask the owner to upgrade.",
-  expired: EXPIRED,
-  invalid: EXPIRED,
-  retry: "Something went wrong, please try again."
+const ERROR_KEYS: Record<string, MessageKey> = {
+  has_content: "invite.hasData",
+  has_subscription: "invite.hasData",
+  has_team: "invite.hasTeam",
+  limit_reached: "invite.limitReached",
+  expired: "invite.expired",
+  invalid: "invite.expired",
+  retry: "invite.retry"
 };
 
 type InvitePageProps = {
@@ -54,6 +56,7 @@ function Notice({ text }: { text: string }) {
 }
 
 export default async function InvitePage({ params, searchParams }: InvitePageProps) {
+  const t = await getT();
   const { token } = await params;
   const query = searchParams ? await searchParams : undefined;
   const invitePath = `/invite/${encodeURIComponent(token)}`;
@@ -69,18 +72,16 @@ export default async function InvitePage({ params, searchParams }: InvitePagePro
   if (!invite || !invite.usable) {
     return (
       <Shell>
-        <h1 className="mt-2 text-2xl font-semibold text-ink">Team invite</h1>
-        <Notice text={EXPIRED} />
+        <h1 className="mt-2 text-2xl font-semibold text-ink">{t("invite.title")}</h1>
+        <Notice text={t("invite.expired")} />
       </Shell>
     );
   }
 
   const heading = (
     <>
-      <h1 className="mt-2 text-2xl font-semibold text-ink">Join {invite.workspaceName}</h1>
-      <p className="mt-2 text-sm text-slate-600">
-        You've been invited to work on this team's sites in DIYSEO.
-      </p>
+      <h1 className="mt-2 text-2xl font-semibold text-ink">{t("invite.join", { workspaceName: invite.workspaceName })}</h1>
+      <p className="mt-2 text-sm text-slate-600">{t("invite.invited")}</p>
     </>
   );
 
@@ -96,7 +97,7 @@ export default async function InvitePage({ params, searchParams }: InvitePagePro
           }}
         >
           <button type="submit" className={primaryButton}>
-            Continue with Google
+            {t("onboarding.continueWithGoogle")}
           </button>
         </form>
       </Shell>
@@ -105,9 +106,9 @@ export default async function InvitePage({ params, searchParams }: InvitePagePro
 
   const emailMismatch = (user.email ?? "").trim().toLowerCase() !== invite.email;
   const errorText = emailMismatch
-    ? `This invite is for ${invite.email}. Sign in with that Google account.`
-    : query?.error
-      ? ERRORS[query.error]
+    ? t("invite.emailMismatch", { email: invite.email })
+    : query?.error && ERROR_KEYS[query.error]
+      ? t(ERROR_KEYS[query.error])
       : undefined;
 
   return (
@@ -124,19 +125,19 @@ export default async function InvitePage({ params, searchParams }: InvitePagePro
           }}
         >
           <button type="submit" className={secondaryButton}>
-            Sign out and switch account
+            {t("invite.switchAccount")}
           </button>
         </form>
       ) : (
         <>
           {user.workspaceRole === "OWNER" ? (
             <p className="mt-6 text-sm text-slate-700">
-              Joining replaces your current workspace. Its site settings and API keys will be deleted.
+              {t("invite.replacesWorkspace")}
             </p>
           ) : null}
           <form className="mt-6" action={acceptTeamInvite.bind(null, token)}>
             <button type="submit" className={primaryButton}>
-              Join {invite.workspaceName}
+              {t("invite.join", { workspaceName: invite.workspaceName })}
             </button>
           </form>
         </>

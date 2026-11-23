@@ -25,6 +25,68 @@ export const es: Messages = {
     en: "English",
     es: "Español"
   },
+  shell: {
+    tagline: "Espacio de trabajo SEO autoalojado",
+    managing: "Gestionando {name}",
+    viewBlog: "Ver blog",
+    newArticle: "Nuevo artículo",
+    site: "Sitio",
+    addSite: "Añadir sitio",
+    logOut: "Cerrar sesión",
+    signInWithGoogle: "Iniciar sesión con Google",
+    pageEyebrow: "Administración",
+    createFirstSite: "Crea tu primer sitio",
+    notFoundEyebrow: "No encontrado",
+    notFoundTitle: "Esta ruta del sitio no existe.",
+    notFoundBody: "Elige un proyecto de sitio existente en Ajustes o carga en la base de datos el espacio de trabajo de demostración.",
+    notFoundAction: "Ir a Ajustes"
+  },
+  satellite: {
+    mcp: "Datos SEO",
+    ads: "Anuncios",
+    connectAi: "Conectar IA",
+    sources: "Fuentes",
+    crawls: "Rastreos",
+    connectedApps: "Apps conectadas",
+    clientsCampaigns: "Clientes y campañas",
+    adConnections: "Conexiones de anuncios",
+    upgradeToUnlock: "Mejora tu plan para desbloquear"
+  },
+  onboarding: {
+    addWebsiteTitle: "Añadir sitio web",
+    addWebsiteDescription:
+      "Crea un sitio web nuevo, define su dominio y su idioma de contenido principal, y continúa directamente a su panel.",
+    siteName: "Nombre del sitio",
+    siteNamePlaceholder: "Blog de Acme",
+    domain: "Dominio",
+    domainPlaceholder: "https://example.com",
+    domainHint: "Usa la URL canónica del sitio, incluido el protocolo.",
+    contentLanguage: "Idioma del contenido",
+    contentLanguageHint: "Aquí basta con un código corto, por ejemplo `en`, `en-US` o `es`.",
+    back: "Volver",
+    creating: "Creando...",
+    createWebsite: "Crear sitio web",
+    signIn: "Iniciar sesión",
+    ssoTitle: "Inicia sesión para continuar",
+    ssoBody: "Usa tu cuenta de DIYSEO para abrir este servicio.",
+    continueWithGoogle: "Continuar con Google"
+  },
+  invite: {
+    title: "Invitación al equipo",
+    join: "Únete a {workspaceName}",
+    invited: "Te han invitado a trabajar en los sitios de este equipo en DIYSEO.",
+    switchAccount: "Cerrar sesión y cambiar de cuenta",
+    replacesWorkspace:
+      "Al unirte se reemplaza tu espacio de trabajo actual. Se eliminarán los ajustes de sus sitios y sus claves API.",
+    emailMismatch: "Esta invitación es para {email}. Inicia sesión con esa cuenta de Google.",
+    expired: "Esta invitación ha caducado. Pide al propietario una nueva.",
+    hasData:
+      "Tu cuenta ya tiene un espacio de trabajo con datos. Escribe a info@diyseo.online y te lo trasladamos.",
+    hasTeam:
+      "Ya formas parte de otro equipo. Pide a su propietario que te elimine primero, o escribe a info@diyseo.online.",
+    limitReached: "Este equipo está completo con su plan actual. Pide al propietario que mejore el plan.",
+    retry: "Algo ha ido mal, inténtalo de nuevo."
+  },
   errors: {
     required: "Obligatorio",
     invalidInput: "Valor no válido",

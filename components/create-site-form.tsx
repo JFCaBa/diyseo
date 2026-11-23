@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
+import { useLocalizeMessage, useT } from "@/components/i18n-provider";
 import { createSite, type ActionState } from "@/lib/actions";
 
 const initialState: ActionState = {};
 
 function SubmitButton() {
+  const t = useT();
   const { pending } = useFormStatus();
 
   return (
@@ -17,7 +19,7 @@ function SubmitButton() {
       disabled={pending}
       className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
     >
-      {pending ? "Creating..." : "Create Website"}
+      {pending ? t("onboarding.creating") : t("onboarding.createWebsite")}
     </button>
   );
 }
@@ -27,18 +29,20 @@ type CreateSiteFormProps = {
 };
 
 export function CreateSiteForm({ backHref }: CreateSiteFormProps) {
+  const t = useT();
+  const localizeMessage = useLocalizeMessage();
   const [state, formAction] = useActionState(createSite, initialState);
 
   return (
     <form action={formAction} className="grid gap-4 rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
       <div className="grid gap-2">
         <label htmlFor="name" className="text-sm font-medium text-ink">
-          Site name
+          {t("onboarding.siteName")}
         </label>
         <input
           id="name"
           name="name"
-          placeholder="Acme Blog"
+          placeholder={t("onboarding.siteNamePlaceholder")}
           className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
           required
         />
@@ -46,21 +50,21 @@ export function CreateSiteForm({ backHref }: CreateSiteFormProps) {
 
       <div className="grid gap-2">
         <label htmlFor="domain" className="text-sm font-medium text-ink">
-          Domain
+          {t("onboarding.domain")}
         </label>
         <input
           id="domain"
           name="domain"
-          placeholder="https://example.com"
+          placeholder={t("onboarding.domainPlaceholder")}
           className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
           required
         />
-        <p className="text-xs text-slate-500">Use the canonical site URL, including protocol.</p>
+        <p className="text-xs text-slate-500">{t("onboarding.domainHint")}</p>
       </div>
 
       <div className="grid gap-2">
         <label htmlFor="contentLanguage" className="text-sm font-medium text-ink">
-          Content language
+          {t("onboarding.contentLanguage")}
         </label>
         <input
           id="contentLanguage"
@@ -70,11 +74,11 @@ export function CreateSiteForm({ backHref }: CreateSiteFormProps) {
           className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
           required
         />
-        <p className="text-xs text-slate-500">Short code is fine here, for example `en`, `en-US`, or `es`.</p>
+        <p className="text-xs text-slate-500">{t("onboarding.contentLanguageHint")}</p>
       </div>
 
-      {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
-      {state.success ? <p className="text-sm text-accent">{state.success}</p> : null}
+      {state.error ? <p className="text-sm text-red-600">{localizeMessage(state.error)}</p> : null}
+      {state.success ? <p className="text-sm text-accent">{localizeMessage(state.success)}</p> : null}
 
       <div className="flex items-center justify-between gap-3">
         {backHref ? (
@@ -82,7 +86,7 @@ export function CreateSiteForm({ backHref }: CreateSiteFormProps) {
             href={backHref}
             className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
           >
-            Back
+            {t("onboarding.back")}
           </Link>
         ) : (
           <span />

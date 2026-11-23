@@ -13,11 +13,12 @@ test("a granted satellite gets one hub item per page", () => {
     {
       service: "mcp",
       label: "SEO data",
+      labelKey: "satellite.mcp",
       items: [
-        { label: "Connect AI", href: "/seo-data" },
-        { label: "Sources", href: "/seo-data/sources" },
-        { label: "Crawls", href: "/seo-data/crawls" },
-        { label: "Connected apps", href: "/seo-data/clients" }
+        { label: "Connect AI", labelKey: "satellite.connectAi", href: "/seo-data" },
+        { label: "Sources", labelKey: "satellite.sources", href: "/seo-data/sources" },
+        { label: "Crawls", labelKey: "satellite.crawls", href: "/seo-data/crawls" },
+        { label: "Connected apps", labelKey: "satellite.connectedApps", href: "/seo-data/clients" }
       ]
     }
   ]);
@@ -33,7 +34,7 @@ test("a satellite the plan does not grant links to the upgrade page", () => {
   const groups = satelliteGroups(satelliteGrant("STARTER"), true, both);
   assert.equal(groups.find((g) => g.service === "mcp")?.items.length, 4);
   assert.deepEqual(groups.find((g) => g.service === "ads")?.items, [
-    { label: "Upgrade to unlock", href: "/billing?upgrade=ads" }
+    { label: "Upgrade to unlock", labelKey: "satellite.upgradeToUnlock", href: "/billing?upgrade=ads" }
   ]);
 });
 

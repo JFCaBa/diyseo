@@ -56,7 +56,11 @@ export function SidebarNav({ siteId, satellites, isAdmin = false }: SidebarNavPr
   const account: KeyedGroup = isAdmin
     ? { ...accountGroup, items: [...accountGroup.items, { labelKey: "nav.admin", href: ADMIN_HREF }] }
     : accountGroup;
-  const groups: NavGroup[] = [translate(blogGroup), ...satellites, translate(account)];
+  const satelliteNav: NavGroup[] = satellites.map((group) => ({
+    label: t(group.labelKey),
+    items: group.items.map((item) => ({ label: t(item.labelKey), href: item.href }))
+  }));
+  const groups: NavGroup[] = [translate(blogGroup), ...satelliteNav, translate(account)];
 
   return (
     <nav className="space-y-6">

@@ -1,9 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 
+import { getT } from "@/lib/i18n/server";
 import { effectivePlan } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
 import { satelliteGrant, type SatelliteService } from "@/lib/satellite-entitlements";
-import { satelliteFrameSrc, satelliteLabel } from "@/lib/sso/satellite-links";
+import { satelliteFrameSrc, satelliteLabelKey } from "@/lib/sso/satellite-links";
 
 /** A satellite app page (mcp or ads) shown inside the hub layout, so the sidebar stays. */
 export async function SatellitePage({
@@ -31,11 +32,13 @@ export async function SatellitePage({
     redirect(`/${siteId}/billing?upgrade=${service}`);
   }
 
+  const t = await getT();
+
   return (
     <iframe
       key={src}
       src={src}
-      title={satelliteLabel(service)}
+      title={t(satelliteLabelKey(service))}
       allow="clipboard-write"
       className="-mx-6 -my-8 block h-screen w-[calc(100%+3rem)] border-0 bg-white"
     />

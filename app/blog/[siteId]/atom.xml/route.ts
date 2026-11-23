@@ -1,4 +1,5 @@
 import { getPublicSite, getPublishedArticles } from "@/lib/articles";
+import { blogHtmlLang, getBlogStrings, resolveBlogLocale } from "@/lib/public-blog-i18n";
 import { getPublicUrls } from "@/lib/public-urls";
 import { AtomRouteParamsSchema } from "@/lib/validations";
 
@@ -36,6 +37,8 @@ export async function GET(_request: Request, context: RouteContext) {
 
   const articles = await getPublishedArticles(parsed.data.siteId);
   const urls = await getPublicUrls(site.id);
+  const locale = resolveBlogLocale(site.contentLanguage);
+  const t = getBlogStrings(locale);
   const feedUpdated = articles[0]?.updatedAt
     ? new Date(articles[0].updatedAt).toISOString()
     : new Date().toISOString();
@@ -61,8 +64,9 @@ export async function GET(_request: Request, context: RouteContext) {
 
   const xml = [
     '<?xml version="1.0" encoding="utf-8"?>',
-    '<feed xmlns="http://www.w3.org/2005/Atom">',
-    `<title>${wrapCdata(`${site.name} Blog`)}</title>`,
+    `<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="${blogHtmlLang(locale)}">`,
+    `<title>${wrapCdata(t.blogTitle(site.name))}</title>`,
+    `<subtitle>${wrapCdata(t.feedDescription(site.name))}</subtitle>`,
     `<link href="${escapeXml(urls.atomUrl)}" rel="self" />`,
     `<link href="${escapeXml(urls.indexUrl)}" />`,
     `<updated>${feedUpdated}</updated>`,

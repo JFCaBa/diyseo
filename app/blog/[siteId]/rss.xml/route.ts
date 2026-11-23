@@ -1,4 +1,5 @@
 import { getPublicSite, getPublishedArticles } from "@/lib/articles";
+import { blogHtmlLang, getBlogStrings, resolveBlogLocale } from "@/lib/public-blog-i18n";
 import { getPublicUrls } from "@/lib/public-urls";
 import { RSSRouteParamsSchema } from "@/lib/validations";
 
@@ -36,7 +37,9 @@ export async function GET(_request: Request, context: RouteContext) {
 
   const articles = await getPublishedArticles(parsed.data.siteId);
   const urls = await getPublicUrls(site.id);
-  const description = `Latest articles from ${site.name}`;
+  const locale = resolveBlogLocale(site.contentLanguage);
+  const t = getBlogStrings(locale);
+  const description = t.feedDescription(site.name);
 
   const items = articles
     .map((article) => {
@@ -63,8 +66,9 @@ export async function GET(_request: Request, context: RouteContext) {
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<rss version="2.0">',
     "<channel>",
-    `<title>${wrapCdata(`${site.name} Blog`)}</title>`,
+    `<title>${wrapCdata(t.blogTitle(site.name))}</title>`,
     `<link>${escapeXml(urls.indexUrl)}</link>`,
+    `<language>${blogHtmlLang(locale)}</language>`,
     `<description>${wrapCdata(description)}</description>`,
     items,
     "</channel>",

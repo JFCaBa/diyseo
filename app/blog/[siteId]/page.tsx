@@ -6,6 +6,7 @@ import { PublicBlogHeader } from "@/components/public-blog-header";
 import { PublicBlogMetaLinks } from "@/components/public-blog-meta-links";
 import { getCoverImageProxyUrl } from "@/lib/cover-image-url";
 import { getPublicSite, getPublishedArticles } from "@/lib/articles";
+import { blogHtmlLang, blogOgLocale, formatBlogDate, getBlogStrings, resolveBlogLocale } from "@/lib/public-blog-i18n";
 import { getPublicBlogTheme } from "@/lib/public-blog-theme";
 import { getAppHost, getPublicUrls } from "@/lib/public-urls";
 import { searchSuffix, siteOriginFromDomain, tenantBlogRedirect } from "@/lib/tenant-redirect";
@@ -47,8 +48,10 @@ export async function generateMetadata({ params }: PublicBlogIndexPageProps): Pr
     return {};
   }
 
-  const title = `${data.site.name} Blog`;
-  const description = `Read the latest articles and updates from ${data.site.name}.`;
+  const locale = resolveBlogLocale(data.site.contentLanguage);
+  const t = getBlogStrings(locale);
+  const title = t.blogTitle(data.site.name);
+  const description = t.indexDescription(data.site.name);
   const urls = await getPublicUrls(data.site.id);
 
   return {
@@ -69,6 +72,7 @@ export async function generateMetadata({ params }: PublicBlogIndexPageProps): Pr
       description,
       url: urls.indexUrl,
       type: "website",
+      locale: blogOgLocale(locale),
       siteName: data.site.name,
       images: data.articles[0]?.coverImageUrl
         ? [{ url: getCoverImageProxyUrl(data.articles[0].coverImageUrl, urls.imageProxyOrigin || undefined) }]
@@ -107,37 +111,33 @@ export default async function PublicBlogIndexPage({ params, searchParams }: Publ
   }
 
   const theme = getPublicBlogTheme(data.site.widgetTheme);
+  const locale = resolveBlogLocale(data.site.contentLanguage);
+  const t = getBlogStrings(locale);
   const siteOrigin = urls.isTenant ? siteOriginFromDomain(data.site.domain) : null;
 
   return (
-    <main className={cn("min-h-screen px-4 py-10 sm:px-6 sm:py-12", theme.page)}>
+    <main lang={blogHtmlLang(locale)} className={cn("min-h-screen px-4 py-10 sm:px-6 sm:py-12", theme.page)}>
       {siteOrigin ? (
-        <PublicBlogHeader siteName={data.site.name} siteOrigin={siteOrigin} blogPath={urls.indexPath} theme={theme} className="max-w-4xl" />
+        <PublicBlogHeader siteName={data.site.name} siteOrigin={siteOrigin} blogPath={urls.indexPath} theme={theme} className="max-w-4xl" blogLabel={t.headerBlogLink} />
       ) : null}
       <section className={cn("mx-auto max-w-4xl rounded-[2rem] border px-5 py-7 shadow-panel backdrop-blur sm:px-8 md:px-10 md:py-10", theme.shell)}>
         <div className={cn("space-y-4 border-b pb-7", theme.divider)}>
-          <p className={cn("text-[11px] font-semibold uppercase tracking-[0.28em]", theme.eyebrow)}>Public Blog</p>
-          <h1 className={cn("text-3xl font-semibold tracking-tight sm:text-4xl", theme.title)}>{data.site.name} Blog</h1>
+          <p className={cn("text-[11px] font-semibold uppercase tracking-[0.28em]", theme.eyebrow)}>{t.eyebrow}</p>
+          <h1 className={cn("text-3xl font-semibold tracking-tight sm:text-4xl", theme.title)}>{t.blogTitle(data.site.name)}</h1>
           <p className={cn("max-w-2xl text-sm leading-7 sm:text-base", theme.body)}>
-            Published articles from {data.site.name}, served directly from the DIYSEO app.
+            {t.indexIntro(data.site.name)}
           </p>
         </div>
 
         {data.articles.length === 0 ? (
           <div className={cn("mt-10 rounded-3xl border border-dashed px-6 py-10 text-center", theme.empty)}>
-            <p className={cn("text-lg font-semibold", theme.title)}>No articles published yet.</p>
-            <p className={cn("mt-2 text-sm", theme.muted)}>Check back later for new posts from this site.</p>
+            <p className={cn("text-lg font-semibold", theme.title)}>{t.emptyTitle}</p>
+            <p className={cn("mt-2 text-sm", theme.muted)}>{t.emptyBody}</p>
           </div>
         ) : (
           <div className="mt-10 space-y-6">
             {data.articles.map((article) => {
-              const publishedDate = article.publishedAt
-                ? new Intl.DateTimeFormat("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric"
-                  }).format(new Date(article.publishedAt))
-                : null;
+              const publishedDate = article.publishedAt ? formatBlogDate(article.publishedAt, locale) : null;
 
               return (
                 <article
@@ -173,7 +173,7 @@ export default async function PublicBlogIndexPage({ params, searchParams }: Publ
           </div>
         )}
 
-        <PublicBlogMetaLinks siteId={data.site.id} theme={theme.mode} />
+        <PublicBlogMetaLinks siteId={data.site.id} theme={theme.mode} sitemapLabel={t.sitemapLabel} />
       </section>
     </main>
   );

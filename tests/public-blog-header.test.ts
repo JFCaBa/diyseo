@@ -25,3 +25,17 @@ test("the tenant header links the brand and host back to the site, and Blog to t
   assert.equal((html.match(/href="https:\/\/serfuncionario\.com\/"/g) ?? []).length, 1);
   assert.match(html, /href="\/blog"[^>]*>Blog</);
 });
+
+test("the tenant header renders the blog link label it is given", async () => {
+  const { PublicBlogHeader } = await import("@/components/public-blog-header");
+  const html = renderToStaticMarkup(
+    createElement(PublicBlogHeader, {
+      siteName: "Fisio Ruzafa",
+      siteOrigin: "https://fisioruzafa.es",
+      blogPath: "/blog",
+      theme: getPublicBlogTheme("light"),
+      blogLabel: "Blog-ES"
+    })
+  );
+  assert.match(html, /href="\/blog"[^>]*>Blog-ES</);
+});

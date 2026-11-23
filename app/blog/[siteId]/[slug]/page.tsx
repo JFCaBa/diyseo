@@ -7,10 +7,16 @@ import { PublicBlogMetaLinks } from "@/components/public-blog-meta-links";
 import { getCoverImageProxyPath, getCoverImageProxyUrl } from "@/lib/cover-image-url";
 import { getAdjacentPublishedArticles, getPublicSite, getPublishedArticleBySlugWithTranslation } from "@/lib/articles";
 import { getArticleRenderedHtml } from "@/lib/markdown";
+import { blogHtmlLang, blogOgLocale, formatBlogDate, getBlogStrings, resolveBlogLocale } from "@/lib/public-blog-i18n";
 import { getPublicBlogTheme } from "@/lib/public-blog-theme";
 import { getAppHost, getPublicUrls } from "@/lib/public-urls";
 import { searchSuffix, siteOriginFromDomain, tenantBlogRedirect } from "@/lib/tenant-redirect";
-import { getRequestedTranslationLanguage, getTranslationQuerySuffix, pickArticleTranslation } from "@/lib/translations";
+import {
+  getRequestedTranslationLanguage,
+  getTranslationLanguageLabel,
+  getTranslationQuerySuffix,
+  pickArticleTranslation
+} from "@/lib/translations";
 import { cn } from "@/lib/utils";
 import { PublicArticleRouteParamsSchema } from "@/lib/validations";
 
@@ -67,6 +73,7 @@ export async function generateMetadata({ params, searchParams }: PublicArticlePa
       description,
       url,
       type: "article",
+      locale: blogOgLocale(resolveBlogLocale(article.siteProject?.brandProfile?.contentLanguage)),
       siteName: article.siteProject?.name || "DIYSEO",
       images: article.coverImageUrl
         ? [{ url: getCoverImageProxyUrl(article.coverImageUrl, urls.imageProxyOrigin || undefined) }]
@@ -121,14 +128,12 @@ export default async function PublicArticlePage({ params, searchParams }: Public
     createdAt: new Date(article.createdAt)
   });
 
-  const publishedDate = article.publishedAt
-    ? new Intl.DateTimeFormat("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric"
-      }).format(new Date(article.publishedAt))
-    : null;
+  const locale = resolveBlogLocale(article.siteProject?.brandProfile?.contentLanguage);
+  const t = getBlogStrings(locale);
+  const publishedDate = article.publishedAt ? formatBlogDate(article.publishedAt, locale) : null;
   const theme = getPublicBlogTheme(article.siteProject?.widgetTheme);
+  // Translated content declares its own language; the chrome around it keeps the site's.
+  const contentLang = translation ? translation.language : undefined;
   const displayTitle = translation?.title || article.title;
   const displayExcerpt = translation?.excerpt || article.excerpt;
   const renderedContentHtml = translation
@@ -136,9 +141,9 @@ export default async function PublicArticlePage({ params, searchParams }: Public
     : getArticleRenderedHtml(article.contentMarkdown, article.contentHtml);
 
   return (
-    <main className={cn("min-h-screen px-4 py-10 sm:px-6 sm:py-12", theme.page)}>
+    <main lang={blogHtmlLang(locale)} className={cn("min-h-screen px-4 py-10 sm:px-6 sm:py-12", theme.page)}>
       {site && siteOrigin ? (
-        <PublicBlogHeader siteName={site.name} siteOrigin={siteOrigin} blogPath={urls.indexPath} theme={theme} className="max-w-3xl" />
+        <PublicBlogHeader siteName={site.name} siteOrigin={siteOrigin} blogPath={urls.indexPath} theme={theme} className="max-w-3xl" blogLabel={t.headerBlogLink} />
       ) : null}
       <article
         className={cn(
@@ -152,7 +157,7 @@ export default async function PublicArticlePage({ params, searchParams }: Public
             href={urls.indexPath}
             className={cn("inline-flex text-sm font-semibold underline-offset-4 transition hover:underline", theme.link)}
           >
-            ← Back to Blog
+            {t.backToBlog}
           </Link>
           <p className={cn("text-[11px] font-semibold uppercase tracking-[0.28em]", theme.eyebrow)}>
             {article.siteProject?.name || "DIYSEO"}
@@ -165,24 +170,25 @@ export default async function PublicArticlePage({ params, searchParams }: Public
               className={cn("h-auto w-full rounded-[1.75rem] border object-cover", theme.imageBorder)}
             />
           ) : null}
-          <h1 className={cn("text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl", theme.title)}>{displayTitle}</h1>
-          {displayExcerpt ? <p className={cn("max-w-2xl text-lg leading-8 sm:text-xl", theme.body)}>{displayExcerpt}</p> : null}
+          <h1 lang={contentLang} className={cn("text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl", theme.title)}>{displayTitle}</h1>
+          {displayExcerpt ? <p lang={contentLang} className={cn("max-w-2xl text-lg leading-8 sm:text-xl", theme.body)}>{displayExcerpt}</p> : null}
           {language ? (
             <p className={cn("text-[11px] font-semibold uppercase tracking-[0.22em]", theme.muted)}>
-              Viewing translation: {language}
+              {t.viewingTranslation(getTranslationLanguageLabel(language))}
             </p>
           ) : null}
           {publishedDate ? (
-            <p className={cn("text-[11px] font-semibold uppercase tracking-[0.22em]", theme.muted)}>Published {publishedDate}</p>
+            <p className={cn("text-[11px] font-semibold uppercase tracking-[0.22em]", theme.muted)}>{t.published(publishedDate)}</p>
           ) : null}
         </div>
 
         <div
+          lang={contentLang}
           className={cn("mt-10", theme.prose)}
           dangerouslySetInnerHTML={{ __html: renderedContentHtml }}
         />
 
-        <nav className={cn("mt-10 border-t pt-6", theme.divider)} aria-label="Article navigation">
+        <nav className={cn("mt-10 border-t pt-6", theme.divider)} aria-label={t.articleNavLabel}>
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div className="sm:max-w-[32%]">
               {previousArticle ? (
@@ -190,7 +196,7 @@ export default async function PublicArticlePage({ params, searchParams }: Public
                   href={`${urls.articlePath(previousArticle.slug)}${languageQuerySuffix}`}
                   className={cn("block text-sm transition", theme.navText)}
                 >
-                  <span className={cn("block text-[11px] font-semibold uppercase tracking-[0.22em]", theme.eyebrow)}>Previous</span>
+                  <span className={cn("block text-[11px] font-semibold uppercase tracking-[0.22em]", theme.eyebrow)}>{t.previous}</span>
                   <span className={cn("mt-2 block text-base font-semibold leading-relaxed underline-offset-4 hover:underline", theme.navTitle)}>
                     ← {previousArticle.title}
                   </span>
@@ -203,7 +209,7 @@ export default async function PublicArticlePage({ params, searchParams }: Public
                 href={urls.indexPath}
                 className={cn("inline-flex text-sm font-semibold underline-offset-4 transition hover:underline", theme.link)}
               >
-                Back to Blog Index
+                {t.backToIndex}
               </Link>
             </div>
 
@@ -213,7 +219,7 @@ export default async function PublicArticlePage({ params, searchParams }: Public
                   href={`${urls.articlePath(nextArticle.slug)}${languageQuerySuffix}`}
                   className={cn("block text-sm transition", theme.navText)}
                 >
-                  <span className={cn("block text-[11px] font-semibold uppercase tracking-[0.22em]", theme.eyebrow)}>Next</span>
+                  <span className={cn("block text-[11px] font-semibold uppercase tracking-[0.22em]", theme.eyebrow)}>{t.next}</span>
                   <span className={cn("mt-2 block text-base font-semibold leading-relaxed underline-offset-4 hover:underline", theme.navTitle)}>
                     {nextArticle.title} →
                   </span>
@@ -223,7 +229,7 @@ export default async function PublicArticlePage({ params, searchParams }: Public
           </div>
         </nav>
 
-        <PublicBlogMetaLinks siteId={article.siteProjectId} theme={theme.mode} />
+        <PublicBlogMetaLinks siteId={article.siteProjectId} theme={theme.mode} sitemapLabel={t.sitemapLabel} />
       </article>
     </main>
   );

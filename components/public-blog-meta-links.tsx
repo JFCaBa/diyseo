@@ -6,16 +6,17 @@ import { cn } from "@/lib/utils";
 type PublicBlogMetaLinksProps = {
   siteId?: string;
   theme?: "light" | "dark";
+  sitemapLabel?: string;
 };
 
-export async function PublicBlogMetaLinks({ siteId, theme = "light" }: PublicBlogMetaLinksProps) {
+export async function PublicBlogMetaLinks({ siteId, theme = "light", sitemapLabel = "Sitemap" }: PublicBlogMetaLinksProps) {
   const links = siteId
     ? await (async () => {
         const urls = await getPublicUrls(siteId);
         return [
           { href: urls.rssPath, label: "RSS" },
           { href: urls.atomPath, label: "Atom" },
-          { href: urls.sitemapPath, label: "Sitemap" },
+          { href: urls.sitemapPath, label: sitemapLabel },
           { href: urls.robotsPath, label: "robots.txt" }
         ];
       })()

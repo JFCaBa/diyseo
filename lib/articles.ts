@@ -57,6 +57,15 @@ export async function getPublishedArticleBySlugWithTranslation(siteId: string, s
     },
     select: {
       ...publicArticleSelect,
+      // Not in publicArticleSelect: that one also feeds the public articles API,
+      // whose response shape must not change.
+      siteProject: {
+        select: {
+          name: true,
+          widgetTheme: true,
+          brandProfile: { select: { contentLanguage: true } }
+        }
+      },
       translations: requestedLanguage
         ? {
             where: {
@@ -78,16 +87,24 @@ export async function getPublishedArticleBySlugWithTranslation(siteId: string, s
 }
 
 export async function getPublicSite(siteId: string) {
-  return prisma.siteProject.findUnique({
+  const site = await prisma.siteProject.findUnique({
     where: { id: siteId },
     select: {
       id: true,
       name: true,
       domain: true,
       widgetTheme: true,
-      proxyVerifiedAt: true
+      proxyVerifiedAt: true,
+      brandProfile: { select: { contentLanguage: true } }
     }
   });
+
+  if (!site) {
+    return null;
+  }
+
+  const { brandProfile, ...rest } = site;
+  return { ...rest, contentLanguage: brandProfile?.contentLanguage ?? null };
 }
 
 export async function getSiteByHost(host: string) {

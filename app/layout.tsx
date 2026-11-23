@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import "@/app/globals.css";
+import { getUiLocale } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
   title: "DIYSEO",
@@ -14,13 +15,13 @@ export const metadata: Metadata = {
   }
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang={await getUiLocale()}>
       <body className="font-sans text-ink antialiased">{children}</body>
     </html>
   );

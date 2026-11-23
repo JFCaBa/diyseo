@@ -3,31 +3,34 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { useT } from "@/components/i18n-provider";
+import type { MessageKey } from "@/lib/i18n/translate";
 import type { SatelliteGroup } from "@/lib/sso/satellite-links";
 import { cn } from "@/lib/utils";
 
 type NavItem = { label: string; href: string };
 type NavGroup = { label: string; items: NavItem[] };
+type KeyedGroup = { labelKey: MessageKey; items: Array<{ labelKey: MessageKey; href: string }> };
 
-const blogGroup: NavGroup = {
-  label: "Blog",
+const blogGroup: KeyedGroup = {
+  labelKey: "nav.blog",
   items: [
-    { label: "Dashboard", href: "" },
-    { label: "Brand DNA", href: "/brand-dna" },
-    { label: "Calendar", href: "/calendar" },
-    { label: "Articles", href: "/articles" },
-    { label: "Keywords", href: "/keywords" },
-    { label: "Analytics", href: "/analytics" },
-    { label: "API", href: "/api" },
-    { label: "Settings", href: "/settings" }
+    { labelKey: "nav.dashboard", href: "" },
+    { labelKey: "nav.brandDna", href: "/brand-dna" },
+    { labelKey: "nav.calendar", href: "/calendar" },
+    { labelKey: "nav.articles", href: "/articles" },
+    { labelKey: "nav.keywords", href: "/keywords" },
+    { labelKey: "nav.analytics", href: "/analytics" },
+    { labelKey: "nav.api", href: "/api" },
+    { labelKey: "nav.settings", href: "/settings" }
   ]
 };
 
-const accountGroup: NavGroup = {
-  label: "Account",
+const accountGroup: KeyedGroup = {
+  labelKey: "nav.account",
   items: [
-    { label: "Team", href: "/team" },
-    { label: "Billing", href: "/billing" }
+    { labelKey: "nav.team", href: "/team" },
+    { labelKey: "nav.billing", href: "/billing" }
   ]
 };
 
@@ -45,10 +48,15 @@ type SidebarNavProps = {
 
 export function SidebarNav({ siteId, satellites, isAdmin = false }: SidebarNavProps) {
   const pathname = usePathname();
-  const account: NavGroup = isAdmin
-    ? { ...accountGroup, items: [...accountGroup.items, { label: "Admin", href: ADMIN_HREF }] }
+  const t = useT();
+  const translate = (group: KeyedGroup): NavGroup => ({
+    label: t(group.labelKey),
+    items: group.items.map((item) => ({ label: t(item.labelKey), href: item.href }))
+  });
+  const account: KeyedGroup = isAdmin
+    ? { ...accountGroup, items: [...accountGroup.items, { labelKey: "nav.admin", href: ADMIN_HREF }] }
     : accountGroup;
-  const groups: NavGroup[] = [blogGroup, ...satellites, account];
+  const groups: NavGroup[] = [translate(blogGroup), ...satellites, translate(account)];
 
   return (
     <nav className="space-y-6">

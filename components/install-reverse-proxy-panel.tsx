@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { useLocale, useT } from "@/components/i18n-provider";
+import { formatDate } from "@/lib/i18n/translate";
 import { buildApacheConfig, buildNginxConfig, buildWorkerScript } from "@/lib/install-methods/proxy-configs";
 import { formatSiteHost } from "@/lib/install-methods/site-host";
 
@@ -17,14 +19,16 @@ type InstallReverseProxyPanelProps = {
   proxyVerifiedAt?: string | null;
 };
 
-const PLATFORMS: Array<{ id: Platform; label: string; fileLabel: string }> = [
-  { id: "cloudflare", label: "Cloudflare", fileLabel: "Worker script" },
-  { id: "nginx", label: "Nginx", fileLabel: "Nginx config" },
-  { id: "apache", label: "Apache", fileLabel: "Apache config" }
+const PLATFORMS: Array<{ id: Platform; label: string }> = [
+  { id: "cloudflare", label: "Cloudflare" },
+  { id: "nginx", label: "Nginx" },
+  { id: "apache", label: "Apache" }
 ];
 
 export function InstallReverseProxyPanel({ baseUrl, siteId, siteDomain, proxyVerifiedAt }: InstallReverseProxyPanelProps) {
   const router = useRouter();
+  const t = useT();
+  const locale = useLocale();
   const [platform, setPlatform] = useState<Platform>("cloudflare");
   const [copied, setCopied] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -34,10 +38,9 @@ export function InstallReverseProxyPanel({ baseUrl, siteId, siteDomain, proxyVer
   const input = { origin: baseUrl, siteId };
   const config =
     platform === "cloudflare" ? buildWorkerScript(input) : platform === "nginx" ? buildNginxConfig(input) : buildApacheConfig(input);
-  const current = PLATFORMS.find((item) => item.id === platform) ?? PLATFORMS[0];
-  const verifiedLabel = proxyVerifiedAt
-    ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "long", day: "numeric" }).format(new Date(proxyVerifiedAt))
-    : null;
+  const fileLabel =
+    platform === "cloudflare" ? t("install.proxy.workerScript") : platform === "nginx" ? t("install.proxy.nginxConfig") : t("install.proxy.apacheConfig");
+  const verifiedLabel = proxyVerifiedAt ? formatDate(proxyVerifiedAt, locale, { year: "numeric", month: "long", day: "numeric" }) : null;
 
   async function copyConfig() {
     try {
@@ -64,10 +67,10 @@ export function InstallReverseProxyPanel({ baseUrl, siteId, siteDomain, proxyVer
           router.refresh();
         }
       } else {
-        setResult({ ok: false, message: (body as { error?: string } | null)?.error ?? "The check failed. Try again." });
+        setResult({ ok: false, message: (body as { error?: string } | null)?.error ?? t("install.proxy.checkFailed") });
       }
     } catch {
-      setResult({ ok: false, message: "The check failed. Try again." });
+      setResult({ ok: false, message: t("install.proxy.checkFailed") });
     } finally {
       setChecking(false);
     }
@@ -76,14 +79,14 @@ export function InstallReverseProxyPanel({ baseUrl, siteId, siteDomain, proxyVer
   return (
     <div className="mt-4 rounded-2xl border border-line bg-white/90 p-4">
       <div>
-        <h4 className="text-sm font-semibold text-ink">Reverse proxy</h4>
+        <h4 className="text-sm font-semibold text-ink">{t("install.proxy.title")}</h4>
         <p className="mt-1 text-sm text-slate-600">
-          Your server fetches the blog from DIYSEO and serves it at <code>{host}/blog</code>. Google sees the content on your
-          domain. Pick the platform your domain runs on and paste the ready-made configuration.
+          {t("install.proxy.descBefore")} <code>{host}/blog</code>
+          {t("install.proxy.descAfter")}
         </p>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Platform">
+      <div className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label={t("install.proxy.platformAria")}>
         {PLATFORMS.map((item) => (
           <button
             key={item.id}
@@ -102,15 +105,15 @@ export function InstallReverseProxyPanel({ baseUrl, siteId, siteDomain, proxyVer
 
       <dl className="mt-4 grid gap-3 text-sm text-slate-600 md:grid-cols-3">
         <div>
-          <dt className="font-semibold text-ink">Site ID</dt>
+          <dt className="font-semibold text-ink">{t("install.proxy.siteId")}</dt>
           <dd className="mt-1 break-all">{siteId}</dd>
         </div>
         <div>
-          <dt className="font-semibold text-ink">DIYSEO origin</dt>
+          <dt className="font-semibold text-ink">{t("install.proxy.origin")}</dt>
           <dd className="mt-1 break-all">{baseUrl}</dd>
         </div>
         <div>
-          <dt className="font-semibold text-ink">{platform === "cloudflare" ? "Recommended route" : "Path"}</dt>
+          <dt className="font-semibold text-ink">{platform === "cloudflare" ? t("install.proxy.recommendedRoute") : t("install.proxy.path")}</dt>
           <dd className="mt-1 break-all">{platform === "cloudflare" ? route : `${host}/blog`}</dd>
         </div>
       </dl>
@@ -118,41 +121,48 @@ export function InstallReverseProxyPanel({ baseUrl, siteId, siteDomain, proxyVer
       {platform === "cloudflare" ? (
         <>
           <p className="mt-4 text-xs font-medium text-slate-500">
-            Important: creating the Worker is not enough. You must also attach a route so <code>{route}</code> traffic
-            actually runs through this Worker.
+            {t("install.proxy.cfNoteBefore")} <code>{route}</code> {t("install.proxy.cfNoteAfter")}
           </p>
           <ol className="mt-3 grid gap-2 text-sm text-slate-600">
-            <li>1. Create a Cloudflare Worker and paste this script.</li>
-            <li>2. Attach a Cloudflare route to <code>{route}</code> and point it to this Worker.</li>
-            <li>3. Deploy the Worker after the route is attached.</li>
-            <li>4. Click Verify below.</li>
+            <li>{t("install.proxy.cf1")}</li>
+            <li>
+              {t("install.proxy.cf2Before")} <code>{route}</code> {t("install.proxy.cf2After")}
+            </li>
+            <li>{t("install.proxy.cf3")}</li>
+            <li>{t("install.proxy.cf4")}</li>
           </ol>
         </>
       ) : null}
       {platform === "nginx" ? (
         <ol className="mt-4 grid gap-2 text-sm text-slate-600">
-          <li>1. Paste the rules inside the <code>server {"{ }"}</code> block of your domain (HTTPS).</li>
-          <li>2. Run <code>nginx -t &amp;&amp; systemctl reload nginx</code>.</li>
-          <li>3. Click Verify below.</li>
+          <li>
+            {t("install.proxy.nginx1Before")} <code>server {"{ }"}</code> {t("install.proxy.nginx1After")}
+          </li>
+          <li>
+            {t("install.proxy.nginx2Before")} <code>nginx -t &amp;&amp; systemctl reload nginx</code>.
+          </li>
+          <li>{t("install.proxy.nginx3")}</li>
         </ol>
       ) : null}
       {platform === "apache" ? (
         <ol className="mt-4 grid gap-2 text-sm text-slate-600">
-          <li>1. Enable the modules listed at the top of the config.</li>
-          <li>2. Paste the rules inside the <code>&lt;VirtualHost *:443&gt;</code> block of your domain.</li>
-          <li>3. Reload Apache, then click Verify below.</li>
+          <li>{t("install.proxy.apache1")}</li>
+          <li>
+            {t("install.proxy.apache2Before")} <code>&lt;VirtualHost *:443&gt;</code> {t("install.proxy.apache2After")}
+          </li>
+          <li>{t("install.proxy.apache3")}</li>
         </ol>
       ) : null}
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-sand/70">
         <div className="flex items-center justify-between gap-3 border-b border-line/70 px-4 py-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{current.fileLabel}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{fileLabel}</p>
           <button
             type="button"
             onClick={copyConfig}
             className="inline-flex items-center justify-center rounded-xl border border-line bg-white px-3 py-2 text-xs font-semibold text-ink transition hover:bg-mist"
           >
-            {copied ? "Copied" : "Copy"}
+            {copied ? t("install.proxy.copied") : t("install.proxy.copy")}
           </button>
         </div>
         <pre className="overflow-x-auto p-4 text-sm text-ink">
@@ -163,11 +173,11 @@ export function InstallReverseProxyPanel({ baseUrl, siteId, siteDomain, proxyVer
       <div className="mt-4 rounded-2xl border border-line bg-mist/60 p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-semibold text-ink">{verifiedLabel ? "Verified" : "Not verified yet"}</p>
+            <p className="text-sm font-semibold text-ink">{verifiedLabel ? t("install.proxy.verified") : t("install.proxy.notVerified")}</p>
             <p className="mt-1 text-sm text-slate-600">
               {verifiedLabel
-                ? `Last verified on ${verifiedLabel}. Check again after changing your server.`
-                : `We will open https://${host}/blog and check that it serves this site.`}
+                ? t("install.proxy.lastVerified", { date: verifiedLabel })
+                : t("install.proxy.willCheck", { host })}
             </p>
           </div>
           <button
@@ -176,7 +186,7 @@ export function InstallReverseProxyPanel({ baseUrl, siteId, siteDomain, proxyVer
             disabled={checking}
             className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-white disabled:opacity-60"
           >
-            {checking ? "Checking…" : "Verify"}
+            {checking ? t("install.proxy.checking") : t("install.proxy.verify")}
           </button>
         </div>
         {result ? (

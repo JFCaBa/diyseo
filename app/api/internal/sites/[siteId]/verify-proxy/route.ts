@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { getT } from "@/lib/i18n/server";
+import { localizeProxyResult } from "@/lib/install-methods/localize";
 import { formatSiteHost } from "@/lib/install-methods/site-host";
 import { verifyProxy } from "@/lib/install-methods/verify-proxy";
 import { prisma } from "@/lib/prisma";
@@ -23,8 +25,10 @@ export async function POST(_request: Request, context: RouteContext) {
     return denied;
   }
 
+  const t = await getT();
+
   if (!allow(siteId)) {
-    return NextResponse.json({ ok: false, message: "Too many checks. Wait a minute and try again." }, { status: 429 });
+    return NextResponse.json({ ok: false, message: t("install.verifyResult.tooManyChecks") }, { status: 429 });
   }
 
   const site = await prisma.siteProject.findUnique({
@@ -33,10 +37,11 @@ export async function POST(_request: Request, context: RouteContext) {
   });
 
   if (!site) {
-    return NextResponse.json({ error: "Site not found." }, { status: 404 });
+    return NextResponse.json({ error: t("install.verifyResult.siteNotFound") }, { status: 404 });
   }
 
-  const result = await verifyProxy(formatSiteHost(site.domain, ""), siteId);
+  const host = formatSiteHost(site.domain, "");
+  const result = await verifyProxy(host, siteId);
 
   if (result.ok) {
     const now = new Date();
@@ -47,5 +52,8 @@ export async function POST(_request: Request, context: RouteContext) {
     });
   }
 
-  return NextResponse.json(result);
+  const message = localizeProxyResult(t, result, host);
+
+  // `status` only feeds the localized text; the response keeps its original shape.
+  return NextResponse.json(result.ok ? { ok: true, message } : { ok: false, reason: result.reason, message });
 }

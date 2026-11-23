@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { useLocale, useT } from "@/components/i18n-provider";
+import { formatDate } from "@/lib/i18n/translate";
 import { formatSiteHost } from "@/lib/install-methods/site-host";
 
 type InstallStaticExportPanelProps = {
@@ -21,13 +23,13 @@ export function InstallStaticExportPanel({
   changedSinceExport
 }: InstallStaticExportPanelProps) {
   const router = useRouter();
+  const t = useT();
+  const locale = useLocale();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const host = formatSiteHost(siteDomain);
   const exportedLabel = staticExportedAt
-    ? new Intl.DateTimeFormat("en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(
-        new Date(staticExportedAt)
-      )
+    ? formatDate(staticExportedAt, locale, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })
     : null;
 
   async function download() {
@@ -39,7 +41,7 @@ export function InstallStaticExportPanel({
 
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as { error?: string } | null;
-        setError(body?.error ?? "The export failed. Try again.");
+        setError(body?.error ?? t("install.export.failed"));
         return;
       }
 
@@ -54,7 +56,7 @@ export function InstallStaticExportPanel({
       URL.revokeObjectURL(url);
       router.refresh();
     } catch {
-      setError("The export failed. Try again.");
+      setError(t("install.export.failed"));
     } finally {
       setBusy(false);
     }
@@ -64,10 +66,9 @@ export function InstallStaticExportPanel({
     <div className="mt-4 rounded-2xl border border-line bg-white/90 p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h4 className="text-sm font-semibold text-ink">Static export</h4>
+          <h4 className="text-sm font-semibold text-ink">{t("install.export.title")}</h4>
           <p className="mt-1 text-sm text-slate-600">
-            Download the blog as plain HTML files and upload them to your hosting. No server setup needed, which makes it the
-            right choice when you cannot change your server configuration.
+            {t("install.export.body")}
           </p>
         </div>
         <button
@@ -76,40 +77,42 @@ export function InstallStaticExportPanel({
           disabled={busy}
           className="inline-flex shrink-0 items-center justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist disabled:opacity-60"
         >
-          {busy ? "Building ZIP…" : "Download ZIP"}
+          {busy ? t("install.export.building") : t("install.export.download")}
         </button>
       </div>
 
       <ol className="mt-4 grid gap-2 text-sm text-slate-600">
-        <li>1. Download the ZIP and unzip it.</li>
+        <li>{t("install.export.step1")}</li>
         <li>
-          2. Upload the <code>blog</code> folder (if you uploaded an earlier export, delete the old folder first, so unpublished or renamed
-          articles do not stay online) to the root of your website, so <code>https://{host}/blog/</code> shows the blog.
+          {t("install.export.step2Before")} <code>blog</code> {t("install.export.step2Middle")} <code>https://{host}/blog/</code>{" "}
+          {t("install.export.step2After")}
         </li>
         <li>
-          3. Submit <code>https://{host}/blog/sitemap.xml</code> in Google Search Console.
+          {t("install.export.step3Before")} <code>https://{host}/blog/sitemap.xml</code> {t("install.export.step3After")}
         </li>
       </ol>
 
       <p className="mt-4 text-xs text-slate-500">
-        It is a snapshot: it does not update by itself. Download and upload it again after publishing new articles. Only the default
-        language is included.
+        {t("install.export.snapshot")}
       </p>
 
       <div className="mt-4 rounded-2xl border border-line bg-mist/60 p-4 text-sm">
         {exportedLabel ? (
           <p className="text-slate-600">
-            Last export: {exportedLabel} ({staticExportedCount ?? 0} articles).{" "}
+            {t((staticExportedCount ?? 0) === 1 ? "install.export.lastExportOne" : "install.export.lastExportOther", {
+              date: exportedLabel,
+              count: staticExportedCount ?? 0
+            })}{" "}
             {changedSinceExport ? (
-              <span className="font-semibold text-amber-700">Your articles changed since then. Download a new ZIP.</span>
+              <span className="font-semibold text-amber-700">{t("install.export.changed")}</span>
             ) : (
-              <span className="font-semibold text-accent">Up to date.</span>
+              <span className="font-semibold text-accent">{t("install.export.upToDate")}</span>
             )}
           </p>
         ) : (
           <p className="text-slate-600">
-            Not exported yet.{" "}
-            {changedSinceExport ? <span className="font-semibold text-amber-700">You have published articles to export.</span> : null}
+            {t("install.export.notExported")}{" "}
+            {changedSinceExport ? <span className="font-semibold text-amber-700">{t("install.export.toExport")}</span> : null}
           </p>
         )}
         {error ? (

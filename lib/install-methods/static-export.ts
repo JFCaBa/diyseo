@@ -1,6 +1,6 @@
 import { strToU8, zipSync } from "fflate";
 
-import { evaluateBlogHtml } from "@/lib/install-methods/verify-proxy";
+import { evaluateBlogHtml, type ProxyResult } from "@/lib/install-methods/verify-proxy";
 
 export const EXPORT_LIMITS = {
   maxArticles: 200,
@@ -10,7 +10,29 @@ export const EXPORT_LIMITS = {
   deadlineMs: 90_000
 } as const;
 
-export class ExportError extends Error {}
+export type ExportErrorCode =
+  | "pageTooLarge"
+  | "tooManyArticles"
+  | "badSlug"
+  | "tooSlow"
+  | "renderFailed"
+  | "pageStatus"
+  | "tooLarge"
+  | "blogNotRendered"
+  | "foreignStylesheet"
+  | "stillDiyseo";
+
+/** `code` and `vars` let the route localize the English `message`; `proxy` carries the nested check result. */
+export class ExportError extends Error {
+  constructor(
+    message: string,
+    readonly code?: ExportErrorCode,
+    readonly vars?: Record<string, string | number>,
+    readonly proxy?: ProxyResult
+  ) {
+    super(message);
+  }
+}
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -149,7 +171,7 @@ async function readCapped(response: Response, max: number): Promise<string> {
 
     if (size > max) {
       await reader.cancel();
-      throw new ExportError("A page is too large to export.");
+      throw new ExportError("A page is too large to export.", "pageTooLarge");
     }
 
     chunks.push(value);
@@ -198,12 +220,17 @@ export async function buildStaticExport(input: StaticExportInput): Promise<Recor
   let totalBytes = 0;
 
   if (slugs.length > EXPORT_LIMITS.maxArticles) {
-    throw new ExportError(`Static export supports up to ${EXPORT_LIMITS.maxArticles} articles; this site has ${slugs.length}.`);
+    throw new ExportError(`Static export supports up to ${EXPORT_LIMITS.maxArticles} articles; this site has ${slugs.length}.`, "tooManyArticles", {
+      max: EXPORT_LIMITS.maxArticles,
+      count: slugs.length
+    });
   }
 
   for (const slug of slugs) {
     if (!exportPathForSlug(slug)) {
-      throw new ExportError(`The article slug "${slug.slice(0, 60)}" cannot be exported. Use lowercase letters, numbers and hyphens.`);
+      throw new ExportError(`The article slug "${slug.slice(0, 60)}" cannot be exported. Use lowercase letters, numbers and hyphens.`, "badSlug", {
+        slug: slug.slice(0, 60)
+      });
     }
   }
 
@@ -211,7 +238,7 @@ export async function buildStaticExport(input: StaticExportInput): Promise<Recor
     const remaining = deadline - Date.now();
 
     if (remaining <= 0) {
-      throw new ExportError("The export took too long. Try again.");
+      throw new ExportError("The export took too long. Try again.", "tooSlow");
     }
 
     let response: Response;
@@ -223,18 +250,21 @@ export async function buildStaticExport(input: StaticExportInput): Promise<Recor
         signal: AbortSignal.timeout(remaining)
       });
     } catch {
-      throw new ExportError("A page could not be rendered. Try again in a moment.");
+      throw new ExportError("A page could not be rendered. Try again in a moment.", "renderFailed");
     }
 
     if (response.status !== 200) {
-      throw new ExportError(`A page returned HTTP ${response.status} while exporting (${new URL(url).pathname}).`);
+      throw new ExportError(`A page returned HTTP ${response.status} while exporting (${new URL(url).pathname}).`, "pageStatus", {
+        status: response.status,
+        path: new URL(url).pathname
+      });
     }
 
     const body = await readCapped(response, EXPORT_LIMITS.maxResponseBytes);
     totalBytes += body.length;
 
     if (totalBytes > EXPORT_LIMITS.maxTotalBytes) {
-      throw new ExportError("The export is too large.");
+      throw new ExportError("The export is too large.", "tooLarge");
     }
 
     return body;
@@ -247,7 +277,7 @@ export async function buildStaticExport(input: StaticExportInput): Promise<Recor
   const check = evaluateBlogHtml({ body: indexHtml, host, siteId });
 
   if (!check.ok) {
-    throw new ExportError(`The blog could not be rendered for ${host}: ${check.message}`);
+    throw new ExportError(`The blog could not be rendered for ${host}: ${check.message}`, "blogNotRendered", { host }, check);
   }
 
   const articleHtml = await mapLimit(slugs, EXPORT_LIMITS.concurrency, (slug) =>
@@ -264,7 +294,7 @@ export async function buildStaticExport(input: StaticExportInput): Promise<Recor
     const url = resolveAllowedAssetUrl(href, origin);
 
     if (!url) {
-      throw new ExportError("A page references a stylesheet outside the app's own assets.");
+      throw new ExportError("A page references a stylesheet outside the app's own assets.", "foreignStylesheet");
     }
 
     // The policy is checked against the public origin; the bytes come from the render origin.
@@ -285,7 +315,7 @@ export async function buildStaticExport(input: StaticExportInput): Promise<Recor
 
   for (const [path, content] of Object.entries(files)) {
     if (path.endsWith(".html") && content.includes(`/blog/${siteId}`)) {
-      throw new ExportError("The rendered pages still point to the DIYSEO address instead of your domain.");
+      throw new ExportError("The rendered pages still point to the DIYSEO address instead of your domain.", "stillDiyseo");
     }
   }
 

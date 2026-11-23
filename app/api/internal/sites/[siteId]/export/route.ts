@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { getAppOrigin } from "@/lib/app-origin";
+import { getT } from "@/lib/i18n/server";
 import { exportFingerprint } from "@/lib/install-methods/export-status";
 import { buildExportZip, buildReadme, buildStaticExport, ExportError } from "@/lib/install-methods/static-export";
+import { localizeExportError } from "@/lib/install-methods/localize";
 import { formatSiteHost, isVerifiableHost } from "@/lib/install-methods/site-host";
 import { prisma } from "@/lib/prisma";
 import { denyUnlessSiteOwner } from "@/lib/site-access";
@@ -25,17 +27,18 @@ export async function POST(_request: Request, context: RouteContext) {
     return denied;
   }
 
+  const t = await getT();
   const origin = getAppOrigin();
   // Optional: render the pages through a local address instead of the public one
   // (avoids CDN/WAF rules for self-requests and lets a CDN-less hop keep X-Forwarded-Host).
   const renderOrigin = process.env.EXPORT_RENDER_ORIGIN?.trim().replace(/\/$/, "") || origin;
 
   if (!origin.startsWith("https://") || !/^https?:\/\//.test(renderOrigin)) {
-    return NextResponse.json({ error: "Static export needs NEXT_PUBLIC_APP_URL to be an https address." }, { status: 503 });
+    return NextResponse.json({ error: t("install.exportResult.needsHttps") }, { status: 503 });
   }
 
   if (running.has(siteId)) {
-    return NextResponse.json({ error: "An export is already running for this site." }, { status: 429 });
+    return NextResponse.json({ error: t("install.exportResult.alreadyRunning") }, { status: 429 });
   }
 
   running.add(siteId);
@@ -47,13 +50,13 @@ export async function POST(_request: Request, context: RouteContext) {
     const site = await prisma.siteProject.findUnique({ where: { id: siteId }, select: { domain: true, name: true, widgetTheme: true } });
 
     if (!site) {
-      return NextResponse.json({ error: "Site not found." }, { status: 404 });
+      return NextResponse.json({ error: t("install.exportResult.siteNotFound") }, { status: 404 });
     }
 
     const host = formatSiteHost(site.domain, "");
 
     if (!isVerifiableHost(host)) {
-      return NextResponse.json({ error: "Set a valid domain for this site (for example client.com) before exporting." }, { status: 400 });
+      return NextResponse.json({ error: t("install.exportResult.setDomain") }, { status: 400 });
     }
 
     const articles = await prisma.article.findMany({
@@ -83,11 +86,11 @@ export async function POST(_request: Request, context: RouteContext) {
     });
   } catch (error) {
     if (error instanceof ExportError) {
-      return NextResponse.json({ error: error.message }, { status: 422 });
+      return NextResponse.json({ error: localizeExportError(t, error) }, { status: 422 });
     }
 
     console.error("Static export failed", error);
-    return NextResponse.json({ error: "The export failed. Try again." }, { status: 500 });
+    return NextResponse.json({ error: t("install.exportResult.failed") }, { status: 500 });
   } finally {
     running.delete(siteId);
   }

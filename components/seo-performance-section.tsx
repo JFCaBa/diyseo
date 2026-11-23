@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from "react";
 
+import { useLocale, useT } from "@/components/i18n-provider";
+import { formatNumber, type T } from "@/lib/i18n/translate";
+import type { UiLocale } from "@/lib/i18n/locale";
 import type {
   SearchConsoleKeywordRanking,
   SearchConsoleKeywordTrend,
@@ -21,37 +24,43 @@ type SeoPerformanceSectionProps = {
   startDate: string;
 };
 
-function formatCompactNumber(value: number) {
-  return new Intl.NumberFormat("en-US", {
+function formatCompactNumber(value: number, locale: UiLocale) {
+  return formatNumber(value, locale, {
     notation: "compact",
     maximumFractionDigits: 1
-  }).format(value);
+  });
 }
 
-function formatPercent(value: number) {
-  return `${(value * 100).toFixed(1)}%`;
+const ONE_DECIMAL = { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false } as const;
+
+function formatOneDecimal(value: number, locale: UiLocale) {
+  return formatNumber(value, locale, ONE_DECIMAL);
 }
 
-function formatPosition(value: number | null) {
+function formatPercent(value: number, locale: UiLocale) {
+  return `${formatOneDecimal(value * 100, locale)}%`;
+}
+
+function formatPosition(value: number | null, locale: UiLocale) {
   if (value === null || !Number.isFinite(value) || value <= 0) {
     return "—";
   }
 
-  return value.toFixed(1);
+  return formatOneDecimal(value, locale);
 }
 
-function formatPositionDelta(value: number | null) {
+function formatPositionDelta(value: number | null, t: T, locale: UiLocale) {
   if (value === null || !Number.isFinite(value)) {
-    return "No previous data";
+    return t("seoPerformance.noPreviousData");
   }
 
-  const change = Math.abs(value).toFixed(1);
+  const change = formatOneDecimal(Math.abs(value), locale);
 
   if (Math.abs(value) < 0.1) {
-    return "Flat vs previous period";
+    return t("seoPerformance.flat");
   }
 
-  return value < 0 ? `Up ${change} positions` : `Down ${change} positions`;
+  return value < 0 ? t("seoPerformance.upPositions", { change }) : t("seoPerformance.downPositions", { change });
 }
 
 function getTrendTone(value: number | null) {
@@ -62,17 +71,17 @@ function getTrendTone(value: number | null) {
   return value < 0 ? "text-accent" : "text-amber-700";
 }
 
-function getTrendLabel(ranking: SearchConsoleKeywordRanking) {
+function getTrendLabel(ranking: SearchConsoleKeywordRanking, t: T, locale: UiLocale) {
   if (ranking.trend === "new") {
-    return "New";
+    return t("seoPerformance.trendNew");
   }
 
   if (ranking.trend === "flat") {
-    return "Flat";
+    return t("seoPerformance.trendFlat");
   }
 
-  const amount = Math.abs(ranking.positionChange ?? 0).toFixed(1);
-  return ranking.trend === "up" ? `Up ${amount}` : `Down ${amount}`;
+  const amount = formatOneDecimal(Math.abs(ranking.positionChange ?? 0), locale);
+  return ranking.trend === "up" ? t("seoPerformance.trendUp", { amount }) : t("seoPerformance.trendDown", { amount });
 }
 
 function getTrendBadgeClass(ranking: SearchConsoleKeywordRanking) {
@@ -121,6 +130,8 @@ function PositionChart({
   label: string;
   points: SearchConsoleTrendPoint[];
 }) {
+  const t = useT();
+  const locale = useLocale();
   const validPoints = points.filter((point) => point.position !== null);
   const path = useMemo(() => buildLinePath(points, 520, 180), [points]);
   const latestPoint = [...validPoints].reverse().find((point) => point.position !== null) ?? null;
@@ -129,23 +140,23 @@ function PositionChart({
     <div className="rounded-[1.5rem] border border-line bg-mist/60 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Position Chart</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{t("seoPerformance.positionChart")}</p>
           <h3 className="mt-2 text-xl font-semibold tracking-tight text-ink">{label}</h3>
         </div>
         <div className="text-right">
-          <p className="text-sm text-slate-500">Latest recorded position</p>
-          <p className="mt-1 text-2xl font-semibold text-ink">{formatPosition(latestPoint?.position ?? null)}</p>
+          <p className="text-sm text-slate-500">{t("seoPerformance.latestPosition")}</p>
+          <p className="mt-1 text-2xl font-semibold text-ink">{formatPosition(latestPoint?.position ?? null, locale)}</p>
         </div>
       </div>
 
       {validPoints.length === 0 ? (
         <div className="mt-5 rounded-2xl border border-dashed border-line bg-white px-4 py-8 text-sm text-slate-600">
-          Google Search Console returned no daily position points for this selection in the current 28-day range.
+          {t("seoPerformance.noPoints")}
         </div>
       ) : (
         <>
           <div className="mt-5 overflow-hidden rounded-[1.5rem] border border-line bg-white p-4">
-            <svg viewBox="0 0 520 180" className="h-48 w-full" role="img" aria-label={`${label} position trend`}>
+            <svg viewBox="0 0 520 180" className="h-48 w-full" role="img" aria-label={t("seoPerformance.chartAria", { label })}>
               <line x1="0" y1="180" x2="520" y2="180" className="stroke-line" strokeWidth="1" />
               <line x1="0" y1="0" x2="0" y2="180" className="stroke-line" strokeWidth="1" />
               <path d={path} fill="none" stroke="currentColor" strokeWidth="3" className="text-accent" strokeLinecap="round" />
@@ -174,6 +185,8 @@ export function SeoPerformanceSection({
   keywordTrends,
   overallTrend
 }: SeoPerformanceSectionProps) {
+  const t = useT();
+  const locale = useLocale();
   const pageSize = 10;
   const [selectedView, setSelectedView] = useState<string>("overall");
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -182,35 +195,34 @@ export function SeoPerformanceSection({
   const pagedRankings = keywordRankings.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const selectedTrend = selectedView === "overall" ? null : trendByQuery.get(selectedView) ?? null;
-  const chartLabel = selectedTrend ? selectedTrend.query : "Overall average position";
+  const chartLabel = selectedTrend ? selectedTrend.query : t("seoPerformance.overallAverage");
   const chartPoints = selectedTrend?.points ?? overallTrend;
 
   return (
     <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">SEO Performance</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Keyword rankings and trend movement</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">{t("seoPerformance.eyebrow")}</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{t("seoPerformance.title")}</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Rankings come from live Google Search Console `searchAnalytics.query` data for {startDate} to {endDate},
-            compared with {previousStartDate} to {previousEndDate}.
+            {t("seoPerformance.description", { startDate, endDate, previousStartDate, previousEndDate })}
           </p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-2xl bg-mist px-4 py-4">
-            <p className="text-sm text-slate-500">Avg position</p>
-            <p className="mt-2 text-3xl font-semibold text-ink">{formatPosition(position)}</p>
-            <p className="mt-2 text-sm text-slate-600">Last 28 days</p>
+            <p className="text-sm text-slate-500">{t("seoPerformance.avgPosition")}</p>
+            <p className="mt-2 text-3xl font-semibold text-ink">{formatPosition(position, locale)}</p>
+            <p className="mt-2 text-sm text-slate-600">{t("seoPerformance.last28Days")}</p>
           </div>
           <div className="rounded-2xl bg-mist px-4 py-4">
-            <p className="text-sm text-slate-500">Position change</p>
+            <p className="text-sm text-slate-500">{t("seoPerformance.positionChange")}</p>
             <p className={`mt-2 text-3xl font-semibold ${getTrendTone(positionChange)}`}>
-              {positionChange === null ? "—" : Math.abs(positionChange).toFixed(1)}
+              {positionChange === null ? "—" : formatOneDecimal(Math.abs(positionChange), locale)}
             </p>
             <p className={`mt-2 text-sm ${getTrendTone(positionChange)}`}>
-              {formatPositionDelta(positionChange)}
-              {previousPosition > 0 ? ` from ${previousPosition.toFixed(1)}` : ""}
+              {formatPositionDelta(positionChange, t, locale)}
+              {previousPosition > 0 ? t("seoPerformance.fromPrevious", { previous: formatOneDecimal(previousPosition, locale) }) : ""}
             </p>
           </div>
         </div>
@@ -219,17 +231,17 @@ export function SeoPerformanceSection({
       <div className="mt-8 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="overflow-hidden rounded-[1.5rem] border border-line">
           <div className="grid grid-cols-[1.8fr_0.7fr_0.8fr_0.7fr_0.7fr_0.8fr] gap-3 bg-mist px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            <p>Keyword</p>
-            <p>Position</p>
-            <p>Clicks</p>
-            <p>Impr.</p>
-            <p>CTR</p>
-            <p>Trend</p>
+            <p>{t("seoPerformance.keyword")}</p>
+            <p>{t("seoPerformance.position")}</p>
+            <p>{t("seoPerformance.clicks")}</p>
+            <p>{t("seoPerformance.impressions")}</p>
+            <p>{t("seoPerformance.ctr")}</p>
+            <p>{t("seoPerformance.trend")}</p>
           </div>
           <div className="divide-y divide-line">
             {keywordRankings.length === 0 ? (
               <div className="px-4 py-6 text-sm text-slate-600">
-                Google Search Console returned no keyword rows for the current 28-day range.
+                {t("seoPerformance.noKeywordRows")}
               </div>
             ) : (
               pagedRankings.map((ranking) => (
@@ -242,13 +254,13 @@ export function SeoPerformanceSection({
                   }`}
                 >
                   <p className="truncate font-semibold text-ink">{ranking.query}</p>
-                  <p className="text-slate-700">{formatPosition(ranking.position)}</p>
-                  <p className="text-slate-700">{formatCompactNumber(ranking.clicks)}</p>
-                  <p className="text-slate-700">{formatCompactNumber(ranking.impressions)}</p>
-                  <p className="text-slate-700">{formatPercent(ranking.ctr)}</p>
+                  <p className="text-slate-700">{formatPosition(ranking.position, locale)}</p>
+                  <p className="text-slate-700">{formatCompactNumber(ranking.clicks, locale)}</p>
+                  <p className="text-slate-700">{formatCompactNumber(ranking.impressions, locale)}</p>
+                  <p className="text-slate-700">{formatPercent(ranking.ctr, locale)}</p>
                   <p>
                     <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getTrendBadgeClass(ranking)}`}>
-                      {getTrendLabel(ranking)}
+                      {getTrendLabel(ranking, t, locale)}
                     </span>
                   </p>
                 </button>
@@ -263,10 +275,10 @@ export function SeoPerformanceSection({
                 disabled={currentPage === 1}
                 className="inline-flex items-center justify-center rounded-2xl border border-line px-3 py-2 text-sm font-semibold text-ink transition hover:bg-mist disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Previous
+                {t("seoPerformance.previous")}
               </button>
               <p className="text-sm text-slate-600">
-                Page {currentPage} of {totalPages}
+                {t("seoPerformance.pageOf", { current: currentPage, total: totalPages })}
               </p>
               <button
                 type="button"
@@ -274,7 +286,7 @@ export function SeoPerformanceSection({
                 disabled={currentPage === totalPages}
                 className="inline-flex items-center justify-center rounded-2xl border border-line px-3 py-2 text-sm font-semibold text-ink transition hover:bg-mist disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Next
+                {t("seoPerformance.next")}
               </button>
             </div>
           ) : null}
@@ -283,7 +295,7 @@ export function SeoPerformanceSection({
         <div className="space-y-4">
           <div className="rounded-[1.5rem] border border-line bg-white p-5">
             <label htmlFor="seo-performance-view" className="text-sm font-medium text-ink">
-              Chart view
+              {t("seoPerformance.chartView")}
             </label>
             <select
               id="seo-performance-view"
@@ -291,7 +303,7 @@ export function SeoPerformanceSection({
               onChange={(event) => setSelectedView(event.target.value)}
               className="mt-3 w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-accent"
             >
-              <option value="overall">Overall average position</option>
+              <option value="overall">{t("seoPerformance.overallAverage")}</option>
               {keywordRankings.map((ranking) => (
                 <option key={ranking.query} value={ranking.query}>
                   {ranking.query}
@@ -299,7 +311,7 @@ export function SeoPerformanceSection({
               ))}
             </select>
             <p className="mt-3 text-sm text-slate-600">
-              Select a keyword to inspect its daily position line, or keep the overall aggregated view.
+              {t("seoPerformance.chartHint")}
             </p>
           </div>
 

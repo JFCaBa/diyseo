@@ -14,7 +14,9 @@ export type ProxyFailure =
   | "wrong_site"
   | "forwarded_host_missing";
 
-export type ProxyResult = { ok: true; message: string } | { ok: false; reason: ProxyFailure; message: string };
+export type ProxyResult =
+  | { ok: true; message: string }
+  | { ok: false; reason: ProxyFailure; message: string; /** HTTP status, set for `bad_status` so the message can be localized. */ status?: number };
 
 const DEADLINE_MS = 8_000;
 const MAX_BODY_BYTES = 1_000_000;
@@ -163,7 +165,7 @@ export function evaluateProxyResponse({ status, body, host, siteId }: EvaluateIn
   }
 
   if (status !== 200) {
-    return { ok: false, reason: "bad_status", message: `${host}/blog returned HTTP ${status}.` };
+    return { ok: false, reason: "bad_status", message: `${host}/blog returned HTTP ${status}.`, status };
   }
 
   return evaluateBlogHtml({ body, host, siteId });

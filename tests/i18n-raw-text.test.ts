@@ -22,7 +22,13 @@ const MIGRATED_FILES: string[] = [
   "components/create-site-form.tsx",
   "app/invite/[token]/page.tsx",
   "app/sso/login/page.tsx",
-  "app/not-found.tsx"
+  "app/not-found.tsx",
+  // Task 3: site dashboard and install methods
+  "app/[siteId]/page.tsx",
+  "components/widget-install-card.tsx",
+  "components/install-reverse-proxy-panel.tsx",
+  "components/install-static-export-panel.tsx",
+  "components/seo-performance-section.tsx"
 ];
 
 /** Proper names and symbols that may appear untranslated. */

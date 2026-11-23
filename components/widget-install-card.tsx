@@ -5,7 +5,9 @@ import { useActionState, useEffect, useRef, useState } from "react";
 
 import { InstallReverseProxyPanel } from "@/components/install-reverse-proxy-panel";
 import { InstallStaticExportPanel } from "@/components/install-static-export-panel";
+import { useLocale, useLocalizeMessage, useT } from "@/components/i18n-provider";
 import { updateWidgetInstalledState, updateWidgetTheme, type ActionState } from "@/lib/actions";
+import { formatDate } from "@/lib/i18n/translate";
 
 type WidgetTheme = "light" | "dark";
 
@@ -45,6 +47,9 @@ export function WidgetInstallCard({
   changedSinceExport = false,
   id
 }: WidgetInstallCardProps) {
+  const t = useT();
+  const locale = useLocale();
+  const localizeMessage = useLocalizeMessage();
   const [method, setMethod] = useState<InstallMethod>(staticExportedAt && !proxyVerifiedAt ? "static" : "proxy");
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [theme, setTheme] = useState<WidgetTheme>(initialTheme === "dark" ? "dark" : "light");
@@ -62,11 +67,11 @@ export function WidgetInstallCard({
   data-theme="${theme}"
 ></script>`;
   const installedDateLabel = widgetInstalledAt
-    ? new Intl.DateTimeFormat("en-US", {
+    ? formatDate(widgetInstalledAt, locale, {
         year: "numeric",
         month: "long",
         day: "numeric"
-      }).format(new Date(widgetInstalledAt))
+      })
     : null;
 
   useEffect(() => {
@@ -87,9 +92,9 @@ export function WidgetInstallCard({
     <section id={id} className="rounded-3xl border border-line bg-white/90 p-6 shadow-panel scroll-mt-24">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-ink">Install Widget</h2>
+          <h2 className="text-lg font-semibold text-ink">{t("install.card.title")}</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Simple install: paste one snippet to embed the published blog widget for this site.
+            {t("install.card.intro")}
           </p>
         </div>
         <button
@@ -97,13 +102,13 @@ export function WidgetInstallCard({
           onClick={() => copyField("snippet", snippet)}
           className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
         >
-          {copiedField === "snippet" ? "Copied" : "Copy Snippet"}
+          {copiedField === "snippet" ? t("install.card.copied") : t("install.card.copySnippet")}
         </button>
       </div>
 
       <form ref={formRef} action={formAction} className="mt-6 grid gap-2">
         <label htmlFor="widgetTheme" className="text-sm font-medium text-ink">
-          Widget theme
+          {t("install.card.widgetTheme")}
         </label>
         <select
           id="widgetTheme"
@@ -116,51 +121,51 @@ export function WidgetInstallCard({
           }}
           className="w-full max-w-xs rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-accent"
         >
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
+          <option value="light">{t("install.card.light")}</option>
+          <option value="dark">{t("install.card.dark")}</option>
         </select>
-        <p className="text-xs text-slate-500">Default is Light. Change this if the host site uses a dark visual theme.</p>
-        {state.error ? <p className="text-xs text-red-600">{state.error}</p> : null}
-        {!state.error && state.success ? <p className="text-xs text-accent">{state.success}</p> : null}
+        <p className="text-xs text-slate-500">{t("install.card.themeHint")}</p>
+        {state.error ? <p className="text-xs text-red-600">{localizeMessage(state.error)}</p> : null}
+        {!state.error && state.success ? <p className="text-xs text-accent">{localizeMessage(state.success)}</p> : null}
       </form>
 
       <div className="mt-6 rounded-2xl border border-line bg-mist/50 p-4">
         <div>
-          <h3 className="text-sm font-semibold text-ink">SEO attribution</h3>
-          <p className="mt-1 text-sm text-slate-600">Choose the simple install now, or plan for stronger client-domain SEO later.</p>
+          <h3 className="text-sm font-semibold text-ink">{t("install.card.seoAttribution")}</h3>
+          <p className="mt-1 text-sm text-slate-600">{t("install.card.seoAttributionIntro")}</p>
         </div>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
           <div className="rounded-2xl border border-line bg-white/90 p-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-ink">Simple install</p>
+              <p className="text-sm font-semibold text-ink">{t("install.card.simpleInstall")}</p>
               <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
-                Available now
+                {t("install.card.availableNow")}
               </span>
             </div>
-            <p className="mt-2 text-sm text-slate-600">Paste the widget snippet. Fastest setup and good for showing the blog on the site.</p>
-            <p className="mt-2 text-xs text-slate-500">SEO note: attribution is limited because the content is rendered by JavaScript.</p>
+            <p className="mt-2 text-sm text-slate-600">{t("install.card.simpleInstallBody")}</p>
+            <p className="mt-2 text-xs text-slate-500">{t("install.card.simpleInstallNote")}</p>
           </div>
 
           <div className="rounded-2xl border border-dashed border-line bg-white/70 p-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-ink">SEO-optimized install</p>
+              <p className="text-sm font-semibold text-ink">{t("install.card.seoOptimized")}</p>
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Advanced
+                {t("install.card.advanced")}
               </span>
             </div>
             <p className="mt-2 text-sm text-slate-600">
-              Serve the blog under the client domain, for example `https://clientdomain.com/blog`.
+              {t("install.card.seoOptimizedBody")}
             </p>
-            <p className="mt-2 text-xs text-slate-500">SEO note: stronger attribution because Google sees the content on the client domain.</p>
+            <p className="mt-2 text-xs text-slate-500">{t("install.card.seoOptimizedNote")}</p>
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2" role="tablist" aria-label="SEO-optimized install method">
+        <div className="mt-4 grid gap-3 md:grid-cols-2" role="tablist" aria-label={t("install.card.methodAria")}>
           {(
             [
-              { id: "proxy", title: "Reverse proxy", text: "Serve blog routes through the client domain.", done: Boolean(proxyVerifiedAt) },
-              { id: "static", title: "Static export", text: "Publish generated pages directly to the client site.", done: Boolean(staticExportedAt) }
+              { id: "proxy", title: t("install.card.proxyTitle"), text: t("install.card.proxyText"), done: Boolean(proxyVerifiedAt) },
+              { id: "static", title: t("install.card.staticTitle"), text: t("install.card.staticText"), done: Boolean(staticExportedAt) }
             ] as const
           ).map((item) => (
             <button
@@ -177,7 +182,7 @@ export function WidgetInstallCard({
                 <p className="text-sm font-semibold text-ink">{item.title}</p>
                 {item.done ? (
                   <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
-                    {item.id === "proxy" ? "Verified" : "Exported"}
+                    {item.id === "proxy" ? t("install.card.verified") : t("install.card.exported")}
                   </span>
                 ) : null}
               </div>
@@ -201,23 +206,22 @@ export function WidgetInstallCard({
         <div className="mt-4 rounded-2xl border border-line bg-white/90 p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
-              <h4 className="text-sm font-semibold text-ink">WordPress plugin</h4>
+              <h4 className="text-sm font-semibold text-ink">{t("install.card.wordpressTitle")}</h4>
               <p className="mt-1 text-sm text-slate-600">
-                Sync this site&apos;s published articles into a WordPress site as native posts. Installs like any
-                WordPress plugin — no code required.
+                {t("install.card.wordpressBody")}
               </p>
             </div>
             <a
               href={PLUGIN_DOWNLOAD_URL}
               className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
             >
-              Download plugin (.zip)
+              {t("install.card.downloadPlugin")}
             </a>
           </div>
 
           <dl className="mt-4 grid gap-3 text-sm text-slate-600 md:grid-cols-2">
             <div>
-              <dt className="font-semibold text-ink">Base URL</dt>
+              <dt className="font-semibold text-ink">{t("install.card.baseUrl")}</dt>
               <dd className="mt-1 flex items-center gap-2">
                 <span className="break-all">{baseUrl}</span>
                 <button
@@ -225,12 +229,12 @@ export function WidgetInstallCard({
                   onClick={() => copyField("baseUrl", baseUrl)}
                   className="shrink-0 rounded-xl border border-line bg-white px-2.5 py-1 text-xs font-semibold text-ink transition hover:bg-mist"
                 >
-                  {copiedField === "baseUrl" ? "Copied" : "Copy"}
+                  {copiedField === "baseUrl" ? t("install.card.copied") : t("install.card.copy")}
                 </button>
               </dd>
             </div>
             <div>
-              <dt className="font-semibold text-ink">Site ID</dt>
+              <dt className="font-semibold text-ink">{t("install.card.siteId")}</dt>
               <dd className="mt-1 flex items-center gap-2">
                 <span className="break-all">{siteId}</span>
                 <button
@@ -238,46 +242,46 @@ export function WidgetInstallCard({
                   onClick={() => copyField("siteId", siteId)}
                   className="shrink-0 rounded-xl border border-line bg-white px-2.5 py-1 text-xs font-semibold text-ink transition hover:bg-mist"
                 >
-                  {copiedField === "siteId" ? "Copied" : "Copy"}
+                  {copiedField === "siteId" ? t("install.card.copied") : t("install.card.copy")}
                 </button>
               </dd>
             </div>
           </dl>
 
           <ol className="mt-4 grid gap-2 text-sm text-slate-600">
-            <li>1. Download the zip, then in WordPress go to Plugins → Add New → Upload Plugin, upload it, and activate.</li>
-            <li>2. Open Settings → DIYSEO Sync in WordPress.</li>
-            <li>3. Paste the Base URL and Site ID above.</li>
+            <li>{t("install.card.wpStep1")}</li>
+            <li>{t("install.card.wpStep2")}</li>
+            <li>{t("install.card.wpStep3")}</li>
             <li>
-              4. Create a Publishing API key on the{" "}
+              {t("install.card.wpStep4Before")}{" "}
               <Link
                 href={`/${encodeURIComponent(siteId)}/api`}
                 className="font-semibold text-accent underline-offset-2 hover:underline"
               >
-                Publishing API page
+                {t("install.card.wpStep4Link")}
               </Link>{" "}
-              and paste it as the API key.
+              {t("install.card.wpStep4After")}
             </li>
-            <li>5. Click Test connection, then Sync now.</li>
+            <li>{t("install.card.wpStep5")}</li>
           </ol>
         </div>
       </div>
 
       <dl className="mt-6 grid gap-3 text-sm text-slate-600 md:grid-cols-4">
         <div>
-          <dt className="font-semibold text-ink">embed.js URL</dt>
+          <dt className="font-semibold text-ink">{t("install.card.embedUrl")}</dt>
           <dd className="mt-1 break-all">{embedUrl}</dd>
         </div>
         <div>
-          <dt className="font-semibold text-ink">data-site</dt>
+          <dt className="font-semibold text-ink">{"data-site"}</dt>
           <dd className="mt-1 break-all">{siteId}</dd>
         </div>
         <div>
-          <dt className="font-semibold text-ink">data-base-path</dt>
-          <dd className="mt-1">/blog</dd>
+          <dt className="font-semibold text-ink">{"data-base-path"}</dt>
+          <dd className="mt-1">{"/blog"}</dd>
         </div>
         <div>
-          <dt className="font-semibold text-ink">data-theme</dt>
+          <dt className="font-semibold text-ink">{"data-theme"}</dt>
           <dd className="mt-1">{theme}</dd>
         </div>
       </dl>
@@ -289,11 +293,11 @@ export function WidgetInstallCard({
       <div className="mt-6 rounded-2xl border border-line bg-mist/60 p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-semibold text-ink">{widgetInstalledAt ? "Widget installed" : "Installation status"}</p>
+            <p className="text-sm font-semibold text-ink">{widgetInstalledAt ? t("install.card.widgetInstalled") : t("install.card.installationStatus")}</p>
             <p className="mt-1 text-sm text-slate-600">
               {widgetInstalledAt
-                ? `Marked installed on ${installedDateLabel}.`
-                : "Mark this complete after you place the snippet on your website."}
+                ? t("install.card.markedInstalled", { date: installedDateLabel ?? "" })
+                : t("install.card.markInstalledHint")}
             </p>
           </div>
           <form action={installFormAction}>
@@ -302,12 +306,12 @@ export function WidgetInstallCard({
               type="submit"
               className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-white"
             >
-              {widgetInstalledAt ? "Mark as not installed" : "Mark as installed"}
+              {widgetInstalledAt ? t("install.card.markNotInstalled") : t("install.card.markInstalled")}
             </button>
           </form>
         </div>
-        {installState.error ? <p className="mt-3 text-xs text-red-600">{installState.error}</p> : null}
-        {!installState.error && installState.success ? <p className="mt-3 text-xs text-accent">{installState.success}</p> : null}
+        {installState.error ? <p className="mt-3 text-xs text-red-600">{localizeMessage(installState.error)}</p> : null}
+        {!installState.error && installState.success ? <p className="mt-3 text-xs text-accent">{localizeMessage(installState.success)}</p> : null}
       </div>
     </section>
   );

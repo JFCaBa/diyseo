@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { WidgetInstallCard } from "@/components/widget-install-card";
 import { exportFingerprint, hasChangesSinceExport } from "@/lib/install-methods/export-status";
+import { getT } from "@/lib/i18n/server";
 import { prisma } from "@/lib/prisma";
 import { requireSitePage } from "@/lib/workspace-context";
 
@@ -23,6 +24,7 @@ type OnboardingStep = {
 
 export default async function DashboardPage({ params }: DashboardPageProps) {
   const { siteId } = await params;
+  const t = await getT();
   await requireSitePage(siteId);
   const [site, articleMetrics, keywordMetrics, recentArticles] = await Promise.all([
     prisma.siteProject.findUnique({
@@ -111,24 +113,24 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
 
   const onboardingSteps: OnboardingStep[] = [
     {
-      title: "1. Generate your first article",
-      description: "Create a draft from Brand DNA so the site has content to edit and publish.",
+      title: t("dashboard.step1Title"),
+      description: t("dashboard.step1Description"),
       completed: articleCounts.total > 0,
-      ctaLabel: "Generate article",
+      ctaLabel: t("dashboard.step1Cta"),
       ctaHref: `/${siteId}/articles`
     },
     {
-      title: "2. Publish it",
-      description: "Move at least one draft live so the public blog and widget have something to show.",
+      title: t("dashboard.step2Title"),
+      description: t("dashboard.step2Description"),
       completed: articleCounts.published > 0,
-      ctaLabel: "View articles",
+      ctaLabel: t("dashboard.step2Cta"),
       ctaHref: `/${siteId}/articles`
     },
     {
-      title: "3. Embed on your website",
-      description: "Copy the widget snippet and place it on your site once an article is published.",
+      title: t("dashboard.step3Title"),
+      description: t("dashboard.step3Description"),
       completed: Boolean(site.widgetInstalledAt),
-      ctaLabel: "Install widget",
+      ctaLabel: t("dashboard.step3Cta"),
       ctaHref: "#install-widget"
     }
   ];
@@ -139,21 +141,21 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   return (
     <section className="space-y-8">
       <PageHeader
-        title="Dashboard"
-        description={`Manage ${site.name} from one place: keep Brand DNA current, move articles from draft to published, and make installation obvious for first-time users.`}
+        title={t("dashboard.title")}
+        description={t("dashboard.description", { name: site.name })}
         action={
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href={`/${siteId}/brand-dna`}
               className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
             >
-              Edit Brand DNA
+              {t("dashboard.editBrandDna")}
             </Link>
             <Link
               href={`/${siteId}/articles`}
               className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
-              Generate article
+              {t("dashboard.generateArticle")}
             </Link>
           </div>
         }
@@ -162,24 +164,23 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       <section className="rounded-[2rem] border border-accent/20 bg-[linear-gradient(135deg,rgba(15,118,110,0.16),rgba(255,255,255,0.94)_42%,rgba(180,83,9,0.08))] p-6 shadow-panel">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
           <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Onboarding</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">Launch your first content loop</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">{t("dashboard.onboarding")}</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-ink">{t("dashboard.launchTitle")}</h2>
             <p className="mt-3 text-sm leading-6 text-slate-700">
-              Start with a generated article, publish one piece, then install the widget. The rest of the workflow can
-              stay manual and lightweight for now.
+              {t("dashboard.launchBody")}
             </p>
           </div>
           <div className="rounded-3xl border border-white/70 bg-white/80 px-5 py-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Completed</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("dashboard.completed")}</p>
             <p className="mt-2 text-3xl font-semibold text-ink">
               {completedOnboardingSteps}/{onboardingSteps.length}
             </p>
-            <p className="mt-1 text-sm text-slate-600">Current focus: {nextStep.title.replace(/^\d+\.\s*/, "")}</p>
+            <p className="mt-1 text-sm text-slate-600">{t("dashboard.currentFocus", { step: nextStep.title })}</p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-4 xl:grid-cols-3">
-          {onboardingSteps.map((step) => (
+          {onboardingSteps.map((step, index) => (
             <div key={step.title} className="rounded-3xl border border-white/70 bg-white/85 p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -190,7 +191,7 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
                   >
                     {step.completed ? "✓" : ""}
                   </span>
-                  <p className="font-semibold text-ink">{step.title}</p>
+                  <p className="font-semibold text-ink">{`${index + 1}. ${step.title}`}</p>
                 </div>
               </div>
               <p className="mt-3 text-sm leading-6 text-slate-600">{step.description}</p>
@@ -204,23 +205,23 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
-          <p className="text-sm text-slate-500">Published Articles</p>
+          <p className="text-sm text-slate-500">{t("dashboard.publishedArticles")}</p>
           <p className="mt-3 text-3xl font-semibold text-ink">{articleCounts.published}</p>
-          <p className="mt-2 text-sm text-slate-600">{articleCounts.draft} drafts still in progress.</p>
+          <p className="mt-2 text-sm text-slate-600">{t(articleCounts.draft === 1 ? "dashboard.draftsInProgressOne" : "dashboard.draftsInProgressOther", { count: articleCounts.draft })}</p>
         </div>
         <div className="rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
-          <p className="text-sm text-slate-500">Brand DNA Coverage</p>
+          <p className="text-sm text-slate-500">{t("dashboard.brandCoverage")}</p>
           <p className="mt-3 text-3xl font-semibold text-ink">{brandCompletion}%</p>
-          <p className="mt-2 text-sm text-slate-600">{completedBrandFields} of 9 fields are filled in.</p>
+          <p className="mt-2 text-sm text-slate-600">{t("dashboard.fieldsFilled", { count: completedBrandFields })}</p>
         </div>
         <div className="rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
-          <p className="text-sm text-slate-500">Keywords</p>
+          <p className="text-sm text-slate-500">{t("dashboard.keywords")}</p>
           <p className="mt-3 text-3xl font-semibold text-ink">{keywordCounts.total}</p>
-          <p className="mt-2 text-sm text-slate-600">{keywordCounts.used} already assigned to articles.</p>
+          <p className="mt-2 text-sm text-slate-600">{t(keywordCounts.used === 1 ? "dashboard.assignedOne" : "dashboard.assignedOther", { count: keywordCounts.used })}</p>
         </div>
         <div className="rounded-3xl border border-accent/30 bg-accent/10 p-6 shadow-panel">
-          <p className="text-sm text-slate-500">Next Best Step</p>
-          <p className="mt-3 text-xl font-semibold text-ink">{nextStep.title.replace(/^\d+\.\s*/, "")}</p>
+          <p className="text-sm text-slate-500">{t("dashboard.nextBestStep")}</p>
+          <p className="mt-3 text-xl font-semibold text-ink">{nextStep.title}</p>
           <Link href={nextStep.ctaHref} className="mt-3 inline-flex text-sm font-semibold text-accent hover:underline">
             {nextStep.ctaLabel}
           </Link>
@@ -231,13 +232,13 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         <section className="rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold text-ink">Publishing Overview</h2>
+              <h2 className="text-lg font-semibold text-ink">{t("dashboard.publishingOverview")}</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Move between writing, scheduling, publishing, and installation without losing context.
+                {t("dashboard.publishingOverviewBody")}
               </p>
             </div>
             <Link href={`/${siteId}/analytics`} className="text-sm font-semibold text-accent hover:underline">
-              View analytics
+              {t("dashboard.viewAnalytics")}
             </Link>
           </div>
 
@@ -246,22 +247,22 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
               href={`/${siteId}/articles`}
               className="rounded-2xl border border-line px-4 py-4 transition hover:border-accent hover:bg-mist"
             >
-              <p className="text-sm text-slate-500">Articles</p>
-              <p className="mt-2 font-semibold text-ink">{articleCounts.total} total articles</p>
+              <p className="text-sm text-slate-500">{t("dashboard.articles")}</p>
+              <p className="mt-2 font-semibold text-ink">{t(articleCounts.total === 1 ? "dashboard.totalArticlesOne" : "dashboard.totalArticlesOther", { count: articleCounts.total })}</p>
             </Link>
             <Link
               href={`/${siteId}/calendar`}
               className="rounded-2xl border border-line px-4 py-4 transition hover:border-accent hover:bg-mist"
             >
-              <p className="text-sm text-slate-500">Calendar</p>
-              <p className="mt-2 font-semibold text-ink">Schedule and reschedule by month</p>
+              <p className="text-sm text-slate-500">{t("dashboard.calendar")}</p>
+              <p className="mt-2 font-semibold text-ink">{t("dashboard.calendarBody")}</p>
             </Link>
             <Link
               href={`/${siteId}/keywords`}
               className="rounded-2xl border border-line px-4 py-4 transition hover:border-accent hover:bg-mist"
             >
-              <p className="text-sm text-slate-500">Keywords</p>
-              <p className="mt-2 font-semibold text-ink">Track topics and attach them to content</p>
+              <p className="text-sm text-slate-500">{t("dashboard.keywords")}</p>
+              <p className="mt-2 font-semibold text-ink">{t("dashboard.keywordsBody")}</p>
             </Link>
           </div>
         </section>
@@ -269,17 +270,17 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
         <section className="rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold text-ink">Recent Content</h2>
-              <p className="mt-1 text-sm text-slate-600">Pick up where you left off.</p>
+              <h2 className="text-lg font-semibold text-ink">{t("dashboard.recentContent")}</h2>
+              <p className="mt-1 text-sm text-slate-600">{t("dashboard.recentBody")}</p>
             </div>
             <Link href={`/${siteId}/articles`} className="text-sm font-semibold text-accent hover:underline">
-              Open articles
+              {t("dashboard.openArticles")}
             </Link>
           </div>
 
           {recentArticles.length === 0 ? (
             <p className="mt-6 rounded-2xl border border-dashed border-line px-4 py-6 text-sm text-slate-600">
-              No content yet. Start with Brand DNA, then generate your first article from the Articles screen.
+              {t("dashboard.noContent")}
             </p>
           ) : (
             <div className="mt-6 grid gap-3">
@@ -292,10 +293,10 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
                   <div>
                     <p className="font-semibold text-ink">{article.title}</p>
                     <p className="mt-1 text-sm text-slate-600">
-                      {article.status === "PUBLISHED" ? "Published article" : "Draft article"}
+                      {article.status === "PUBLISHED" ? t("dashboard.publishedArticle") : t("dashboard.draftArticle")}
                     </p>
                   </div>
-                  <span className="text-sm font-semibold text-accent">Edit</span>
+                  <span className="text-sm font-semibold text-accent">{t("dashboard.edit")}</span>
                 </Link>
               ))}
             </div>
@@ -306,13 +307,13 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
       <div className="rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-ink">Install Widget</h2>
+            <h2 className="text-lg font-semibold text-ink">{t("dashboard.installWidget")}</h2>
             <p className="mt-1 text-sm text-slate-600">
-              The embed snippet is ready now. Copy it once you have at least one published article.
+              {t("dashboard.installWidgetBody")}
             </p>
           </div>
           <Link href="#install-widget" className="inline-flex text-sm font-semibold text-accent hover:underline">
-            Jump to snippet
+            {t("dashboard.jumpToSnippet")}
           </Link>
         </div>
       </div>

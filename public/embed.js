@@ -33,6 +33,52 @@
     title: "Articles"
   };
 
+  // Same rule as resolveBlogLocale in lib/public-blog-i18n.ts (this script has
+  // no imports); both are tested against tests/fixtures/blog-locale-cases.ts.
+  // resolveLocale:start
+  function resolveLocale(value) {
+    var normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+    var names = ["spanish", "español", "espanol", "castellano"];
+
+    if (normalized === "es" || normalized.indexOf("es-") === 0 || normalized.indexOf("es_") === 0) {
+      return "es";
+    }
+
+    for (var i = 0; i < names.length; i++) {
+      if (normalized.indexOf(names[i]) === 0) {
+        return "es";
+      }
+    }
+
+    return "en";
+  }
+  // resolveLocale:end
+
+  var STRINGS = {
+    en: {
+      articles: "Articles",
+      loadingArticles: "Loading articles...",
+      noArticles: "No published articles are available yet for {name}.",
+      articlesError: "Unable to load articles right now.",
+      loadingArticle: "Loading article...",
+      articleNotFound: "Article not found.",
+      articleError: "Unable to load this article right now."
+    },
+    es: {
+      articles: "Artículos",
+      loadingArticles: "Cargando artículos...",
+      noArticles: "Todavía no hay artículos publicados de {name}.",
+      articlesError: "No se han podido cargar los artículos.",
+      loadingArticle: "Cargando artículo...",
+      articleNotFound: "Artículo no encontrado.",
+      articleError: "No se ha podido cargar este artículo."
+    }
+  };
+
+  function text(key) {
+    return STRINGS[resolveLocale(widgetConfig.contentLanguage)][key];
+  }
+
   if (!container) {
     container = document.createElement("div");
     container.id = "soro-widget-container";
@@ -248,7 +294,7 @@
     }
 
     try {
-      return new Intl.DateTimeFormat(widgetConfig.contentLanguage || undefined, {
+      return new Intl.DateTimeFormat(resolveLocale(widgetConfig.contentLanguage) === "es" ? "es-ES" : "en-US", {
         year: "numeric",
         month: "long",
         day: "numeric"
@@ -404,6 +450,11 @@
     resolved.siteId = trimString(siteId) || resolved.siteId;
     resolved.basePath = trimString(basePath).replace(/\/$/, "") || resolved.basePath;
     resolved.theme = trimString(themeOverride) || resolved.theme;
+    if (resolved.title === widgetConfig.title && resolved.title === STRINGS.en.articles) {
+      // The config gave no site name: use the generic title in the site's language.
+      resolved.title = STRINGS[resolveLocale(resolved.contentLanguage)].articles;
+    }
+
     resolved.title = trimString(titleOverride) || resolved.title;
 
     return resolved;
@@ -414,7 +465,7 @@
       return;
     }
 
-    container.setAttribute("lang", widgetConfig.contentLanguage || "en");
+    container.setAttribute("lang", resolveLocale(widgetConfig.contentLanguage));
     container.setAttribute("data-site-name", widgetConfig.siteName || "");
     container.setAttribute("data-theme", widgetConfig.theme || "default");
 
@@ -438,14 +489,14 @@
   }
 
   function renderList() {
-    renderState("Loading articles...", "soro-loading");
+    renderState(text("loadingArticles"), "soro-loading");
 
     fetchJson("/api/public/sites/" + encodeURIComponent(siteId) + "/articles")
       .then(function (payload) {
         var articles = payload && Array.isArray(payload.articles) ? payload.articles : [];
 
         if (!articles.length) {
-          renderState("No published articles are available yet for " + widgetConfig.siteName + ".");
+          renderState(text("noArticles").replace("{name}", widgetConfig.siteName));
           return;
         }
 
@@ -482,7 +533,7 @@
 
         renderShell(
           '<h2 class="soro-widget-title">' +
-            escapeHtml(widgetConfig.title || widgetConfig.siteName || "Articles") +
+            escapeHtml(widgetConfig.title || widgetConfig.siteName || text("articles")) +
             "</h2>" +
             '<ul class="soro-article-list">' +
             items +
@@ -499,12 +550,12 @@
         }
       })
       .catch(function () {
-        renderState("Unable to load articles right now.");
+        renderState(text("articlesError"));
       });
   }
 
   function renderDetail(slug) {
-    renderState("Loading article...", "soro-loading");
+    renderState(text("loadingArticle"), "soro-loading");
 
     fetchJson(
       "/api/public/sites/" +
@@ -516,7 +567,7 @@
         var article = payload && payload.article ? payload.article : null;
 
         if (!article) {
-          renderState("Article not found.");
+          renderState(text("articleNotFound"));
           return;
         }
 
@@ -549,11 +600,11 @@
       })
       .catch(function (error) {
         if (error && error.status === 404) {
-          renderState("Article not found.");
+          renderState(text("articleNotFound"));
           return;
         }
 
-        renderState("Unable to load this article right now.");
+        renderState(text("articleError"));
       });
   }
 

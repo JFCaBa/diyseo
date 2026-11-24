@@ -420,9 +420,9 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-sm">
-            {searchConsolePropertiesError ? <p className="text-red-600">{t("analytics.propertyLoadFailed", { error: searchConsolePropertiesErrorText })}</p> : null}
+            {searchConsolePropertiesError ? <p className="text-red-600">{t("analytics.propertyLoadFailed", { error: searchConsolePropertiesErrorText ?? "" })}</p> : null}
             {searchConsolePerformanceError ? (
-              <p className="text-red-600">{t("analytics.performanceLoadFailed", { error: searchConsolePerformanceErrorText })}</p>
+              <p className="text-red-600">{t("analytics.performanceLoadFailed", { error: searchConsolePerformanceErrorText ?? "" })}</p>
             ) : null}
 
             {!hasSearchConsoleAccess ? (
@@ -490,7 +490,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
         {searchedKeyword ? (
           <div className="mt-5 rounded-[1.5rem] border border-line bg-mist/60 p-5">
             {searchConsoleKeywordLookupError ? (
-              <p className="text-sm text-red-600">{t("analytics.lookupFailed", { error: searchConsoleKeywordLookupErrorText })}</p>
+              <p className="text-sm text-red-600">{t("analytics.lookupFailed", { error: searchConsoleKeywordLookupErrorText ?? "" })}</p>
             ) : searchConsoleKeywordLookup?.found ? (
               <>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{t("analytics.lookupResult")}</p>
@@ -593,7 +593,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
               <p className="text-sm text-red-600">
                 {liveSerpCheckError === "SERPER_API_KEY is not configured."
                   ? t("analytics.serpNotConfigured")
-                  : t("analytics.serpFailed", { error: liveSerpCheckErrorText })}
+                  : t("analytics.serpFailed", { error: liveSerpCheckErrorText ?? "" })}
               </p>
             ) : liveSerpCheck ? (
               <>

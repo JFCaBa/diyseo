@@ -553,6 +553,8 @@ export const es: Messages = {
     totalKeywords: "Palabras clave totales",
     statusNew: "Nueva",
     statusUsed: "Usada",
+    badgeNew: "NUEVA",
+    badgeUsed: "USADA",
     listTitle: "Palabras clave",
     listDescription: "Añade palabras clave aquí y asígnalas desde la pantalla de artículos al editar o revisar borradores.",
     pageOf: "Página {page} de {total}",
@@ -591,7 +593,9 @@ export const es: Messages = {
     more: "+{count} más",
     empty: "Sin contenido programado.",
     statusPublished: "Publicado",
-    statusDraft: "Borrador"
+    statusDraft: "Borrador",
+    badgePublished: "PUBLICADO",
+    badgeDraft: "BORRADOR"
   },
   notices: {
     articleDeleted: "Artículo eliminado.",

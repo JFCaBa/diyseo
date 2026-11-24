@@ -140,7 +140,7 @@ export async function CalendarMonthView({ articles, month, returnToBase, siteId 
                     <Link href={`/${siteId}/articles/${visibleArticle.id}`} className="font-semibold text-ink hover:text-accent">
                       {visibleArticle.title}
                     </Link>
-                    <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{visibleArticle.status === "PUBLISHED" ? t("calendar.statusPublished") : t("calendar.statusDraft")}</p>
+                    <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{visibleArticle.status === "PUBLISHED" ? t("calendar.badgePublished") : t("calendar.badgeDraft")}</p>
                     <form action={updateDateForSite} className="mt-3 grid gap-2">
                       <input type="hidden" name="articleId" value={visibleArticle.id} />
                       <input type="hidden" name="returnTo" value={returnTo} />

@@ -553,6 +553,8 @@ export const en = {
     totalKeywords: "Total Keywords",
     statusNew: "New",
     statusUsed: "Used",
+    badgeNew: "NEW",
+    badgeUsed: "USED",
     listTitle: "Keywords",
     listDescription: "Add keywords here, then assign them from the Articles screen while editing or reviewing drafts.",
     pageOf: "Page {page} of {total}",
@@ -591,7 +593,9 @@ export const en = {
     more: "+{count} more",
     empty: "No scheduled content.",
     statusPublished: "Published",
-    statusDraft: "Draft"
+    statusDraft: "Draft",
+    badgePublished: "PUBLISHED",
+    badgeDraft: "DRAFT"
   },
   // Static success messages returned by lib/actions.ts, reverse-looked-up like `errors`.
   notices: {

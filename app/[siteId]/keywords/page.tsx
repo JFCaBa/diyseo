@@ -152,7 +152,7 @@ export default async function KeywordsPage({ params, searchParams }: KeywordsPag
                             : "border border-dashed border-line bg-white text-slate-600"
                         }`}
                       >
-                        {keyword.status === "USED" ? t("keywords.statusUsed") : t("keywords.statusNew")}
+                        {keyword.status === "USED" ? t("keywords.badgeUsed") : t("keywords.badgeNew")}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">

@@ -2,18 +2,9 @@ import type { Prisma } from "@prisma/client";
 
 import { effectivePlan, limitsFor, monthStartUtc } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
+import { QuotaError } from "@/lib/quota-error";
 
-/** A limit that blocks the action. Its message is shown to the user as is. */
-export class QuotaError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "QuotaError";
-  }
-}
-
-export function isQuotaError(error: unknown): error is QuotaError {
-  return error instanceof QuotaError;
-}
+export { QuotaError, isQuotaError } from "@/lib/quota-error";
 
 /**
  * A reservation that was never committed (the process died mid-generation)
@@ -61,12 +52,16 @@ function articleWhere(workspaceId: string, now: Date): Prisma.AiUsageWhereInput 
   };
 }
 
-function noCreditMessage(plan: string, limit: number) {
+function noCreditError(plan: string, limit: number) {
   if (limit === 0) {
-    return "Your trial has ended. Choose a plan at /billing to keep generating articles.";
+    return new QuotaError("Your trial has ended. Choose a plan at /billing to keep generating articles.", "trialEndedArticles");
   }
 
-  return `You have used all ${limit} AI articles included in your ${plan.toLowerCase()} plan this month. Upgrade at /billing or wait until next month.`;
+  return new QuotaError(
+    `You have used all ${limit} AI articles included in your ${plan.toLowerCase()} plan this month. Upgrade at /billing or wait until next month.`,
+    "articlesExhausted",
+    { limit, plan: plan.toLowerCase() }
+  );
 }
 
 /**
@@ -85,17 +80,15 @@ export async function reserveArticleCredit(
 
     if (limits) {
       if (input.kind === "TRANSLATION" && !limits.translations) {
-        throw new QuotaError(
-          limits.articlesPerMonth === 0
-            ? noCreditMessage(plan, 0)
-            : "AI translations are included in the Pro and Agency plans. Upgrade at /billing."
-        );
+        throw limits.articlesPerMonth === 0
+          ? noCreditError(plan, 0)
+          : new QuotaError("AI translations are included in the Pro and Agency plans. Upgrade at /billing.", "translationsNotIncluded");
       }
 
       const used = await tx.aiUsage.count({ where: articleWhere(input.workspaceId, now) });
 
       if (used >= limits.articlesPerMonth) {
-        throw new QuotaError(noCreditMessage(plan, limits.articlesPerMonth));
+        throw noCreditError(plan, limits.articlesPerMonth);
       }
     }
 
@@ -124,7 +117,7 @@ export async function commitArticleCredit(tx: Tx, usageId: string, now: Date = n
     const { plan, limits } = await limitsInTx(tx, usage.workspaceId, now);
 
     if (limits && (await tx.aiUsage.count({ where: articleWhere(usage.workspaceId, now) })) >= limits.articlesPerMonth) {
-      throw new QuotaError(noCreditMessage(plan, limits.articlesPerMonth));
+      throw noCreditError(plan, limits.articlesPerMonth);
     }
   }
 
@@ -148,7 +141,7 @@ export async function assertHasArticleCredit(workspaceId: string, now: Date = ne
   const { plan, limits } = await limitsInTx(prisma, workspaceId, now);
 
   if (limits && (await prisma.aiUsage.count({ where: articleWhere(workspaceId, now) })) >= limits.articlesPerMonth) {
-    throw new QuotaError(noCreditMessage(plan, limits.articlesPerMonth));
+    throw noCreditError(plan, limits.articlesPerMonth);
   }
 }
 
@@ -165,11 +158,13 @@ export async function withSiteSlot<T>(workspaceId: string, fn: (tx: Tx) => Promi
       const sites = await tx.siteProject.count({ where: { workspaceId } });
 
       if (sites >= limits.sites) {
-        throw new QuotaError(
-          limits.sites === 0
-            ? "Your trial has ended. Choose a plan at /billing to add sites."
-            : `Your ${plan.toLowerCase()} plan includes ${limits.sites} site${limits.sites === 1 ? "" : "s"}. Upgrade at /billing to add more.`
-        );
+        throw limits.sites === 0
+          ? new QuotaError("Your trial has ended. Choose a plan at /billing to add sites.", "trialEndedSites")
+          : new QuotaError(
+              `Your ${plan.toLowerCase()} plan includes ${limits.sites} site${limits.sites === 1 ? "" : "s"}. Upgrade at /billing to add more.`,
+              "sitesLimit",
+              { limit: limits.sites, plan: plan.toLowerCase() }
+            );
       }
     }
 

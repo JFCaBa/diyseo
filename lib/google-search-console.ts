@@ -1,3 +1,4 @@
+import { ProviderHttpError } from "@/lib/provider-error";
 import { prisma } from "@/lib/prisma";
 
 export const GOOGLE_SEARCH_CONSOLE_READONLY_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
@@ -363,7 +364,7 @@ async function refreshGoogleAccessToken(account: {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Google token refresh failed: ${response.status} ${errorText}`);
+    throw new ProviderHttpError("googleRefresh", response.status, errorText, `Google token refresh failed: ${response.status} ${errorText}`);
   }
 
   const payload = (await response.json()) as GoogleTokenRefreshResponse;
@@ -455,7 +456,7 @@ export async function listSearchConsolePropertiesForUser(userId: string, siteDom
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Search Console sites.list failed: ${response.status} ${errorText}`);
+    throw new ProviderHttpError("sitesList", response.status, errorText, `Search Console sites.list failed: ${response.status} ${errorText}`);
   }
 
   const payload = (await response.json()) as SearchConsoleSitesResponse;
@@ -508,7 +509,7 @@ async function runSearchAnalyticsQuery(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Search Console searchAnalytics.query failed: ${response.status} ${errorText}`);
+    throw new ProviderHttpError("searchAnalyticsQuery", response.status, errorText, `Search Console searchAnalytics.query failed: ${response.status} ${errorText}`);
   }
 
   return (await response.json()) as SearchAnalyticsQueryResponse;

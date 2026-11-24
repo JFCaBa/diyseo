@@ -119,3 +119,80 @@ test("stored post errors: unknown-result wrapper is translated, Meta text stays 
   assert.equal(localizeStoredPostError(es, lm, "(#200) Permissions error"), "(#200) Permissions error");
   assert.equal(localizeStoredPostError(en, createLocalizeMessage("en"), "Unknown result: x"), "Unknown result: x");
 });
+
+import { localizeProviderError } from "@/lib/analytics-errors";
+import { createLocalizeMessage } from "@/lib/i18n/translate";
+import { ProviderHttpError } from "@/lib/provider-error";
+
+test("provider HTTP errors: English equals the original message, Spanish is translated and keeps status", () => {
+  const cases = [
+    new ProviderHttpError("googleRefresh", 400, "invalid_grant", "Google token refresh failed: 400 invalid_grant"),
+    new ProviderHttpError("sitesList", 403, "denied", "Search Console sites.list failed: 403 denied"),
+    new ProviderHttpError("searchAnalyticsQuery", 500, "boom", "Search Console searchAnalytics.query failed: 500 boom"),
+    new ProviderHttpError("serperSearch", 429, "slow down", "Serper search failed: 429 slow down")
+  ];
+  for (const error of cases) {
+    assert.equal(localizeProviderError(en, createLocalizeMessage("en"), error, "x"), error.message);
+    const spanish = localizeProviderError(es, createLocalizeMessage("es"), error, "x");
+    assert.notEqual(spanish, error.message);
+    assert.ok(spanish.includes(String(error.status)));
+    assert.ok(spanish.includes(error.detail));
+  }
+});
+
+test("provider errors: static lib errors are translated by catalog, unknown errors pass through", () => {
+  const es2 = createLocalizeMessage("es");
+  assert.match(localizeProviderError(es, es2, new Error("Google OAuth credentials are not configured."), "x"), /Google OAuth/);
+  assert.notEqual(localizeProviderError(es, es2, new Error("Google OAuth credentials are not configured."), "x"), "Google OAuth credentials are not configured.");
+  assert.equal(localizeProviderError(es, es2, new Error("weird thing"), "x"), "weird thing");
+  assert.equal(localizeProviderError(es, es2, "not an error", "fallback"), "fallback");
+});
+
+import { localizeQuotaError } from "@/lib/quota-errors";
+import { QuotaError } from "@/lib/quota-error";
+
+test("quota errors: English output equals the original message, Spanish differs and keeps plan and limit", () => {
+  const lm = createLocalizeMessage("es");
+  const cases = [
+    new QuotaError("Your trial has ended. Choose a plan at /billing to keep generating articles.", "trialEndedArticles"),
+    new QuotaError(
+      "You have used all 12 AI articles included in your starter plan this month. Upgrade at /billing or wait until next month.",
+      "articlesExhausted",
+      { limit: 12, plan: "starter" }
+    ),
+    new QuotaError("AI translations are included in the Pro and Agency plans. Upgrade at /billing.", "translationsNotIncluded"),
+    new QuotaError("Your trial has ended. Choose a plan at /billing to add sites.", "trialEndedSites"),
+    new QuotaError("Your starter plan includes 1 site. Upgrade at /billing to add more.", "sitesLimit", { limit: 1, plan: "starter" }),
+    new QuotaError("Your pro plan includes 3 sites. Upgrade at /billing to add more.", "sitesLimit", { limit: 3, plan: "pro" })
+  ];
+  for (const error of cases) {
+    assert.equal(localizeQuotaError(en, createLocalizeMessage("en"), error), error.message);
+    assert.notEqual(localizeQuotaError(es, lm, error), error.message);
+  }
+  assert.match(localizeQuotaError(es, lm, cases[1]), /12/);
+  assert.match(localizeQuotaError(es, lm, cases[1]), /starter/);
+  assert.match(localizeQuotaError(es, lm, cases[5]), /3 sitios/);
+  assert.match(localizeQuotaError(es, lm, cases[4]), /1 sitio\b/);
+});
+
+test("quota errors: other errors go through the static catalog, non-errors give an empty string", () => {
+  const lm = createLocalizeMessage("es");
+  assert.equal(localizeQuotaError(es, lm, new Error("odd")), "odd");
+  assert.equal(localizeQuotaError(es, lm, "nope"), "");
+});
+
+test("team: the member-limit and already-member texts keep their runtime values", () => {
+  assert.equal(en("team.alreadyMember", { email: "a@b.co" }), "a@b.co is already on this team.");
+  assert.match(es("team.alreadyMember", { email: "a@b.co" }), /a@b\.co/);
+  assert.match(es("team.limitOther", { limit: 3, billing: "x" }), /3/);
+  assert.match(es("team.limitOne", { limit: 1, billing: "x" }), /1 miembro\b/);
+});
+
+import { formatPriceGbp } from "@/lib/i18n/translate";
+import { es as esMessages } from "@/lib/i18n/messages/es";
+
+test("prices: English keeps £29, Spanish uses the narrow symbol, and the Spanish plan text matches the formatter", () => {
+  assert.equal(formatPriceGbp(29, "en"), "£29");
+  assert.equal(formatPriceGbp(29, "es").replace(/\s/g, " "), "29 £");
+  assert.ok(esMessages.billing.plans.agency.f1.includes(formatPriceGbp(15, "es").replace(/\s/g, " ")));
+});

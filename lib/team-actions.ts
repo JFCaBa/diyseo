@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { getAppOrigin } from "@/lib/app-origin";
 import { auth } from "@/lib/auth";
 import { effectivePlan } from "@/lib/entitlements";
+import { getT } from "@/lib/i18n/server";
 import { INVITE_RATE_LIMITED, inviteAllowed } from "@/lib/invite-limits";
 import { sendInviteEmail } from "@/lib/mailer";
 import { prisma } from "@/lib/prisma";
@@ -65,7 +66,7 @@ export async function inviteMember(_prevState: TeamActionState, formData: FormDa
   if (!workspace) return { error: RETRY_MESSAGE };
 
   if ("error" in result) {
-    if (result.error === "already_member") return { error: `${email} is already on this team.` };
+    if (result.error === "already_member") return { error: (await getT())("team.alreadyMember", { email }) };
     return { limit: memberLimit(effectivePlan(workspace, now)) ?? 0 };
   }
 

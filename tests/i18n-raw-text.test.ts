@@ -1,58 +1,27 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import ts from "typescript";
 
-/** Files already moved onto lib/i18n: they must not contain raw English UI text. Append-only per task. */
-const MIGRATED_FILES: string[] = [
-  "components/locale-switcher.tsx",
-  "components/sidebar-nav.tsx",
-  // Task 2: app shell and onboarding
-  "app/[siteId]/layout.tsx",
-  "components/app-i18n.tsx",
-  "components/site-selector.tsx",
-  "components/auth-buttons.tsx",
-  "components/page-header.tsx",
-  "components/empty-state.tsx",
-  "components/blog-only.tsx",
-  "components/standalone-page.tsx",
-  "components/satellite-page.tsx",
-  "app/new-site/page.tsx",
-  "components/create-site-form.tsx",
-  "app/invite/[token]/page.tsx",
-  "app/sso/login/page.tsx",
-  "app/not-found.tsx",
-  // Task 3: site dashboard and install methods
-  "app/[siteId]/page.tsx",
-  "components/widget-install-card.tsx",
-  "components/install-reverse-proxy-panel.tsx",
-  "components/install-static-export-panel.tsx",
-  "components/seo-performance-section.tsx",
-  // Task 4: Brand DNA
-  "app/[siteId]/brand-dna/page.tsx",
-  "components/brand-dna-form.tsx",
-  "app/api/internal/sites/[siteId]/brand-dna/generate/route.ts",
-  // Task 5: articles list, create, generate, preview
-  "app/[siteId]/articles/page.tsx",
-  "app/[siteId]/articles/new/page.tsx",
-  "components/article-create-form.tsx",
-  "components/article-generation-form.tsx",
-  "components/article-keyword-assignment.tsx",
-  "components/article-status-toggle.tsx",
-  "components/article-delete-button.tsx",
-  "app/[siteId]/preview/page.tsx",
-  // Task 6: article editor, translations, social posts
-  "app/[siteId]/articles/[articleId]/page.tsx",
-  "components/article-editor-form.tsx",
-  "components/article-translation-form.tsx",
-  "components/social-posts-panel.tsx",
-  // Task 7: keywords and calendar
-  "app/[siteId]/keywords/page.tsx",
-  "components/create-keyword-form.tsx",
-  "components/suggested-keywords.tsx",
-  "app/[siteId]/calendar/page.tsx",
-  "components/calendar-month-view.tsx"
+/**
+ * Every `.tsx` under app/ and components/ is scanned for raw English UI text, so new screens are audited
+ * automatically. A file belongs here only with a reason: the surface is out of scope for the signed-in
+ * UI translation, or it is a known gap marked `TODO(i18n)`.
+ */
+const IGNORED_FILES: string[] = [
+  // Out of scope: the operator panel is English only (global, gated by ADMIN_EMAILS).
+  "app/admin/",
+  "components/admin-plan-actions.tsx",
+  "components/admin-shell.tsx",
+  // Out of scope: the public blog and its widget demo follow the site's content language (lib/public-blog-i18n.ts, phase 1).
+  "app/blog/",
+  // Out of scope: marketing landing page and its components.
+  "app/page.tsx",
+  "components/landing/",
+  // Out of scope: legal pages.
+  "app/privacy/",
+  "app/terms/"
 ];
 
 /** Proper names and symbols that may appear untranslated. */
@@ -154,12 +123,42 @@ test("the scanner flags JSX text and text attributes, and skips allowed terms an
   ]);
 });
 
-test("migrated files contain no raw English UI text", () => {
+function scannedFiles(root: string): string[] {
+  const out: string[] = [];
+  for (const dir of ["app", "components"]) {
+    for (const entry of readdirSync(path.join(root, dir), { recursive: true, withFileTypes: true })) {
+      if (!entry.isFile() || !entry.name.endsWith(".tsx")) continue;
+      out.push(path.posix.join(dir, path.relative(path.join(root, dir), path.join(entry.parentPath, entry.name)).split(path.sep).join("/")));
+    }
+  }
+  return out.sort();
+}
+
+test("every screen under app/ and components/ is free of raw English UI text, or listed in IGNORED_FILES", () => {
   const root = path.resolve(__dirname, "..");
+  const files = scannedFiles(root);
+  assert.ok(files.length > 50, "expected to find the app's tsx files");
+  const stale = IGNORED_FILES.filter((entry) => !files.some((file) => file === entry || file.startsWith(entry)));
+  assert.deepEqual(stale, [], `IGNORED_FILES entries that match no file:\n${stale.join("\n")}`);
   const problems: string[] = [];
-  for (const file of MIGRATED_FILES) {
+  for (const file of files) {
+    if (IGNORED_FILES.some((entry) => file === entry || file.startsWith(entry))) continue;
     const source = readFileSync(path.join(root, file), "utf8");
     for (const text of collectRawText(file, source)) problems.push(`${file}: ${text}`);
   }
   assert.deepEqual(problems, [], `raw text left:\n${problems.join("\n")}`);
+});
+
+// Consenso D3: /billing and /team render client forms through StandalonePage when the workspace has
+// no site, outside the [siteId] layout's provider; without one they fell back to English.
+test("signed-in pages outside the [siteId] layout mount the i18n provider", () => {
+  const root = path.join(__dirname, "..");
+  for (const file of ["components/standalone-page.tsx", "app/new-site/page.tsx"]) {
+    assert.match(readFileSync(path.join(root, file), "utf8"), /<AppI18n>/, file);
+  }
+});
+
+test("the analytics loading fallback is not an async server component", () => {
+  const source = readFileSync(path.join(__dirname, "..", "app/[siteId]/analytics/loading.tsx"), "utf8");
+  assert.doesNotMatch(source, /export default async function/);
 });

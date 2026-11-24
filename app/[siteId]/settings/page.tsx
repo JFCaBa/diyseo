@@ -10,6 +10,7 @@ import { SiteSocialConnectionForm } from "@/components/site-social-connection-fo
 import { SiteTranslationSettingsForm } from "@/components/site-translation-settings-form";
 import { SiteTransferForm } from "@/components/site-transfer-form";
 import { auth } from "@/lib/auth";
+import { getT } from "@/lib/i18n/server";
 import { prisma } from "@/lib/prisma";
 import { requireSitePage } from "@/lib/workspace-context";
 
@@ -30,6 +31,7 @@ function formatDisplayDomain(value: string) {
 export default async function SiteSettingsPage({ params }: SiteSettingsPageProps) {
   const { siteId } = await params;
   const { role } = await requireSitePage(siteId);
+  const t = await getT();
   const session = await auth();
 
   const workspaceId = session?.user?.workspaceId;
@@ -72,14 +74,14 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
   return (
     <section className="space-y-8">
       <PageHeader
-        title="Settings"
-        description="Manage your workspace sites, ownership transfers, and add new websites without leaving the normal admin shell."
+        title={t("settings.title")}
+        description={t("settings.description")}
         action={
           <Link
             href="/new-site"
             className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
           >
-            Add Website
+            {t("settings.addWebsite")}
           </Link>
         }
       />
@@ -87,32 +89,31 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
       <section className="rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Workspace</p>
-            <h2 className="mt-2 text-2xl font-semibold text-ink">{workspace?.name ?? "My Workspace"}</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">{t("settings.workspaceEyebrow")}</p>
+            <h2 className="mt-2 text-2xl font-semibold text-ink">{workspace?.name ?? t("settings.defaultWorkspaceName")}</h2>
             <p className="mt-2 text-sm text-slate-600">
-              Open a site, transfer ownership when needed, or add another website. Public site identity and existing
-              embeds stay unchanged after transfer.
+              {t("settings.sitesIntro")}
             </p>
           </div>
           <Link
             href="/new-site"
             className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
           >
-            Add Website
+            {t("settings.addWebsite")}
           </Link>
         </div>
 
         {sites.length === 0 ? (
           <div className="mt-6">
             <EmptyState
-              title="No sites yet"
-              description="Create your first site to unlock onboarding, Brand DNA, article workflows, analytics, and the public blog."
+              title={t("settings.emptyTitle")}
+              description={t("settings.emptyDescription")}
               action={
                 <Link
                   href="/new-site"
                   className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
-                  Add Website
+                  {t("settings.addWebsite")}
                 </Link>
               }
             />
@@ -120,9 +121,9 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
         ) : (
           <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-line">
             <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto] gap-3 bg-mist px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <p>Site</p>
-              <p>Domain</p>
-              <p className="text-right">Actions</p>
+              <p>{t("settings.colSite")}</p>
+              <p>{t("settings.colDomain")}</p>
+              <p className="text-right">{t("settings.colActions")}</p>
             </div>
             <div className="divide-y divide-line">
               {sites.map((site) => (
@@ -139,7 +140,7 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
                         href={`/${site.id}`}
                         className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-medium text-accent transition hover:bg-mist"
                       >
-                        Open site
+                        {t("settings.openSite")}
                       </Link>
                       {role === "OWNER" ? (
                         <>
@@ -179,10 +180,10 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
 
       <section className="rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
         <div className="max-w-3xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Publishing API</p>
-          <h2 className="mt-2 text-2xl font-semibold text-ink">API access</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">{t("settings.apiEyebrow")}</p>
+          <h2 className="mt-2 text-2xl font-semibold text-ink">{t("settings.apiTitle")}</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Manage site publishing API keys and use the stable article creation endpoint from the dedicated API page.
+            {t("settings.apiDescription")}
           </p>
         </div>
 
@@ -191,7 +192,7 @@ export default async function SiteSettingsPage({ params }: SiteSettingsPageProps
             href={`/${siteId}/api`}
             className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
-            Open API page
+            {t("settings.openApiPage")}
           </Link>
         </div>
       </section>

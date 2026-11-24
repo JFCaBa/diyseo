@@ -1,16 +1,16 @@
 import { redirect } from "next/navigation";
 
 import { ChangeRoleButton, RemoveMemberButton, RevokeInviteButton, TeamInviteForm } from "@/components/team-forms";
+import { getT, getUiLocale } from "@/lib/i18n/server";
+import { formatDateMedium } from "@/lib/i18n/translate";
 import { prisma } from "@/lib/prisma";
 import { listTeam } from "@/lib/teams";
 import { requireWorkspace } from "@/lib/workspace-context";
 
-function formatDate(value: Date) {
-  return value.toLocaleDateString("en-GB", { dateStyle: "medium" });
-}
-
 /** The team page body, rendered inside the site layout (or standalone when the workspace has no site). */
 export async function TeamPageContent() {
+  const t = await getT();
+  const locale = await getUiLocale();
   const member = await requireWorkspace().catch(() => null);
 
   if (!member) {
@@ -35,16 +35,14 @@ export async function TeamPageContent() {
   return (
     <div className="mx-auto max-w-5xl">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Team</p>
+        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">{t("nav.team")}</p>
         <h1 className="mt-2 text-3xl font-semibold text-ink">{workspace.name}</h1>
       </div>
 
       {isOwner ? (
         <section className="mt-8 rounded-2xl border border-line bg-white px-5 py-5">
-          <h2 className="text-lg font-semibold text-ink">Invite a teammate</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            They sign in with Google using this email and get access to every site in this workspace.
-          </p>
+          <h2 className="text-lg font-semibold text-ink">{t("team.inviteTitle")}</h2>
+          <p className="mt-1 text-sm text-slate-600">{t("team.inviteIntro")}</p>
           <div className="mt-4">
             <TeamInviteForm />
           </div>
@@ -52,7 +50,7 @@ export async function TeamPageContent() {
       ) : null}
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold text-ink">Members</h2>
+        <h2 className="text-lg font-semibold text-ink">{t("team.members")}</h2>
         <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-white">
           {team.members.map((person) => (
             <li key={person.userId} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
@@ -62,7 +60,11 @@ export async function TeamPageContent() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                  {person.role === "MEMBER" ? "Member" : person.userId === team.primaryOwnerId && team.members.some((m) => m.role === "OWNER" && m.userId !== team.primaryOwnerId) ? "Main owner" : "Owner"}
+                  {person.role === "MEMBER"
+                    ? t("team.roleMember")
+                    : person.userId === team.primaryOwnerId && team.members.some((m) => m.role === "OWNER" && m.userId !== team.primaryOwnerId)
+                      ? t("team.roleMainOwner")
+                      : t("team.roleOwner")}
                 </span>
                 {isPrimary && person.role === "MEMBER" ? (
                   <ChangeRoleButton userId={person.userId} role="OWNER" label={person.name || person.email} />
@@ -79,7 +81,7 @@ export async function TeamPageContent() {
 
       {team.invites.length > 0 ? (
         <section className="mt-8">
-          <h2 className="text-lg font-semibold text-ink">Invites</h2>
+          <h2 className="text-lg font-semibold text-ink">{t("team.invites")}</h2>
           <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-white">
             {team.invites.map((invite) => {
               const expired = invite.expiresAt.getTime() <= now.getTime();
@@ -89,7 +91,7 @@ export async function TeamPageContent() {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-ink">{invite.email}</p>
                     <p className="text-xs text-slate-600">
-                      {expired ? `Expired ${formatDate(invite.expiresAt)}` : `Pending, expires ${formatDate(invite.expiresAt)}`}
+                      {t(expired ? "team.expired" : "team.pending", { date: formatDateMedium(invite.expiresAt, locale) })}
                     </p>
                   </div>
                   {isOwner ? <RevokeInviteButton inviteId={invite.id} /> : null}
@@ -98,7 +100,7 @@ export async function TeamPageContent() {
             })}
           </ul>
           {isOwner ? (
-            <p className="mt-2 text-xs text-slate-600">To send a fresh link, invite the same email again.</p>
+            <p className="mt-2 text-xs text-slate-600">{t("team.freshLink")}</p>
           ) : null}
         </section>
       ) : null}

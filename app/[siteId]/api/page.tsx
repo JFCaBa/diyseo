@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { SitePublishingApiKeysForm } from "@/components/site-publishing-api-keys-form";
 import { buildPublishingApiUrl } from "@/lib/app-origin";
 import { auth } from "@/lib/auth";
+import { getT } from "@/lib/i18n/server";
 import { prisma } from "@/lib/prisma";
 import { requireSitePage } from "@/lib/workspace-context";
 
@@ -17,6 +18,7 @@ type SiteApiPageProps = {
 export default async function SiteApiPage({ params }: SiteApiPageProps) {
   const { siteId } = await params;
   await requireSitePage(siteId);
+  const t = await getT();
   const session = await auth();
 
   const workspaceId = session?.user?.workspaceId;
@@ -56,14 +58,14 @@ export default async function SiteApiPage({ params }: SiteApiPageProps) {
     <section className="space-y-8">
       <PageHeader
         eyebrow="API"
-        title="Publishing API"
-        description="Create articles in this site from external tools using a site API key."
+        title={t("settings.apiEyebrow")}
+        description={t("apiKeys.pageDescription")}
         action={
           <Link
             href={`/${siteId}/settings`}
             className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
           >
-            Open Settings
+            {t("apiKeys.openSettings")}
           </Link>
         }
       />

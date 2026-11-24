@@ -202,7 +202,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
 
         {articles.length === 0 ? (
           <div className={cn("mt-10 rounded-3xl border border-dashed px-6 py-10 text-center", theme.empty)}>
-            <p className={cn("text-lg font-semibold", theme.title)}>{blog.emptyTitle}</p>
+            <p className={cn("text-lg font-semibold", theme.title)}>{t("articles.preview.emptyTitle")}</p>
             <p className={cn("mt-2 text-sm", theme.muted)}>{t("articles.preview.emptyBody")}</p>
           </div>
         ) : (

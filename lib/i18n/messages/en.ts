@@ -443,6 +443,7 @@ export const en = {
       backToIndex: "← Back to Preview Index",
       eyebrow: "Public Blog Preview",
       intro: "This is the same published content, rendered inside the admin app so you can preview without leaving the shell.",
+      emptyTitle: "No articles published yet.",
       emptyBody: "Publish an article to preview the public blog here."
     }
   },
@@ -592,8 +593,6 @@ export const en = {
     clear: "Clear",
     more: "+{count} more",
     empty: "No scheduled content.",
-    statusPublished: "Published",
-    statusDraft: "Draft",
     badgePublished: "PUBLISHED",
     badgeDraft: "DRAFT"
   },

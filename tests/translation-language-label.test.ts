@@ -3,10 +3,10 @@ import { test } from "node:test";
 
 import { getLocalizedTranslationLanguageLabel, TRANSLATION_LANGUAGE_OPTIONS } from "@/lib/translations";
 
-test("Spanish shows language names in Spanish", () => {
-  assert.equal(getLocalizedTranslationLanguageLabel("en", "es"), "inglés");
-  assert.equal(getLocalizedTranslationLanguageLabel("es", "es"), "español");
-  assert.equal(getLocalizedTranslationLanguageLabel("fr", "es"), "francés");
+test("Spanish shows language names in Spanish, capitalized for labels", () => {
+  assert.equal(getLocalizedTranslationLanguageLabel("en", "es"), "Inglés");
+  assert.equal(getLocalizedTranslationLanguageLabel("es", "es"), "Español");
+  assert.equal(getLocalizedTranslationLanguageLabel("fr", "es"), "Francés");
 });
 
 test("English keeps the existing labels", () => {

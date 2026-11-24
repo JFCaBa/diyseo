@@ -443,6 +443,7 @@ export const es: Messages = {
       backToIndex: "← Volver al índice de la vista previa",
       eyebrow: "Vista previa del blog público",
       intro: "Es el mismo contenido publicado, mostrado dentro de la app de administración para que lo previsualices sin salir del panel.",
+      emptyTitle: "Todavía no hay artículos publicados.",
       emptyBody: "Publica un artículo para previsualizar aquí el blog público."
     }
   },
@@ -592,8 +593,6 @@ export const es: Messages = {
     clear: "Quitar",
     more: "+{count} más",
     empty: "Sin contenido programado.",
-    statusPublished: "Publicado",
-    statusDraft: "Borrador",
     badgePublished: "PUBLICADO",
     badgeDraft: "BORRADOR"
   },

@@ -23,14 +23,15 @@ export function getTranslationLanguageLabel(code: string) {
 }
 
 /**
- * The language name in the UI language ("inglés" in Spanish). English keeps the existing label;
+ * The language name in the UI language, capitalized for use as a label ("Inglés" in Spanish). English keeps the existing label;
  * a code the runtime cannot name falls back to it too (and to the code itself when it is unknown).
  */
 export function getLocalizedTranslationLanguageLabel(code: string, locale: UiLocale) {
   const fallback = getTranslationLanguageLabel(code);
   if (locale === "en" || !isSupportedTranslationLanguage(code)) return fallback;
   try {
-    return new Intl.DisplayNames([intlLocale(locale)], { type: "language" }).of(code) || fallback;
+    const name = new Intl.DisplayNames([intlLocale(locale)], { type: "language" }).of(code);
+    return name ? name.charAt(0).toLocaleUpperCase(intlLocale(locale)) + name.slice(1) : fallback;
   } catch {
     return fallback;
   }

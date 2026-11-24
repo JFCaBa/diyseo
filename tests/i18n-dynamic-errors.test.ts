@@ -84,3 +84,38 @@ test("an ExportError without a code falls back to its English message", () => {
   const error = new ExportError("Something else");
   assert.equal(localizeExportError(es, error), "Something else");
 });
+
+test("social blockers: English output equals the original message, Spanish differs and keeps the limit", async () => {
+  const { blockerMessage, textBlockerFor } = await import("@/lib/social/rules");
+  const { localizeBlocker } = await import("@/lib/social/localize");
+  const codes = [
+    "textEmpty",
+    "textTooLong",
+    "instagramHashtags",
+    "openNetwork",
+    "publishArticleFirst",
+    "alreadyPublished",
+    "publishing",
+    "connectPage",
+    "noInstagram",
+    "needsCover"
+  ] as const;
+  for (const code of codes) {
+    const blocker = { code, limit: 280 };
+    assert.equal(localizeBlocker(en, blocker), blockerMessage(blocker));
+    assert.notEqual(localizeBlocker(es, blocker), blockerMessage(blocker));
+  }
+  const tooLong = textBlockerFor("X", "a".repeat(300));
+  assert.ok(tooLong);
+  assert.match(localizeBlocker(es, tooLong), new RegExp(String(tooLong.limit)));
+});
+
+test("stored post errors: unknown-result wrapper is translated, Meta text stays verbatim", async () => {
+  const { localizeStoredPostError } = await import("@/lib/social/localize");
+  const { createLocalizeMessage } = await import("@/lib/i18n/translate");
+  const lm = createLocalizeMessage("es");
+  assert.equal(localizeStoredPostError(es, lm, "Unknown result: (#368) Rate limited"), "Resultado desconocido: (#368) Rate limited");
+  assert.equal(localizeStoredPostError(es, lm, "Unknown result: Unexpected error while publishing"), "Resultado desconocido: Error inesperado al publicar");
+  assert.equal(localizeStoredPostError(es, lm, "(#200) Permissions error"), "(#200) Permissions error");
+  assert.equal(localizeStoredPostError(en, createLocalizeMessage("en"), "Unknown result: x"), "Unknown result: x");
+});

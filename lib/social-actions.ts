@@ -6,6 +6,7 @@ import { Prisma, type SocialNetwork, type SocialPostStatus } from "@prisma/clien
 import { revalidatePath } from "next/cache";
 
 import { getAIGenerationService } from "@/lib/ai";
+import { getLocalizeMessage, getT } from "@/lib/i18n/server";
 import { prisma } from "@/lib/prisma";
 import { createFixedWindowLimiter } from "@/lib/rate-limit";
 import { claimSocialPost, finishAttempt, resolveUnknown } from "@/lib/social/claim";
@@ -13,7 +14,8 @@ import { SocialConfigError, decryptToken, encryptToken, tokenLast4 } from "@/lib
 import { articleText, mergeDrafts } from "@/lib/social/drafts";
 import { saveConnection } from "@/lib/social/connection";
 import { MetaGraphError, defaultGraphDeps, publishFacebook, publishInstagram, verifyPage } from "@/lib/social/meta-graph";
-import { effectiveStatus, publishBlocker, shareBlocker, textBlocker } from "@/lib/social/rules";
+import { localizeBlocker } from "@/lib/social/localize";
+import { effectiveStatus, publishBlockerFor, shareBlockerFor, textBlockerFor, UNKNOWN_RESULT_PREFIX } from "@/lib/social/rules";
 import { isLocalCover } from "@/lib/social/social-image";
 import { articleShareUrl, coverVersion, socialImageUrl } from "@/lib/social/urls";
 import {
@@ -29,6 +31,7 @@ import { findSiteInWorkspace } from "@/lib/workspace-guards";
 
 export type SocialActionResult = { ok: true } | { ok: false; error: string };
 
+// Static messages: they live in en.errors / es.errors and the panel shows them through localizeMessage.
 const NOT_FOUND = "Not found.";
 const OWNER_ONLY = "Only the workspace owner can manage social accounts.";
 const RETRY = "Something went wrong, please try again.";
@@ -65,7 +68,8 @@ export async function connectMetaAction(formData: FormData): Promise<SocialActio
   const owner = await ownerOrNull();
   if (!owner) return fail(OWNER_ONLY);
   const parsed = ConnectMetaSchema.safeParse(fields(formData));
-  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the Page ID and token.");
+  const [t, localizeMessage] = await Promise.all([getT(), getLocalizeMessage()]);
+  if (!parsed.success) return fail(localizeMessage(parsed.error.issues[0]?.message ?? "Check the Page ID and token."));
   const { siteId, pageId, accessToken } = parsed.data;
   if (!(await findSiteInWorkspace(siteId, owner.workspaceId))) return fail(NOT_FOUND);
 
@@ -73,7 +77,7 @@ export async function connectMetaAction(formData: FormData): Promise<SocialActio
   try {
     page = await verifyPage(accessToken, pageId, defaultGraphDeps());
   } catch (error) {
-    return fail(error instanceof MetaGraphError ? `Meta: ${error.message}` : RETRY);
+    return fail(error instanceof MetaGraphError ? t("social.metaError", { message: localizeMessage(error.message) }) : RETRY);
   }
 
   let accessTokenEncrypted: string;
@@ -107,6 +111,7 @@ export async function testMetaConnectionAction(formData: FormData): Promise<Soci
   if (!(await findSiteInWorkspace(siteId, owner.workspaceId))) return fail(NOT_FOUND);
   const connection = await prisma.siteSocialConnection.findUnique({ where: { siteProjectId: siteId } });
   if (!connection) return fail("No Facebook Page is connected.");
+  const [t, localizeMessage] = await Promise.all([getT(), getLocalizeMessage()]);
 
   try {
     const token = decryptToken(connection.accessTokenEncrypted);
@@ -117,7 +122,7 @@ export async function testMetaConnectionAction(formData: FormData): Promise<Soci
     });
   } catch (error) {
     if (error instanceof SocialConfigError) return fail(NOT_CONFIGURED);
-    return fail(error instanceof MetaGraphError ? `Meta: ${error.message}` : RETRY);
+    return fail(error instanceof MetaGraphError ? t("social.metaError", { message: localizeMessage(error.message) }) : RETRY);
   }
   revalidateSocial(siteId);
   return { ok: true };
@@ -200,8 +205,8 @@ export async function saveSocialPostAction(formData: FormData): Promise<SocialAc
 
   const post = await prisma.socialPost.findFirst({ where: { id: postId, siteProjectId: siteId }, select: { network: true, articleId: true } });
   if (!post) return fail(NOT_FOUND);
-  const blocked = textBlocker(post.network, text);
-  if (blocked) return fail(blocked);
+  const blocked = textBlockerFor(post.network, text);
+  if (blocked) return fail(localizeBlocker(await getT(), blocked));
 
   const { count } = await prisma.socialPost.updateMany({
     where: { id: postId, siteProjectId: siteId, status: { in: ["DRAFT", "FAILED"] } },
@@ -222,12 +227,13 @@ export async function publishSocialPostAction(formData: FormData): Promise<Socia
 
   const before = await prisma.socialPost.findFirst({ where: { id: postId, siteProjectId: siteId }, select: { status: true, network: true } });
   if (!before) return fail(NOT_FOUND);
-  if (before.network === "X" || before.network === "LINKEDIN") return fail("Open the network to post");
+  const [t, localizeMessage] = await Promise.all([getT(), getLocalizeMessage()]);
+  if (before.network === "X" || before.network === "LINKEDIN") return fail(localizeBlocker(t, { code: "openNetwork" }));
 
   const attemptId = randomUUID();
   if (!(await claimSocialPost(prisma, { postId, siteProjectId: siteId, attemptId }))) {
     const now = await prisma.socialPost.findFirst({ where: { id: postId, siteProjectId: siteId }, select: { status: true } });
-    return fail(now?.status === "PUBLISHED" ? "Already published" : "Publishing in progress");
+    return fail(localizeBlocker(t, { code: now?.status === "PUBLISHED" ? "alreadyPublished" : "publishing" }));
   }
   const previous: SocialPostStatus = before.status === "FAILED" ? "FAILED" : "DRAFT";
   const mine = { postId, siteProjectId: siteId, attemptId };
@@ -246,7 +252,7 @@ export async function publishSocialPostAction(formData: FormData): Promise<Socia
   if (!post) return fail(NOT_FOUND);
   const connection = post.siteProject.socialConnection;
   const cover = post.article.coverImageUrl;
-  const blocked = publishBlocker({
+  const blocked = publishBlockerFor({
     network: post.network,
     text: post.text,
     status: previous,
@@ -257,7 +263,7 @@ export async function publishSocialPostAction(formData: FormData): Promise<Socia
   });
   if (blocked || !connection) {
     await release();
-    return fail(blocked ?? "Connect a Facebook Page in site settings");
+    return fail(localizeBlocker(t, blocked ?? { code: "connectPage" }));
   }
 
   let token: string;
@@ -297,10 +303,10 @@ export async function publishSocialPostAction(formData: FormData): Promise<Socia
     if (error instanceof MetaGraphError && error.definite) {
       await finishAttempt(prisma, mine, { status: "FAILED", error: message });
       revalidateSocial(siteId, post.article.id);
-      return fail(`Meta: ${message}`);
+      return fail(t("social.metaError", { message: localizeMessage(message) }));
     }
     // The publishing call may have gone through: stay PUBLISHING so it is never posted twice by a blind retry.
-    await finishAttempt(prisma, mine, { error: `Unknown result: ${message}` });
+    await finishAttempt(prisma, mine, { error: `${UNKNOWN_RESULT_PREFIX}${message}` });
     revalidateSocial(siteId, post.article.id);
     return fail("Meta did not confirm the post. Check the Page before trying again.");
   }
@@ -319,8 +325,8 @@ export async function markSocialPostPostedAction(formData: FormData): Promise<So
     select: { network: true, text: true, articleId: true, article: { select: { status: true } } }
   });
   if (!post || (post.network !== "X" && post.network !== "LINKEDIN")) return fail(NOT_FOUND);
-  const blocked = shareBlocker({ network: post.network, text: post.text, articleStatus: post.article.status });
-  if (blocked) return fail(blocked);
+  const blocked = shareBlockerFor({ network: post.network, text: post.text, articleStatus: post.article.status });
+  if (blocked) return fail(localizeBlocker(await getT(), blocked));
 
   const networks: SocialNetwork[] = ["X", "LINKEDIN"];
   const { count } = await prisma.socialPost.updateMany({

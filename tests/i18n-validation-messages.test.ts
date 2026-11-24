@@ -66,8 +66,8 @@ test("no two errors or notices share the same English text", () => {
   assert.deepEqual(duplicates, []);
 });
 
-test("every static success message in lib/actions.ts is in the notices catalog", () => {
-  const source = readFileSync("lib/actions.ts", "utf8");
+test("every static success message in lib/actions.ts and lib/social-actions.ts is in the notices catalog", () => {
+  const source = ["lib/actions.ts", "lib/social-actions.ts"].map((file) => readFileSync(file, "utf8")).join("\n");
   const literals = source
     .split("\n")
     .filter((line) => /\bsuccess:\s*[^`]*"/.test(line) && !line.includes("`"))

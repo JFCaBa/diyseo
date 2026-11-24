@@ -5,6 +5,7 @@ import { ArticleTranslationForm } from "@/components/article-translation-form";
 import { ArticleEditorForm } from "@/components/article-editor-form";
 import { PageHeader } from "@/components/page-header";
 import { SocialPostsPanel } from "@/components/social-posts-panel";
+import { getT } from "@/lib/i18n/server";
 import { prisma } from "@/lib/prisma";
 import { effectiveStatus } from "@/lib/social/rules";
 import { isLocalCover } from "@/lib/social/social-image";
@@ -20,6 +21,7 @@ type ArticleEditorPageProps = {
 export default async function ArticleEditorPage({ params }: ArticleEditorPageProps) {
   const { siteId, articleId } = await params;
   await requireSitePage(siteId);
+  const t = await getT();
 
   const [article, site] = await Promise.all([
     prisma.article.findFirst({
@@ -77,22 +79,22 @@ export default async function ArticleEditorPage({ params }: ArticleEditorPagePro
   return (
     <section className="space-y-8">
       <PageHeader
-        title="Edit Article"
-        description="Update article copy, metadata, and Markdown while keeping the article in the same publishing workflow."
+        title={t("editor.page.title")}
+        description={t("editor.page.description")}
         action={
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href={`/${siteId}/articles`}
               className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
             >
-              Back to Articles
+              {t("editor.page.backToArticles")}
             </Link>
             {article.status === "PUBLISHED" ? (
               <Link
                 href={`/${siteId}/preview?slug=${encodeURIComponent(article.slug)}`}
                 className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
-                View Public Article
+                {t("editor.page.viewPublic")}
               </Link>
             ) : null}
           </div>

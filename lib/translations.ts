@@ -1,3 +1,5 @@
+import { intlLocale, type UiLocale } from "@/lib/i18n/locale";
+
 export const TRANSLATION_LANGUAGE_OPTIONS = [
   { code: "en", label: "English" },
   { code: "es", label: "Spanish" },
@@ -18,6 +20,20 @@ export function isSupportedTranslationLanguage(value: string | null | undefined)
 
 export function getTranslationLanguageLabel(code: string) {
   return translationLanguageMap.get(code as TranslationLanguageCode)?.label ?? code;
+}
+
+/**
+ * The language name in the UI language ("inglés" in Spanish). English keeps the existing label;
+ * a code the runtime cannot name falls back to it too (and to the code itself when it is unknown).
+ */
+export function getLocalizedTranslationLanguageLabel(code: string, locale: UiLocale) {
+  const fallback = getTranslationLanguageLabel(code);
+  if (locale === "en" || !isSupportedTranslationLanguage(code)) return fallback;
+  try {
+    return new Intl.DisplayNames([intlLocale(locale)], { type: "language" }).of(code) || fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 export function normalizeTranslationLanguages(values: string[]) {

@@ -41,7 +41,12 @@ const MIGRATED_FILES: string[] = [
   "components/article-keyword-assignment.tsx",
   "components/article-status-toggle.tsx",
   "components/article-delete-button.tsx",
-  "app/[siteId]/preview/page.tsx"
+  "app/[siteId]/preview/page.tsx",
+  // Task 6: article editor, translations, social posts
+  "app/[siteId]/articles/[articleId]/page.tsx",
+  "components/article-editor-form.tsx",
+  "components/article-translation-form.tsx",
+  "components/social-posts-panel.tsx"
 ];
 
 /** Proper names and symbols that may appear untranslated. */

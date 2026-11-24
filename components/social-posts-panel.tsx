@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import type { ArticleStatus, SocialNetwork } from "@prisma/client";
 
+import { useLocalizeMessage, useT } from "@/components/i18n-provider";
 import {
   generateSocialPostsAction,
   markSocialPostPostedAction,
@@ -14,7 +15,8 @@ import {
   type SocialActionResult
 } from "@/lib/social-actions";
 import { SOCIAL_LIMITS, SOCIAL_NETWORKS } from "@/lib/social/limits";
-import { publishBlocker, shareBlocker, textBlocker, type EffectiveStatus } from "@/lib/social/rules";
+import { localizeBlocker, localizeStoredPostError } from "@/lib/social/localize";
+import { publishBlockerFor, shareBlockerFor, textBlockerFor, type EffectiveStatus } from "@/lib/social/rules";
 import { linkedinIntentUrl, withLink, xIntentUrl } from "@/lib/social/urls";
 
 export type SocialPostView = {
@@ -56,11 +58,20 @@ function StatusBadge({ status }: { status: EffectiveStatus }) {
     FAILED: "bg-red-50 text-red-700",
     UNKNOWN: "bg-amber-50 text-amber-800"
   };
-  const text: Record<EffectiveStatus, string> = { DRAFT: "Draft", PUBLISHING: "Publishing…", PUBLISHED: "Published", FAILED: "Failed", UNKNOWN: "Unknown result" };
+  const t = useT();
+  const text: Record<EffectiveStatus, string> = {
+    DRAFT: t("social.status.DRAFT"),
+    PUBLISHING: t("social.status.PUBLISHING"),
+    PUBLISHED: t("social.status.PUBLISHED"),
+    FAILED: t("social.status.FAILED"),
+    UNKNOWN: t("social.status.UNKNOWN")
+  };
   return <span className={`rounded-full px-3 py-1 text-xs font-semibold ${styles[status]}`}>{text[status]}</span>;
 }
 
 function PostCard({ props, post }: { props: Props; post: SocialPostView }) {
+  const t = useT();
+  const localizeMessage = useLocalizeMessage();
   const [text, setText] = useState(post.text);
   // A save or regeneration brings new text from the server: show it (the card keeps its state, e.g. "Saved").
   useEffect(() => setText(post.text), [post.text]);
@@ -77,14 +88,15 @@ function PostCard({ props, post }: { props: Props; post: SocialPostView }) {
     startTransition(async () => {
       setConfirming(null);
       const result = await action(form({ siteId: props.siteId, ...values }));
-      setMessage(result.ok ? (done ?? null) : result.error);
+      setMessage(result.ok ? (done ?? null) : localizeMessage(result.error));
     });
 
-  const sharing = !isApi ? shareBlocker({ network: post.network, text, articleStatus: props.articleStatus }) : null;
-  const blocker = isApi
+  const sharingBlocker = !isApi ? shareBlockerFor({ network: post.network, text, articleStatus: props.articleStatus }) : null;
+  const sharing = sharingBlocker ? localizeBlocker(t, sharingBlocker) : null;
+  const publishBlock = isApi
     ? dirty
-      ? "Save your changes first"
-      : publishBlocker({
+      ? null
+      : publishBlockerFor({
           network: post.network,
           text,
           status: post.status === "UNKNOWN" ? "PUBLISHING" : post.status,
@@ -94,8 +106,11 @@ function PostCard({ props, post }: { props: Props; post: SocialPostView }) {
           hasCover: props.hasLocalCover
         })
     : null;
+  const blocker = isApi ? (dirty ? t("social.blocker.saveFirst") : publishBlock ? localizeBlocker(t, publishBlock) : null) : null;
   const target =
-    post.network === "FACEBOOK" ? `Facebook Page «${props.connection?.pageName ?? ""}»` : `Instagram @${props.connection?.instagramUsername ?? ""}`;
+    post.network === "FACEBOOK"
+      ? t("social.facebookTarget", { name: props.connection?.pageName ?? "" })
+      : t("social.instagramTarget", { username: props.connection?.instagramUsername ?? "" });
 
   return (
     <article className="flex flex-col gap-3 rounded-3xl border border-line bg-white p-5">
@@ -120,36 +135,36 @@ function PostCard({ props, post }: { props: Props; post: SocialPostView }) {
             type="button"
             className={secondary}
             disabled={pending}
-            onClick={() => run(saveSocialPostAction, { postId: post.id, text }, "Saved")}
+            onClick={() => run(saveSocialPostAction, { postId: post.id, text }, t("social.saved"))}
           >
-            Save
+            {t("social.save")}
           </button>
         ) : null}
       </div>
 
-      {post.error && post.status !== "PUBLISHED" && post.status !== "DRAFT" ? <p className="text-xs text-red-600">{post.error}</p> : null}
+      {post.error && post.status !== "PUBLISHED" && post.status !== "DRAFT" ? <p className="text-xs text-red-600">{localizeStoredPostError(t, localizeMessage, post.error)}</p> : null}
 
       <div className="flex flex-wrap items-center gap-2">
         {post.status === "PUBLISHED" && post.externalUrl ? (
           <a href={post.externalUrl} target="_blank" rel="noreferrer" className={secondary}>
-            View post
+            {t("social.viewPost")}
           </a>
         ) : null}
 
         {isApi && editable ? (
           confirming === "publish" ? (
             <>
-              <span className="text-sm text-ink">Publish to {target}?</span>
-              <button type="button" className={primary} disabled={pending} onClick={() => run(publishSocialPostAction, { postId: post.id }, "Published")}>
-                {pending ? "Publishing…" : "Yes, publish"}
+              <span className="text-sm text-ink">{t("social.publishTo", { target })}</span>
+              <button type="button" className={primary} disabled={pending} onClick={() => run(publishSocialPostAction, { postId: post.id }, t("social.published"))}>
+                {pending ? t("social.publishing") : t("social.yesPublish")}
               </button>
               <button type="button" className={secondary} onClick={() => setConfirming(null)}>
-                Cancel
+                {t("social.cancel")}
               </button>
             </>
           ) : (
             <button type="button" className={primary} disabled={pending || Boolean(blocker)} title={blocker ?? undefined} onClick={() => setConfirming("publish")}>
-              Publish
+              {t("social.publish")}
             </button>
           )
         ) : null}
@@ -158,7 +173,7 @@ function PostCard({ props, post }: { props: Props; post: SocialPostView }) {
           <>
             {sharing ? (
               <button type="button" className={primary} disabled title={sharing}>
-                Open in {LABEL[post.network]}
+                {t("social.openIn", { network: LABEL[post.network] })}
               </button>
             ) : (
               <a
@@ -167,14 +182,14 @@ function PostCard({ props, post }: { props: Props; post: SocialPostView }) {
                 rel="noreferrer"
                 className={primary}
               >
-                Open in {LABEL[post.network]}
+                {t("social.openIn", { network: LABEL[post.network] })}
               </a>
             )}
-            <button type="button" className={secondary} disabled={Boolean(sharing)} onClick={() => navigator.clipboard?.writeText(withLink(text, props.shareUrl)).then(() => setMessage("Copied"))}>
-              Copy
+            <button type="button" className={secondary} disabled={Boolean(sharing)} onClick={() => navigator.clipboard?.writeText(withLink(text, props.shareUrl)).then(() => setMessage(t("social.copied")))}>
+              {t("social.copy")}
             </button>
-            <button type="button" className={secondary} disabled={pending || dirty || Boolean(sharing)} onClick={() => run(markSocialPostPostedAction, { postId: post.id }, "Marked as posted")}>
-              Mark as posted
+            <button type="button" className={secondary} disabled={pending || dirty || Boolean(sharing)} onClick={() => run(markSocialPostPostedAction, { postId: post.id }, t("social.markedPosted"))}>
+              {t("social.markPosted")}
             </button>
           </>
         ) : null}
@@ -182,22 +197,22 @@ function PostCard({ props, post }: { props: Props; post: SocialPostView }) {
         {post.status === "UNKNOWN" ? (
           confirming === "retry" ? (
             <>
-              <span className="text-sm text-ink">Only retry if the post is not on the Page.</span>
+              <span className="text-sm text-ink">{t("social.retryNote")}</span>
               <button type="button" className={primary} disabled={pending} onClick={() => run(resolveUnknownAction, { postId: post.id, outcome: "retry" })}>
-                It&apos;s not there, allow retry
+                {t("social.notThereAllowRetry")}
               </button>
               <button type="button" className={secondary} onClick={() => setConfirming(null)}>
-                Cancel
+                {t("social.cancel")}
               </button>
             </>
           ) : (
             <>
-              <span className="text-sm text-amber-800">Unknown result: check the Page.</span>
+              <span className="text-sm text-amber-800">{t("social.unknownCheck")}</span>
               <button type="button" className={secondary} disabled={pending} onClick={() => run(resolveUnknownAction, { postId: post.id, outcome: "published" })}>
-                It&apos;s on the Page
+                {t("social.onThePage")}
               </button>
               <button type="button" className={secondary} onClick={() => setConfirming("retry")}>
-                It&apos;s not there, retry
+                {t("social.notThereRetry")}
               </button>
             </>
           )
@@ -206,31 +221,33 @@ function PostCard({ props, post }: { props: Props; post: SocialPostView }) {
         {editable ? (
           confirming === "regenerate" ? (
             <>
-              <span className="text-sm text-ink">Replace this draft, including your edits?</span>
+              <span className="text-sm text-ink">{t("social.replaceDraft")}</span>
               <button
                 type="button"
                 className={secondary}
                 disabled={pending}
                 onClick={() => run(generateSocialPostsAction, { articleId: props.articleId, network: post.network })}
               >
-                Yes, regenerate
+                {t("social.yesRegenerate")}
               </button>
             </>
           ) : (
             <button type="button" className={secondary} disabled={pending} onClick={() => setConfirming("regenerate")}>
-              Regenerate
+              {t("social.regenerate")}
             </button>
           )
         ) : null}
       </div>
 
-      {(blocker ?? sharing) && editable && !textBlocker(post.network, text) ? <p className="text-xs text-slate-500">{blocker ?? sharing}</p> : null}
+      {(blocker ?? sharing) && editable && !textBlockerFor(post.network, text) ? <p className="text-xs text-slate-500">{blocker ?? sharing}</p> : null}
       {message ? <p className="text-xs text-slate-600">{message}</p> : null}
     </article>
   );
 }
 
 export function SocialPostsPanel(props: Props) {
+  const t = useT();
+  const localizeMessage = useLocalizeMessage();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const anyPublishing = props.posts.some((p) => p.status === "PUBLISHING");
@@ -253,25 +270,24 @@ export function SocialPostsPanel(props: Props) {
     startTransition(async () => {
       setConfirmAll(false);
       const result = await generateSocialPostsAction(form({ siteId: props.siteId, articleId: props.articleId }));
-      setError(result.ok ? null : result.error);
+      setError(result.ok ? null : localizeMessage(result.error));
     });
 
   return (
     <section className="rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Social posts</p>
-          <h2 className="mt-2 text-2xl font-semibold text-ink">Share this article</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">{t("social.eyebrow")}</p>
+          <h2 className="mt-2 text-2xl font-semibold text-ink">{t("social.title")}</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Drafts for Facebook, Instagram, X and LinkedIn written from this article. Facebook and Instagram publish to the connected Page; X
-            and LinkedIn open their own compose screen.
+            {t("social.description")}
           </p>
-          {props.articleStatus !== "PUBLISHED" ? <p className="mt-2 text-sm text-amber-700">Publish the article first to post it.</p> : null}
+          {props.articleStatus !== "PUBLISHED" ? <p className="mt-2 text-sm text-amber-700">{t("social.publishArticleNote")}</p> : null}
           {!props.connection ? (
             <p className="mt-2 text-sm text-slate-600">
-              No Facebook Page connected.{" "}
+              {t("social.noPage")}{" "}
               <a href={`/${props.siteId}/settings#social`} className="font-semibold text-accent">
-                Connect one in settings
+                {t("social.connectInSettings")}
               </a>
               .
             </p>
@@ -279,22 +295,22 @@ export function SocialPostsPanel(props: Props) {
         </div>
         {!hasPosts ? (
           <button type="button" className={primary} disabled={pending} onClick={generate}>
-            {pending ? "Writing posts…" : "Generate social posts"}
+            {pending ? t("social.writing") : t("social.generate")}
           </button>
         ) : anyUnpublished ? (
           confirmAll ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-ink">Replaces the unpublished drafts, including your edits.</span>
+              <span className="text-sm text-ink">{t("social.replacesDrafts")}</span>
               <button type="button" className={primary} disabled={pending} onClick={generate}>
-                {pending ? "Writing posts…" : "Regenerate all"}
+                {pending ? t("social.writing") : t("social.regenerateAll")}
               </button>
               <button type="button" className={secondary} onClick={() => setConfirmAll(false)}>
-                Cancel
+                {t("social.cancel")}
               </button>
             </div>
           ) : (
             <button type="button" className={secondary} disabled={pending} onClick={() => setConfirmAll(true)}>
-              Regenerate all
+              {t("social.regenerateAll")}
             </button>
           )
         ) : null}

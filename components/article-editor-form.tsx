@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
+import { useLocalizeMessage, useT } from "@/components/i18n-provider";
 import { updateArticle, type ActionState } from "@/lib/actions";
 import { getCoverImageProxyPath } from "@/lib/cover-image-url";
 import { getArticleEditorValue } from "@/lib/markdown";
@@ -25,6 +26,7 @@ type ArticleEditorFormProps = {
 const initialState: ActionState = {};
 
 function SaveButton() {
+  const t = useT();
   const { pending } = useFormStatus();
 
   return (
@@ -33,12 +35,13 @@ function SaveButton() {
       disabled={pending}
       className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
     >
-      {pending ? "Saving..." : "Save Changes"}
+      {pending ? t("editor.form.saving") : t("editor.form.save")}
     </button>
   );
 }
 
 function GenerateCoverImageButton({ pending, onClick }: { pending: boolean; onClick: () => void }) {
+  const t = useT();
   return (
     <button
       type="button"
@@ -46,12 +49,14 @@ function GenerateCoverImageButton({ pending, onClick }: { pending: boolean; onCl
       disabled={pending}
       className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist disabled:cursor-not-allowed disabled:opacity-70"
     >
-      {pending ? "Generating..." : "Generate AI cover image"}
+      {pending ? t("editor.form.generating") : t("editor.form.generateCover")}
     </button>
   );
 }
 
 export function ArticleEditorForm({ article, siteId }: ArticleEditorFormProps) {
+  const t = useT();
+  const localizeMessage = useLocalizeMessage();
   const updateArticleForSite = updateArticle.bind(null, siteId, article.id);
   const [state, formAction] = useActionState(updateArticleForSite, initialState);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -79,17 +84,17 @@ export function ArticleEditorForm({ article, siteId }: ArticleEditorFormProps) {
       const payload = (await response.json().catch(() => null)) as { coverImageUrl?: string; error?: string } | null;
 
       if (!response.ok || !payload?.coverImageUrl) {
-        throw new Error(payload?.error || "Cover image generation failed.");
+        throw new Error(payload?.error || t("editor.form.coverFailed"));
       }
 
       setGeneratedCoverImageUrl(payload.coverImageUrl);
-      setCoverImageGenerationSuccess("AI cover image generated and saved locally.");
+      setCoverImageGenerationSuccess(t("editor.form.coverSaved"));
 
       if (coverImageInputRef.current) {
         coverImageInputRef.current.value = payload.coverImageUrl;
       }
     } catch (error) {
-      setCoverImageGenerationError(error instanceof Error ? error.message : "Cover image generation failed.");
+      setCoverImageGenerationError(error instanceof Error ? localizeMessage(error.message) : t("editor.form.coverFailed"));
     } finally {
       setIsGeneratingImage(false);
     }
@@ -98,12 +103,12 @@ export function ArticleEditorForm({ article, siteId }: ArticleEditorFormProps) {
   return (
     <form ref={formRef} action={formAction} className="grid gap-6 rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
       <div className="rounded-2xl border border-line bg-mist/70 px-4 py-4 text-sm text-slate-600">
-        Update the article content and metadata here, then return to Articles to publish it, assign a keyword, or review it in the calendar.
+        {t("editor.form.intro")}
       </div>
 
       <div className="grid gap-2">
         <label htmlFor="title" className="text-sm font-medium text-ink">
-          Title
+          {t("editor.form.title")}
         </label>
         <input
           id="title"
@@ -116,7 +121,7 @@ export function ArticleEditorForm({ article, siteId }: ArticleEditorFormProps) {
 
       <div className="grid gap-2">
         <label htmlFor="excerpt" className="text-sm font-medium text-ink">
-          Excerpt
+          {t("editor.form.excerpt")}
         </label>
         <textarea
           id="excerpt"
@@ -129,7 +134,7 @@ export function ArticleEditorForm({ article, siteId }: ArticleEditorFormProps) {
 
       <div className="grid gap-2">
         <label htmlFor="coverImageUrl" className="text-sm font-medium text-ink">
-          Cover Image URL
+          {t("editor.form.coverImageUrl")}
         </label>
         <input
           ref={coverImageInputRef}
@@ -137,13 +142,13 @@ export function ArticleEditorForm({ article, siteId }: ArticleEditorFormProps) {
           name="coverImageUrl"
           type="text"
           defaultValue={article.coverImageUrl ?? ""}
-          placeholder="https://example.com/cover.jpg"
+          placeholder={t("editor.form.coverPlaceholder")}
           className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
         />
         <div className="flex flex-wrap items-center gap-3">
           <GenerateCoverImageButton pending={isGeneratingImage} onClick={handleGenerateCoverImage} />
         </div>
-        <p className="text-xs text-slate-500">Optional. Use a public URL, or generate and store a local `/uploads/...` image.</p>
+        <p className="text-xs text-slate-500">{t("editor.form.coverHelp")}</p>
         {coverImageGenerationError ? <p className="text-sm text-red-600">{coverImageGenerationError}</p> : null}
         {coverImageGenerationSuccess ? <p className="text-sm text-accent">{coverImageGenerationSuccess}</p> : null}
         {generatedCoverImageUrl ? (
@@ -158,7 +163,7 @@ export function ArticleEditorForm({ article, siteId }: ArticleEditorFormProps) {
 
       <div className="grid gap-2">
         <label htmlFor="seoTitle" className="text-sm font-medium text-ink">
-          SEO Title
+          {t("editor.form.seoTitle")}
         </label>
         <input
           id="seoTitle"
@@ -167,12 +172,12 @@ export function ArticleEditorForm({ article, siteId }: ArticleEditorFormProps) {
           maxLength={60}
           className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
         />
-        <p className="text-xs text-slate-500">Recommended max: 60 characters.</p>
+        <p className="text-xs text-slate-500">{t("editor.form.seoTitleHelp")}</p>
       </div>
 
       <div className="grid gap-2">
         <label htmlFor="seoDescription" className="text-sm font-medium text-ink">
-          SEO Description
+          {t("editor.form.seoDescription")}
         </label>
         <textarea
           id="seoDescription"
@@ -182,12 +187,12 @@ export function ArticleEditorForm({ article, siteId }: ArticleEditorFormProps) {
           rows={3}
           className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
         />
-        <p className="text-xs text-slate-500">Recommended max: 160 characters.</p>
+        <p className="text-xs text-slate-500">{t("editor.form.seoDescriptionHelp")}</p>
       </div>
 
       <div className="grid gap-2">
         <label htmlFor="contentMarkdown" className="text-sm font-medium text-ink">
-          Content Markdown
+          {t("editor.form.contentMarkdown")}
         </label>
         <textarea
           id="contentMarkdown"
@@ -198,21 +203,21 @@ export function ArticleEditorForm({ article, siteId }: ArticleEditorFormProps) {
           required
         />
         <p className="text-xs text-slate-500">
-          New and resaved articles use Markdown. Legacy HTML-only articles may show raw HTML here until they are resaved.
+          {t("editor.form.contentMarkdownHelp")}
         </p>
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="text-sm">
-          {state.error ? <p className="text-red-600">{state.error}</p> : null}
-          {state.success ? <p className="text-accent">{state.success}</p> : null}
+          {state.error ? <p className="text-red-600">{localizeMessage(state.error)}</p> : null}
+          {state.success ? <p className="text-accent">{localizeMessage(state.success)}</p> : null}
         </div>
         <div className="flex items-center gap-3">
           <Link
             href={`/${siteId}/articles`}
             className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
           >
-            Back to Articles
+            {t("editor.form.backToArticles")}
           </Link>
           <SaveButton />
         </div>

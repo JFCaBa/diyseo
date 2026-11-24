@@ -315,6 +315,50 @@ export const es: Messages = {
     noPoints: "Google Search Console no ha devuelto puntos de posición diarios para esta selección en el rango actual de 28 días.",
     chartAria: "Tendencia de posición de {label}"
   },
+  brandDna: {
+    pageTitle: "Brand DNA",
+    pageDescription:
+      "Define la voz, la audiencia, los temas y la dirección de imagen que deben guiar cada artículo generado o editado a mano.",
+    openArticles: "Abrir artículos",
+    generateTitle: "Generar borrador automáticamente",
+    generateDescription:
+      "Usa el nombre del sitio, el dominio y una descripción opcional del negocio para redactar valores de Brand DNA que puedes editar.",
+    businessDescriptionLabel: "Descripción opcional del negocio",
+    businessDescriptionPlaceholder: "¿A qué se dedica el negocio, a quién sirve y qué lo hace diferente?",
+    generating: "Generando...",
+    generate: "Generar Brand DNA automáticamente",
+    generateFailed: "No se pudo generar el Brand DNA.",
+    generateUnreachable: "No se puede acceder al endpoint de generación de Brand DNA.",
+    generateSuccess: "Borrador de Brand DNA generado y guardado. Revísalo y edítalo antes de volver a guardar si hace falta.",
+    saving: "Guardando...",
+    save: "Guardar Brand DNA",
+    listHint: "Separa las entradas con saltos de línea o comas.",
+    imageStyleHint: "Mantenlo breve y reutilizable, por ejemplo: “Ilustración de producto minimalista”.",
+    coreTitle: "Identidad básica",
+    coreDescription: "Datos fundamentales que describen el sitio, el modelo de negocio y el contexto de operación.",
+    contentLanguage: "Idioma del contenido",
+    businessType: "Tipo de negocio",
+    serviceArea: "Área de servicio",
+    audienceTitle: "Audiencia y voz",
+    audienceDescription: "Describe a quién se dirige la marca y cómo debe sonar la voz en el contenido editorial.",
+    targetAudience: "Público objetivo",
+    brandVoiceTone: "Voz y tono de la marca",
+    strategyTitle: "Estrategia de contenido",
+    strategyDescription:
+      "Usa un elemento por línea o texto separado por comas. Los valores se normalizan a un formato limpio de una línea por elemento al guardar.",
+    keyThemes: "Temas clave",
+    keyThemesPlaceholder: "Victorias de SEO local\nMarketing de servicios a domicilio\nPropiedad del sitio web",
+    topicsToAvoid: "Temas a evitar",
+    topicsToAvoidPlaceholder: "Tácticas black-hat\nGarantías no verificables\nComentarios fuera de marca",
+    visualTitle: "Identidad visual",
+    visualDescription:
+      "Recoge la dirección visual para reutilizarla después en los prompts sin explicar el estilo cada vez.",
+    imageStyle: "Estilo de imagen",
+    imageStylePlaceholder: "Fotografía editorial",
+    customImageInstructions: "Instrucciones de imagen personalizadas",
+    customImageInstructionsPlaceholder:
+      "Usa composiciones limpias, iluminación realista y evita escenas de oficina genéricas de banco de imágenes."
+  },
   notices: {
     articleDeleted: "Artículo eliminado.",
     articlePublished: "Artículo publicado.",
@@ -402,6 +446,9 @@ export const es: Messages = {
     patchBodyEmpty: "El cuerpo de la petición debe incluir al menos un campo que actualizar.",
     instagramHashtags: "instagram necesita de 3 a 8 hashtags",
     metaPageIdNumeric: "Introduce el ID numérico de la página.",
-    metaAccessTokenShort: "Pega el token de acceso completo."
+    metaAccessTokenShort: "Pega el token de acceso completo.",
+    siteNotFound: "Sitio no encontrado.",
+    invalidRequestBody: "Cuerpo de la solicitud no válido.",
+    brandDnaGenerationFailed: "No se pudo generar el Brand DNA."
   }
 };

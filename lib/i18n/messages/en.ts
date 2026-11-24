@@ -315,6 +315,50 @@ export const en = {
     noPoints: "Google Search Console returned no daily position points for this selection in the current 28-day range.",
     chartAria: "{label} position trend"
   },
+  brandDna: {
+    pageTitle: "Brand DNA",
+    pageDescription:
+      "Define the voice, audience, themes, and image direction that should shape every generated or manually edited article.",
+    openArticles: "Open Articles",
+    generateTitle: "Auto-Generate Draft",
+    generateDescription:
+      "Use the site name, domain, and an optional business description to draft Brand DNA values you can edit.",
+    businessDescriptionLabel: "Optional business description",
+    businessDescriptionPlaceholder: "What does the business do, who does it serve, and what makes it different?",
+    generating: "Generating...",
+    generate: "Auto-Generate Brand DNA",
+    generateFailed: "Brand DNA generation failed.",
+    generateUnreachable: "Unable to reach the Brand DNA generation endpoint.",
+    generateSuccess: "Draft Brand DNA generated and saved. Review and edit before saving again if needed.",
+    saving: "Saving...",
+    save: "Save Brand DNA",
+    listHint: "Separate entries with new lines or commas.",
+    imageStyleHint: "Keep this short and reusable, for example: “Minimal product illustration”.",
+    coreTitle: "Core Identity",
+    coreDescription: "Foundational details that describe the site, business model, and operating context.",
+    contentLanguage: "Content Language",
+    businessType: "Business Type",
+    serviceArea: "Service Area",
+    audienceTitle: "Audience & Voice",
+    audienceDescription: "Describe who the brand is speaking to and how the voice should feel in editorial content.",
+    targetAudience: "Target Audience",
+    brandVoiceTone: "Brand Voice & Tone",
+    strategyTitle: "Content Strategy",
+    strategyDescription:
+      "Use one item per line or comma-separated input. Values are normalized into a clean line-based format on save.",
+    keyThemes: "Key Themes",
+    keyThemesPlaceholder: "Local SEO wins\nHome service marketing\nWebsite ownership",
+    topicsToAvoid: "Topics to Avoid",
+    topicsToAvoidPlaceholder: "Black-hat tactics\nUnverifiable guarantees\nOff-brand commentary",
+    visualTitle: "Visual Identity",
+    visualDescription:
+      "Capture visual direction that can be reused later in prompts without re-explaining the style each time.",
+    imageStyle: "Image Style",
+    imageStylePlaceholder: "Editorial photography",
+    customImageInstructions: "Custom Image Instructions",
+    customImageInstructionsPlaceholder:
+      "Use clean compositions, realistic lighting, and avoid generic stock-style office scenes."
+  },
   // Static success messages returned by lib/actions.ts, reverse-looked-up like `errors`.
   notices: {
     articleDeleted: "Article deleted.",
@@ -405,7 +449,10 @@ export const en = {
     patchBodyEmpty: "Request body must include at least one field to update.",
     instagramHashtags: "instagram needs 3 to 8 hashtags",
     metaPageIdNumeric: "Enter the numeric Page ID.",
-    metaAccessTokenShort: "Paste the full access token."
+    metaAccessTokenShort: "Paste the full access token.",
+    siteNotFound: "Site not found.",
+    invalidRequestBody: "Invalid request body.",
+    brandDnaGenerationFailed: "Brand DNA generation failed."
   }
 } as const;
 

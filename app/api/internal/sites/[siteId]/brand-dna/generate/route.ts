@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
+import { getLocalizeMessage } from "@/lib/i18n/server";
 import { generateBrandDNAForSite } from "@/lib/generate-brand-dna";
 import { denyUnlessSiteOwner } from "@/lib/site-access";
 
@@ -9,6 +10,8 @@ type RouteContext = {
 };
 
 export async function POST(request: Request, context: RouteContext) {
+  const localizeMessage = await getLocalizeMessage();
+
   try {
     const { siteId } = await context.params;
     const denied = await denyUnlessSiteOwner(siteId);
@@ -25,7 +28,7 @@ export async function POST(request: Request, context: RouteContext) {
     if (error instanceof ZodError) {
       return NextResponse.json(
         {
-          error: error.issues[0]?.message ?? "Invalid request body."
+          error: localizeMessage(error.issues[0]?.message ?? "Invalid request body.")
         },
         { status: 400 }
       );
@@ -34,6 +37,6 @@ export async function POST(request: Request, context: RouteContext) {
     const message = error instanceof Error ? error.message : "Brand DNA generation failed.";
     const status = message === "Site not found." ? 404 : 500;
 
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: localizeMessage(message) }, { status });
   }
 }

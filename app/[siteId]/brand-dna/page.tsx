@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { BrandDNAForm } from "@/components/brand-dna-form";
 import { PageHeader } from "@/components/page-header";
+import { getT } from "@/lib/i18n/server";
 import { prisma } from "@/lib/prisma";
 import { requireSitePage } from "@/lib/workspace-context";
 
@@ -13,6 +14,7 @@ type BrandDNAPageProps = {
 
 export default async function BrandDNAPage({ params }: BrandDNAPageProps) {
   const { siteId } = await params;
+  const t = await getT();
   await requireSitePage(siteId);
 
   const site = await prisma.siteProject.findUnique({
@@ -27,14 +29,14 @@ export default async function BrandDNAPage({ params }: BrandDNAPageProps) {
   return (
     <section className="space-y-8">
       <PageHeader
-        title="Brand DNA"
-        description="Define the voice, audience, themes, and image direction that should shape every generated or manually edited article."
+        title={t("brandDna.pageTitle")}
+        description={t("brandDna.pageDescription")}
         action={
           <Link
             href={`/${siteId}/articles`}
             className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
           >
-            Open Articles
+            {t("brandDna.openArticles")}
           </Link>
         }
       />

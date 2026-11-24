@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
+import { useLocalizeMessage, useT } from "@/components/i18n-provider";
 import { updateBrandDNA, type ActionState } from "@/lib/actions";
+import type { T } from "@/lib/i18n/translate";
 
 type BrandDNAFormProps = {
   siteId: string;
@@ -45,84 +47,67 @@ type BrandDNASection = {
   fields: BrandDNAField[];
 };
 
-const sections: BrandDNASection[] = [
-  {
-    title: "Core Identity",
-    description: "Foundational details that describe the site, business model, and operating context.",
-    fields: [
-      {
-        id: "contentLanguage",
-        label: "Content Language",
-        rows: 2
-      },
-      {
-        id: "businessType",
-        label: "Business Type",
-        rows: 2
-      },
-      {
-        id: "serviceArea",
-        label: "Service Area",
-        rows: 3
-      }
-    ]
-  },
-  {
-    title: "Audience & Voice",
-    description: "Describe who the brand is speaking to and how the voice should feel in editorial content.",
-    fields: [
-      {
-        id: "targetAudience",
-        label: "Target Audience",
-        rows: 4
-      },
-      {
-        id: "brandVoiceTone",
-        label: "Brand Voice & Tone",
-        rows: 4
-      }
-    ]
-  },
-  {
-    title: "Content Strategy",
-    description: "Use one item per line or comma-separated input. Values are normalized into a clean line-based format on save.",
-    fields: [
-      {
-        id: "keyThemes",
-        label: "Key Themes",
-        rows: 5,
-        placeholder: "Local SEO wins\nHome service marketing\nWebsite ownership"
-      },
-      {
-        id: "topicsToAvoid",
-        label: "Topics to Avoid",
-        rows: 5,
-        placeholder: "Black-hat tactics\nUnverifiable guarantees\nOff-brand commentary"
-      }
-    ]
-  },
-  {
-    title: "Visual Identity",
-    description: "Capture visual direction that can be reused later in prompts without re-explaining the style each time.",
-    fields: [
-      {
-        id: "imageStyle",
-        label: "Image Style",
-        rows: 2,
-        placeholder: "Editorial photography"
-      },
-      {
-        id: "customImageInstructions",
-        label: "Custom Image Instructions",
-        rows: 5,
-        placeholder: "Use clean compositions, realistic lighting, and avoid generic stock-style office scenes."
-      }
-    ]
-  }
-];
+function buildSections(t: T): BrandDNASection[] {
+  return [
+    {
+      title: t("brandDna.coreTitle"),
+      description: t("brandDna.coreDescription"),
+      fields: [
+        { id: "contentLanguage", label: t("brandDna.contentLanguage"), rows: 2 },
+        { id: "businessType", label: t("brandDna.businessType"), rows: 2 },
+        { id: "serviceArea", label: t("brandDna.serviceArea"), rows: 3 }
+      ]
+    },
+    {
+      title: t("brandDna.audienceTitle"),
+      description: t("brandDna.audienceDescription"),
+      fields: [
+        { id: "targetAudience", label: t("brandDna.targetAudience"), rows: 4 },
+        { id: "brandVoiceTone", label: t("brandDna.brandVoiceTone"), rows: 4 }
+      ]
+    },
+    {
+      title: t("brandDna.strategyTitle"),
+      description: t("brandDna.strategyDescription"),
+      fields: [
+        {
+          id: "keyThemes",
+          label: t("brandDna.keyThemes"),
+          rows: 5,
+          placeholder: t("brandDna.keyThemesPlaceholder")
+        },
+        {
+          id: "topicsToAvoid",
+          label: t("brandDna.topicsToAvoid"),
+          rows: 5,
+          placeholder: t("brandDna.topicsToAvoidPlaceholder")
+        }
+      ]
+    },
+    {
+      title: t("brandDna.visualTitle"),
+      description: t("brandDna.visualDescription"),
+      fields: [
+        {
+          id: "imageStyle",
+          label: t("brandDna.imageStyle"),
+          rows: 2,
+          placeholder: t("brandDna.imageStylePlaceholder")
+        },
+        {
+          id: "customImageInstructions",
+          label: t("brandDna.customImageInstructions"),
+          rows: 5,
+          placeholder: t("brandDna.customImageInstructionsPlaceholder")
+        }
+      ]
+    }
+  ];
+}
 
 function SaveButton() {
   const { pending } = useFormStatus();
+  const t = useT();
 
   return (
     <button
@@ -130,12 +115,15 @@ function SaveButton() {
       disabled={pending}
       className="inline-flex items-center justify-center rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-70"
     >
-      {pending ? "Saving..." : "Save Brand DNA"}
+      {pending ? t("brandDna.saving") : t("brandDna.save")}
     </button>
   );
 }
 
 export function BrandDNAForm({ siteId, initialValues }: BrandDNAFormProps) {
+  const t = useT();
+  const localizeMessage = useLocalizeMessage();
+  const sections = buildSections(t);
   const updateBrandDNAForSite = updateBrandDNA.bind(null, siteId);
   const [state, formAction] = useActionState(updateBrandDNAForSite, initialState);
   const [formValues, setFormValues] = useState<BrandDNAValues>({
@@ -187,7 +175,7 @@ export function BrandDNAForm({ siteId, initialValues }: BrandDNAFormProps) {
       const payload = (await response.json()) as GeneratedBrandDNAResult;
 
       if (!response.ok || !payload.brandDNA) {
-        setGenerationError(payload.error || "Brand DNA generation failed.");
+        setGenerationError(payload.error ? localizeMessage(payload.error) : t("brandDna.generateFailed"));
         return;
       }
 
@@ -195,9 +183,9 @@ export function BrandDNAForm({ siteId, initialValues }: BrandDNAFormProps) {
         ...current,
         ...payload.brandDNA
       }));
-      setGenerationSuccess("Draft Brand DNA generated and saved. Review and edit before saving again if needed.");
+      setGenerationSuccess(t("brandDna.generateSuccess"));
     } catch {
-      setGenerationError("Unable to reach the Brand DNA generation endpoint.");
+      setGenerationError(t("brandDna.generateUnreachable"));
     } finally {
       setIsGenerating(false);
     }
@@ -207,15 +195,15 @@ export function BrandDNAForm({ siteId, initialValues }: BrandDNAFormProps) {
     <form action={formAction} className="grid gap-6">
       <section className="grid gap-4 rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-ink">Auto-Generate Draft</h2>
+          <h2 className="text-lg font-semibold text-ink">{t("brandDna.generateTitle")}</h2>
           <p className="text-sm text-slate-600">
-            Use the site name, domain, and an optional business description to draft Brand DNA values you can edit.
+            {t("brandDna.generateDescription")}
           </p>
         </div>
 
         <div className="grid gap-2">
           <label htmlFor="businessDescription" className="text-sm font-medium text-ink">
-            Optional business description
+            {t("brandDna.businessDescriptionLabel")}
           </label>
           <textarea
             id="businessDescription"
@@ -223,7 +211,7 @@ export function BrandDNAForm({ siteId, initialValues }: BrandDNAFormProps) {
             onChange={(event) => setBusinessDescription(event.target.value)}
             rows={3}
             maxLength={500}
-            placeholder="What does the business do, who does it serve, and what makes it different?"
+            placeholder={t("brandDna.businessDescriptionPlaceholder")}
             className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
           />
         </div>
@@ -239,7 +227,7 @@ export function BrandDNAForm({ siteId, initialValues }: BrandDNAFormProps) {
             disabled={isGenerating}
             className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {isGenerating ? "Generating..." : "Auto-Generate Brand DNA"}
+            {isGenerating ? t("brandDna.generating") : t("brandDna.generate")}
           </button>
         </div>
       </section>
@@ -275,10 +263,10 @@ export function BrandDNAForm({ siteId, initialValues }: BrandDNAFormProps) {
                   className="rounded-2xl border border-line px-4 py-3 outline-none transition focus:border-accent"
                 />
                 {field.id === "keyThemes" || field.id === "topicsToAvoid" ? (
-                  <p className="text-xs text-slate-500">Separate entries with new lines or commas.</p>
+                  <p className="text-xs text-slate-500">{t("brandDna.listHint")}</p>
                 ) : null}
                 {field.id === "imageStyle" ? (
-                  <p className="text-xs text-slate-500">Keep this short and reusable, for example: “Minimal product illustration”.</p>
+                  <p className="text-xs text-slate-500">{t("brandDna.imageStyleHint")}</p>
                 ) : null}
               </div>
             ))}
@@ -288,8 +276,8 @@ export function BrandDNAForm({ siteId, initialValues }: BrandDNAFormProps) {
 
       <div className="flex items-center justify-between gap-4 rounded-3xl border border-line bg-white/90 p-6 shadow-panel">
         <div className="text-sm">
-          {state.error ? <p className="text-red-600">{state.error}</p> : null}
-          {state.success ? <p className="text-accent">{state.success}</p> : null}
+          {state.error ? <p className="text-red-600">{localizeMessage(state.error)}</p> : null}
+          {state.success ? <p className="text-accent">{localizeMessage(state.success)}</p> : null}
         </div>
         <SaveButton />
       </div>

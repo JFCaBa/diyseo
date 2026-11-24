@@ -28,7 +28,11 @@ const MIGRATED_FILES: string[] = [
   "components/widget-install-card.tsx",
   "components/install-reverse-proxy-panel.tsx",
   "components/install-static-export-panel.tsx",
-  "components/seo-performance-section.tsx"
+  "components/seo-performance-section.tsx",
+  // Task 4: Brand DNA
+  "app/[siteId]/brand-dna/page.tsx",
+  "components/brand-dna-form.tsx",
+  "app/api/internal/sites/[siteId]/brand-dna/generate/route.ts"
 ];
 
 /** Proper names and symbols that may appear untranslated. */

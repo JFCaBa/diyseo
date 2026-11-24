@@ -82,6 +82,15 @@ NextAuth v5 (beta) with Google provider, database session strategy, Prisma adapt
 
 `User ──1:1── Workspace ──1:N── SiteProject ──1:1── BrandProfile` and `SiteProject ──1:N── {Article, Keyword}`. `Article.keywordId` is a nullable FK with `SetNull`. `Article` has a composite unique `(siteProjectId, slug)` and an index on `(siteProjectId, status, publishedAt)` — public listings rely on this index. `ArticleStatus` is `DRAFT | PUBLISHED`; `KeywordStatus` is `NEW | USED`.
 
+### Signed-in UI language (en/es)
+
+The signed-in app (not `/admin`, landing, legal pages or the public blog, which has its own `lib/public-blog-i18n.ts`) is bilingual through the in-house layer in `lib/i18n/`, with no URL prefix and no dependency.
+
+- The locale is `"en" | "es"`, read from the `diyseo-locale` cookie (set by the switcher through `setUiLocale`), else the best `Accept-Language` match, else English. English output must stay identical to the original strings.
+- Add a string in both `lib/i18n/messages/en.ts` (the exact English) and `es.ts` (Spain Spanish, informal tú; `tsc` fails if the keys differ). Server code: `const t = await getT()`; client components: `useT()`. Dates and numbers go through `formatDate`/`formatNumber` with the active locale (never change the time zone); counts use separate `*One`/`*Other` keys.
+- Messages that come from Zod schemas, static `lib/*` errors or static action successes are English strings looked up by exact text in `en.errors`/`en.notices` (`localizeMessage` / `useLocalizeMessage`); a new one must be added there with a unique English value. Messages with runtime values never go through that lookup: use `t(key, vars)` in the action, or give the error a `code` and `vars` and map it by code (see `lib/provider-error.ts`, `lib/quota-error.ts` and their `localize*` helpers, tested in `tests/i18n-dynamic-errors.test.ts`).
+- `tests/i18n-raw-text.test.ts` scans every `.tsx` under `app/` and `components/` for raw English JSX text and text attributes (`placeholder`, `title`, `aria-label`, `alt`, `label`, `description`). A new screen must pass it; the only exceptions are the reasoned `IGNORED_FILES` entries.
+
 ### Server actions + validation
 
 `lib/actions.ts` (`"use server"`) is the entry point for every admin mutation (create/update site, brand DNA, article CRUD, status toggle, scheduling, keyword assignment). Actions read `FormData`, parse through a Zod schema from `lib/validations.ts`, mutate via `lib/prisma.ts`, then call `revalidatePath` and/or `redirect`. When adding a mutation, follow this pattern — add the Zod schema in `lib/validations.ts`, add the server action in `lib/actions.ts`, and pass the action to a client form component rather than building a `/api/internal` route.

@@ -639,9 +639,9 @@ export const es: Messages = {
     },
     searchLocale: {
       eyebrow: "SERP en vivo",
-      title: "Configuración regional de búsqueda por defecto",
+      title: "Idioma y país de búsqueda por defecto",
       description: "Estos valores rellenan de antemano las comprobaciones manuales de posición en vivo de este sitio. Los usuarios aún pueden cambiarlos antes de ejecutar una comprobación.",
-      label: "Configuración regional de búsqueda por defecto",
+      label: "Idioma y país de búsqueda",
       option: "{label} - gl={country}, hl={language}",
       save: "Guardar valores de búsqueda",
       esEs: "España / Español",
@@ -708,8 +708,8 @@ export const es: Messages = {
       suggestedMatch: "Coincidencia sugerida",
       save: "Guardar propiedad",
       permissionOwner: "Propietario",
-      permissionFullUser: "Usuario completo",
-      permissionRestrictedUser: "Usuario restringido",
+      permissionFullUser: "Usuario con acceso completo",
+      permissionRestrictedUser: "Usuario con acceso restringido",
       permissionUnverifiedUser: "Usuario no verificado"
     }
   },
@@ -928,7 +928,7 @@ export const es: Messages = {
     invalidSiteDeletion: "Confirmación de eliminación del sitio no válida.",
     invalidSearchConsoleProperty: "Propiedad de Search Console no válida.",
     invalidAutoPublishSettings: "Ajustes de publicación automática no válidos.",
-    invalidSearchLocaleDefaults: "Configuración regional de búsqueda por defecto no válida.",
+    invalidSearchLocaleDefaults: "Idioma y país de búsqueda por defecto no válidos.",
     invalidTranslationSettings: "Ajustes de traducción no válidos.",
     invalidApiKeyLabel: "Etiqueta de clave API no válida.",
     invalidApiKey: "Clave API no válida."

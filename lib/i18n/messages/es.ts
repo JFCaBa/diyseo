@@ -944,7 +944,7 @@ export const es: Messages = {
       },
       agency: {
         tagline: "Sitios web de clientes en un solo panel.",
-        f1: "10 sitios, después £15 por sitio extra",
+        f1: "10 sitios, después 15 £ por sitio extra",
         f2: "Miembros del equipo ilimitados",
         f3: "150 artículos al mes",
         f4: "200 preguntas de IA, comprobadas cada semana",
@@ -957,7 +957,7 @@ export const es: Messages = {
   },
   team: {
     inviteTitle: "Invita a un compañero",
-    inviteIntro: "Inicia sesión con Google usando este correo y tendrá acceso a todos los sitios de este espacio de trabajo.",
+    inviteIntro: "Iniciará sesión con Google con este correo y tendrá acceso a todos los sitios de este espacio de trabajo.",
     members: "Miembros",
     invites: "Invitaciones",
     roleMember: "Miembro",

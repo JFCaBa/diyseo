@@ -5,7 +5,7 @@ import clsx from "clsx";
 
 import { useLocale, useT } from "@/components/i18n-provider";
 import { startCheckout } from "@/lib/billing-actions";
-import { formatNumber, type MessageKey } from "@/lib/i18n/translate";
+import { formatPriceGbp, type MessageKey } from "@/lib/i18n/translate";
 import { PLANS } from "@/lib/plans";
 
 export function BillingPlanPicker() {
@@ -43,7 +43,7 @@ export function BillingPlanPicker() {
             <h3 className="text-lg font-semibold text-ink">{plan.name}</h3>
             <p className="mt-1 text-sm text-slate-600">{t(`billing.plans.${plan.id}.tagline` as MessageKey)}</p>
             <p className="mt-4 text-3xl font-semibold text-ink">
-              {formatNumber(price, locale, { style: "currency", currency: "GBP", maximumFractionDigits: 0 })}
+              {formatPriceGbp(price, locale)}
               <span className="text-sm font-normal text-slate-600"> {t(interval === "annual" ? "billing.perMonthYearly" : "billing.perMonth")}</span>
             </p>
             <ul className="mb-5 mt-4 flex-grow list-disc space-y-1 pl-5 text-sm text-slate-700">

@@ -187,3 +187,12 @@ test("team: the member-limit and already-member texts keep their runtime values"
   assert.match(es("team.limitOther", { limit: 3, billing: "x" }), /3/);
   assert.match(es("team.limitOne", { limit: 1, billing: "x" }), /1 miembro\b/);
 });
+
+import { formatPriceGbp } from "@/lib/i18n/translate";
+import { es as esMessages } from "@/lib/i18n/messages/es";
+
+test("prices: English keeps £29, Spanish uses the narrow symbol, and the Spanish plan text matches the formatter", () => {
+  assert.equal(formatPriceGbp(29, "en"), "£29");
+  assert.equal(formatPriceGbp(29, "es").replace(/\s/g, " "), "29 £");
+  assert.ok(esMessages.billing.plans.agency.f1.includes(formatPriceGbp(15, "es").replace(/\s/g, " ")));
+});

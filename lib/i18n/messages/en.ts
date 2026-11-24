@@ -367,6 +367,8 @@ export const en = {
     totalArticles: "Total Articles",
     published: "Published",
     draft: "Draft",
+    statusPublished: "Published",
+    statusDraft: "Draft",
     availableKeywords: "Available Keywords",
     listDescription: "Published articles appear on the public blog automatically. Drafts stay private until you publish them.",
     pageOf: "Page {page} of {total}",
@@ -536,6 +538,7 @@ export const en = {
     metaPageIdNumeric: "Enter the numeric Page ID.",
     metaAccessTokenShort: "Paste the full access token.",
     siteNotFound: "Site not found.",
+    brandProfileMissing: "Brand profile is missing for this site.",
     invalidRequestBody: "Invalid request body.",
     brandDnaGenerationFailed: "Brand DNA generation failed."
   }

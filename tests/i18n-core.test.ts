@@ -160,3 +160,9 @@ test("with a Spanish provider, the switcher and useT render Spanish", async () =
   assert.match(html, /<option value="es" selected="">/);
   assert.match(html, new RegExp(es.localeSwitcher.label));
 });
+
+test("the generate route's static brand-profile error localizes in Spanish", async () => {
+  const { createLocalizeMessage } = await import("@/lib/i18n/translate");
+  assert.equal(createLocalizeMessage("es")("Brand profile is missing for this site."), es.errors.brandProfileMissing);
+  assert.equal(createLocalizeMessage("en")("Brand profile is missing for this site."), "Brand profile is missing for this site.");
+});

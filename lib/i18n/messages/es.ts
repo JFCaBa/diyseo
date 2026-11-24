@@ -328,7 +328,7 @@ export const es: Messages = {
     generating: "Generando...",
     generate: "Generar Brand DNA automáticamente",
     generateFailed: "No se pudo generar el Brand DNA.",
-    generateUnreachable: "No se puede acceder al endpoint de generación de Brand DNA.",
+    generateUnreachable: "No se puede acceder al servicio de generación de Brand DNA.",
     generateSuccess: "Borrador de Brand DNA generado y guardado. Revísalo y edítalo antes de volver a guardar si hace falta.",
     saving: "Guardando...",
     save: "Guardar Brand DNA",
@@ -367,6 +367,8 @@ export const es: Messages = {
     totalArticles: "Artículos totales",
     published: "Publicados",
     draft: "Borrador",
+    statusPublished: "Publicado",
+    statusDraft: "Borrador",
     availableKeywords: "Palabras clave disponibles",
     listDescription: "Los artículos publicados aparecen en el blog público automáticamente. Los borradores siguen siendo privados hasta que los publiques.",
     pageOf: "Página {page} de {total}",
@@ -411,7 +413,7 @@ export const es: Messages = {
       generating: "Generando...",
       submit: "Generar artículo borrador",
       failed: "Ha fallado la generación del artículo.",
-      unreachable: "No se puede acceder al endpoint de generación de artículos.",
+      unreachable: "No se puede acceder al servicio de generación de artículos.",
       slug: "Slug: {slug}",
       status: "Estado: {status}",
       openInEditor: "Abrir en el editor"
@@ -533,6 +535,7 @@ export const es: Messages = {
     metaPageIdNumeric: "Introduce el ID numérico de la página.",
     metaAccessTokenShort: "Pega el token de acceso completo.",
     siteNotFound: "Sitio no encontrado.",
+    brandProfileMissing: "Falta el perfil de marca de este sitio.",
     invalidRequestBody: "Cuerpo de la solicitud no válido.",
     brandDnaGenerationFailed: "No se pudo generar el Brand DNA."
   }

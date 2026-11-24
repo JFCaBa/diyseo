@@ -198,7 +198,7 @@ export default async function ArticlesPage({ params, searchParams }: ArticlesPag
                               : "border border-dashed border-line bg-white text-slate-600"
                           }`}
                         >
-                          {article.status === "PUBLISHED" ? t("articles.published") : t("articles.draft")}
+                          {article.status === "PUBLISHED" ? t("articles.statusPublished") : t("articles.statusDraft")}
                         </span>
                         {article.keyword ? (
                           <span className="inline-flex rounded-full bg-mist px-3 py-1 text-xs font-semibold text-accent">

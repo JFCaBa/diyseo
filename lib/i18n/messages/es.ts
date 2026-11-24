@@ -315,6 +315,26 @@ export const es: Messages = {
     noPoints: "Google Search Console no ha devuelto puntos de posición diarios para esta selección en el rango actual de 28 días.",
     chartAria: "Tendencia de posición de {label}"
   },
+  notices: {
+    articleDeleted: "Artículo eliminado.",
+    articlePublished: "Artículo publicado.",
+    articleUnpublished: "Artículo despublicado.",
+    articleUpdated: "Artículo actualizado.",
+    autoPublishUpdated: "Ajustes de publicación automática actualizados.",
+    brandDnaUpdated: "Brand DNA actualizado.",
+    keywordAssigned: "Palabra clave asignada.",
+    keywordCleared: "Palabra clave quitada.",
+    keywordCreated: "Palabra clave creada.",
+    apiKeyCreated: "Clave API de publicación creada. Guárdala ahora porque no se volverá a mostrar.",
+    apiKeyRevoked: "Clave API de publicación revocada.",
+    searchConsoleConnected: "Propiedad de Search Console conectada.",
+    searchLocaleUpdated: "Idioma y país de búsqueda por defecto actualizados.",
+    translationGenerated: "Traducción generada.",
+    translationSettingsUpdated: "Ajustes de traducción actualizados.",
+    widgetMarkedInstalled: "Widget marcado como instalado.",
+    widgetMarkedNotInstalled: "Widget marcado como no instalado.",
+    widgetThemeUpdated: "Tema del widget actualizado."
+  },
   errors: {
     required: "Obligatorio",
     invalidInput: "Valor no válido",

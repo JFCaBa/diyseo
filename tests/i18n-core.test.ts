@@ -96,8 +96,22 @@ test("localizeMessage maps catalog errors and leaves anything else verbatim", ()
   assert.equal(createLocalizeMessage("en")(en.errors.titleRequired), en.errors.titleRequired);
 });
 
-test("localizeMessage only looks in the errors catalog", () => {
+test("localizeMessage translates static action notices", () => {
+  const localize = createLocalizeMessage("es");
+  assert.equal(localize("Widget theme updated."), es.notices.widgetThemeUpdated);
+  assert.equal(localize("Widget marked as installed."), es.notices.widgetMarkedInstalled);
+  assert.notEqual(es.notices.widgetThemeUpdated, en.notices.widgetThemeUpdated);
+});
+
+test("localizeMessage only looks in the errors and notices catalogs", () => {
   assert.equal(createLocalizeMessage("es")(en.nav.dashboard), en.nav.dashboard);
+});
+
+test("English singular forms are singular", () => {
+  const t = createT("en");
+  assert.equal(t("dashboard.draftsInProgressOne", { count: 1 }), "1 draft still in progress.");
+  assert.equal(t("dashboard.totalArticlesOne", { count: 1 }), "1 total article");
+  assert.equal(t("install.export.lastExportOne", { date: "today", count: 1 }), "Last export: today (1 article).");
 });
 
 test("formatDate and formatNumber follow the locale", () => {

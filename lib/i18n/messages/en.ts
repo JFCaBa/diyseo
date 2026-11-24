@@ -1,7 +1,8 @@
 /**
  * English UI strings: every value is the exact English the app showed before i18n.
- * One namespace per screen group; `errors` is the closed catalog that `localizeMessage`
- * reverse-looks-up (Zod and static lib/* messages), so its English values must be unique.
+ * One namespace per screen group; `errors` and `notices` are the closed catalogs that
+ * `localizeMessage` reverse-looks-up (Zod, static lib/* errors and static action successes),
+ * so their English values must be unique across both.
  */
 export const en = {
   common: {
@@ -108,7 +109,7 @@ export const en = {
     step3Description: "Copy the widget snippet and place it on your site once an article is published.",
     step3Cta: "Install widget",
     publishedArticles: "Published Articles",
-    draftsInProgressOne: "{count} drafts still in progress.",
+    draftsInProgressOne: "{count} draft still in progress.",
     draftsInProgressOther: "{count} drafts still in progress.",
     brandCoverage: "Brand DNA Coverage",
     fieldsFilled: "{count} of 9 fields are filled in.",
@@ -120,7 +121,7 @@ export const en = {
     publishingOverviewBody: "Move between writing, scheduling, publishing, and installation without losing context.",
     viewAnalytics: "View analytics",
     articles: "Articles",
-    totalArticlesOne: "{count} total articles",
+    totalArticlesOne: "{count} total article",
     totalArticlesOther: "{count} total articles",
     calendar: "Calendar",
     calendarBody: "Schedule and reschedule by month",
@@ -237,7 +238,7 @@ export const en = {
       step3After: "in Google Search Console.",
       snapshot:
         "It is a snapshot: it does not update by itself. Download and upload it again after publishing new articles. Only the default language is included.",
-      lastExportOne: "Last export: {date} ({count} articles).",
+      lastExportOne: "Last export: {date} ({count} article).",
       lastExportOther: "Last export: {date} ({count} articles).",
       changed: "Your articles changed since then. Download a new ZIP.",
       upToDate: "Up to date.",
@@ -313,6 +314,27 @@ export const en = {
     latestPosition: "Latest recorded position",
     noPoints: "Google Search Console returned no daily position points for this selection in the current 28-day range.",
     chartAria: "{label} position trend"
+  },
+  // Static success messages returned by lib/actions.ts, reverse-looked-up like `errors`.
+  notices: {
+    articleDeleted: "Article deleted.",
+    articlePublished: "Article published.",
+    articleUnpublished: "Article unpublished.",
+    articleUpdated: "Article updated.",
+    autoPublishUpdated: "Auto-publish settings updated.",
+    brandDnaUpdated: "Brand DNA updated.",
+    keywordAssigned: "Keyword assigned.",
+    keywordCleared: "Keyword cleared.",
+    keywordCreated: "Keyword created.",
+    apiKeyCreated: "Publishing API key created. Store it now because it will not be shown again.",
+    apiKeyRevoked: "Publishing API key revoked.",
+    searchConsoleConnected: "Search Console property connected.",
+    searchLocaleUpdated: "Search locale defaults updated.",
+    translationGenerated: "Translation generated.",
+    translationSettingsUpdated: "Translation settings updated.",
+    widgetMarkedInstalled: "Widget marked as installed.",
+    widgetMarkedNotInstalled: "Widget marked as not installed.",
+    widgetThemeUpdated: "Widget theme updated."
   },
   errors: {
     // Zod defaults emitted by lib/validations.ts

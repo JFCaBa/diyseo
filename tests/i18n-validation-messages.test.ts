@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { readFileSync } from "node:fs";
 import { z } from "zod";
 
 import { en } from "@/lib/i18n/messages/en";
@@ -54,13 +55,26 @@ test("every message our Zod schemas emit is in the errors catalog", () => {
   assert.deepEqual(missing, [], `missing from en.errors:\n${missing.join("\n")}`);
 });
 
-test("no two errors share the same English text", () => {
+test("no two errors or notices share the same English text", () => {
   const seen = new Map<string, string>();
   const duplicates: string[] = [];
-  for (const [key, value] of Object.entries(en.errors)) {
+  for (const [key, value] of [...Object.entries(en.errors), ...Object.entries(en.notices)]) {
     const previous = seen.get(value);
     if (previous) duplicates.push(`${previous} and ${key}: ${value}`);
     seen.set(value, key);
   }
   assert.deepEqual(duplicates, []);
+});
+
+test("every static success message in lib/actions.ts is in the notices catalog", () => {
+  const source = readFileSync("lib/actions.ts", "utf8");
+  const literals = source
+    .split("\n")
+    .filter((line) => /\bsuccess:\s*[^`]*"/.test(line) && !line.includes("`"))
+    .flatMap((line) => [...line.matchAll(/"([^"]+)"/g)].map((match) => match[1]))
+    .filter((literal) => literal.endsWith(".")); // skips comparands such as "PUBLISHED"
+  assert.ok(literals.length > 0);
+  const catalog = new Set<string>(Object.values(en.notices));
+  const missing = literals.filter((message) => !catalog.has(message));
+  assert.deepEqual(missing, [], `missing from en.notices:\n${missing.join("\n")}`);
 });

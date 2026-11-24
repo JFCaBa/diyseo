@@ -48,21 +48,27 @@ export function createT(locale: UiLocale): T {
   return (key, vars) => interpolate(messages.get(key) ?? fallback.get(key) ?? key, vars);
 }
 
-/** English error text → its key, over the closed `errors` catalog only (values are unique, see tests). */
-const ERROR_KEYS = new Map<string, keyof Messages["errors"]>(
-  (Object.entries(en.errors) as Array<[keyof Messages["errors"], string]>).map(([key, value]) => [value, key])
+type CatalogName = "errors" | "notices";
+
+/** English text → [catalog, key], over the closed `errors` and `notices` catalogs (values are unique, see tests). */
+const CATALOG_KEYS = new Map<string, [CatalogName, string]>(
+  (["errors", "notices"] as const).flatMap((catalog) =>
+    Object.entries(en[catalog]).map(([key, value]) => [value, [catalog, key]] as [string, [CatalogName, string]])
+  )
 );
 
 /**
- * Translates a static English message (Zod issue or static lib error) by exact match against
- * `en.errors`; anything else is returned verbatim. Never use it for messages with runtime values.
+ * Translates a static English message (Zod issue, static lib error or static action success) by
+ * exact match against `en.errors` / `en.notices`; anything else is returned verbatim. Never use it for messages with runtime values.
  */
 export function createLocalizeMessage(locale: UiLocale): LocalizeMessage {
-  const errors = DICTIONARIES[locale].errors;
+  const dictionary = DICTIONARIES[locale];
   return (message) => {
     if (message === null || message === undefined) return "";
-    const key = ERROR_KEYS.get(message);
-    return key ? errors[key] : message;
+    const match = CATALOG_KEYS.get(message);
+    if (!match) return message;
+    const [catalog, key] = match;
+    return (dictionary[catalog] as Record<string, string>)[key];
   };
 }
 

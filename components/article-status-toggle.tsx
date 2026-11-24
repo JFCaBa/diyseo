@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
+import { useLocalizeMessage, useT } from "@/components/i18n-provider";
 import { toggleArticleStatus, type ActionState } from "@/lib/actions";
 
 type ArticleStatusToggleProps = {
@@ -15,6 +16,7 @@ const initialState: ActionState = {};
 
 function SubmitButton({ status }: { status: "DRAFT" | "PUBLISHED" }) {
   const { pending } = useFormStatus();
+  const t = useT();
   const isDraft = status === "DRAFT";
 
   return (
@@ -23,12 +25,13 @@ function SubmitButton({ status }: { status: "DRAFT" | "PUBLISHED" }) {
       disabled={pending}
       className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:bg-mist disabled:cursor-not-allowed disabled:opacity-70"
     >
-      {pending ? "Saving..." : isDraft ? "Publish" : "Unpublish"}
+      {pending ? t("articles.status.saving") : isDraft ? t("articles.status.publish") : t("articles.status.unpublish")}
     </button>
   );
 }
 
 export function ArticleStatusToggle({ articleId, siteId, status }: ArticleStatusToggleProps) {
+  const localizeMessage = useLocalizeMessage();
   const toggleArticleStatusForSite = toggleArticleStatus.bind(null, siteId);
   const [state, formAction] = useActionState(toggleArticleStatusForSite, initialState);
   const nextStatus = status === "DRAFT" ? "PUBLISHED" : "DRAFT";
@@ -38,8 +41,8 @@ export function ArticleStatusToggle({ articleId, siteId, status }: ArticleStatus
       <input type="hidden" name="articleId" value={articleId} />
       <input type="hidden" name="status" value={nextStatus} />
       <SubmitButton status={status} />
-      {state.error ? <p className="text-xs text-red-600">{state.error}</p> : null}
-      {state.success ? <p className="text-xs text-accent">{state.success}</p> : null}
+      {state.error ? <p className="text-xs text-red-600">{localizeMessage(state.error)}</p> : null}
+      {state.success ? <p className="text-xs text-accent">{localizeMessage(state.success)}</p> : null}
     </form>
   );
 }

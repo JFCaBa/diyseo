@@ -10,6 +10,8 @@ import {
   getPublishedArticles
 } from "@/lib/articles";
 import { getArticleRenderedHtml } from "@/lib/markdown";
+import { getT } from "@/lib/i18n/server";
+import { formatBlogDate, getBlogStrings, resolveBlogLocale } from "@/lib/public-blog-i18n";
 import { getPublicBlogTheme } from "@/lib/public-blog-theme";
 import { getRequestedTranslationLanguage, getTranslationQuerySuffix, pickArticleTranslation } from "@/lib/translations";
 import { cn } from "@/lib/utils";
@@ -22,21 +24,10 @@ type PreviewPageProps = {
   searchParams?: Promise<{ slug?: string; lang?: string }>;
 };
 
-function formatPublishedDate(value: Date | string | null) {
-  if (!value) {
-    return null;
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric"
-  }).format(new Date(value));
-}
-
 export default async function PreviewPage({ params, searchParams }: PreviewPageProps) {
   const { siteId } = await params;
   await requireSitePage(siteId);
+  const t = await getT();
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const slug = typeof resolvedSearchParams?.slug === "string" ? resolvedSearchParams.slug.trim() : "";
   const language = getRequestedTranslationLanguage(typeof resolvedSearchParams?.lang === "string" ? resolvedSearchParams.lang : null);
@@ -47,6 +38,10 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
   if (!site) {
     notFound();
   }
+
+  const blogLocale = resolveBlogLocale(site.contentLanguage);
+  const blog = getBlogStrings(blogLocale);
+  const formatPublishedDate = (value: Date | string | null) => (value ? formatBlogDate(value, blogLocale) : null);
 
   if (slug) {
     const article = await getPublishedArticleBySlugWithTranslation(siteId, slug, language);
@@ -73,15 +68,15 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
     return (
       <section className="space-y-8">
         <PageHeader
-          title="Blog Preview"
-          description="Preview the public article inside the admin shell without leaving the product."
+          title={t("articles.preview.title")}
+          description={t("articles.preview.articleDescription")}
           action={
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 href={`/${siteId}/preview${languageQuerySuffix}`}
                 className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
               >
-                Back to Blog Preview
+                {t("articles.preview.backToBlogPreview")}
               </Link>
               <Link
                 href={`/blog/${siteId}/${article.slug}${languageQuerySuffix}`}
@@ -89,7 +84,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
                 rel="noreferrer"
                 className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
-                Open public article
+                {t("articles.preview.openPublicArticle")}
               </Link>
             </div>
           }
@@ -103,7 +98,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
               href={`/${siteId}/preview${languageQuerySuffix}`}
               className={cn("inline-flex text-sm font-semibold underline-offset-4 transition hover:underline", theme.link)}
             >
-              ← Back to Preview Index
+              {t("articles.preview.backToIndex")}
             </Link>
             <p className={cn("text-[11px] font-semibold uppercase tracking-[0.28em]", theme.eyebrow)}>{site.name}</p>
             {article.coverImageUrl ? (
@@ -118,11 +113,11 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
             {displayExcerpt ? <p className={cn("max-w-2xl text-lg leading-8 sm:text-xl", theme.body)}>{displayExcerpt}</p> : null}
             {language ? (
               <p className={cn("text-[11px] font-semibold uppercase tracking-[0.22em]", theme.muted)}>
-                Viewing translation: {language}
+                {blog.viewingTranslation(language)}
               </p>
             ) : null}
             {publishedDate ? (
-              <p className={cn("text-[11px] font-semibold uppercase tracking-[0.22em]", theme.muted)}>Published {publishedDate}</p>
+              <p className={cn("text-[11px] font-semibold uppercase tracking-[0.22em]", theme.muted)}>{blog.published(publishedDate)}</p>
             ) : null}
           </div>
 
@@ -131,7 +126,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
             dangerouslySetInnerHTML={{ __html: renderedContentHtml }}
           />
 
-          <nav className={cn("mt-10 border-t pt-6", theme.divider)} aria-label="Article navigation">
+          <nav className={cn("mt-10 border-t pt-6", theme.divider)} aria-label={blog.articleNavLabel}>
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
               <div className="sm:max-w-[32%]">
                 {previousArticle ? (
@@ -139,7 +134,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
                     href={`/${siteId}/preview?slug=${encodeURIComponent(previousArticle.slug)}${language ? `&lang=${encodeURIComponent(language)}` : ""}`}
                     className={cn("block text-sm transition", theme.navText)}
                   >
-                    <span className={cn("block text-[11px] font-semibold uppercase tracking-[0.22em]", theme.eyebrow)}>Previous</span>
+                    <span className={cn("block text-[11px] font-semibold uppercase tracking-[0.22em]", theme.eyebrow)}>{blog.previous}</span>
                     <span className={cn("mt-2 block text-base font-semibold leading-relaxed underline-offset-4 hover:underline", theme.navTitle)}>
                       ← {previousArticle.title}
                     </span>
@@ -152,7 +147,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
                   href={`/${siteId}/preview${languageQuerySuffix}`}
                   className={cn("inline-flex text-sm font-semibold underline-offset-4 transition hover:underline", theme.link)}
                 >
-                  Back to Blog Preview
+                  {t("articles.preview.backToBlogPreview")}
                 </Link>
               </div>
 
@@ -162,7 +157,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
                     href={`/${siteId}/preview?slug=${encodeURIComponent(nextArticle.slug)}${language ? `&lang=${encodeURIComponent(language)}` : ""}`}
                     className={cn("block text-sm transition", theme.navText)}
                   >
-                    <span className={cn("block text-[11px] font-semibold uppercase tracking-[0.22em]", theme.eyebrow)}>Next</span>
+                    <span className={cn("block text-[11px] font-semibold uppercase tracking-[0.22em]", theme.eyebrow)}>{blog.next}</span>
                     <span className={cn("mt-2 block text-base font-semibold leading-relaxed underline-offset-4 hover:underline", theme.navTitle)}>
                       {nextArticle.title} →
                     </span>
@@ -182,8 +177,8 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
   return (
     <section className="space-y-8">
       <PageHeader
-        title="Blog Preview"
-        description="Preview the public blog inside the admin shell while keeping the site navigation visible."
+        title={t("articles.preview.title")}
+        description={t("articles.preview.indexDescription")}
         action={
           <Link
             href={`/blog/${siteId}`}
@@ -191,24 +186,24 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
             rel="noreferrer"
             className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
           >
-            Open public blog
+            {t("articles.preview.openPublicBlog")}
           </Link>
         }
       />
 
       <section className={cn("rounded-[2rem] border px-5 py-7 shadow-panel sm:px-8 md:px-10 md:py-10", theme.shell, theme.surfaceText)}>
         <div className={cn("space-y-4 border-b pb-7", theme.divider)}>
-          <p className={cn("text-[11px] font-semibold uppercase tracking-[0.28em]", theme.eyebrow)}>Public Blog Preview</p>
-          <h1 className={cn("text-3xl font-semibold tracking-tight sm:text-4xl", theme.title)}>{site.name} Blog</h1>
+          <p className={cn("text-[11px] font-semibold uppercase tracking-[0.28em]", theme.eyebrow)}>{t("articles.preview.eyebrow")}</p>
+          <h1 className={cn("text-3xl font-semibold tracking-tight sm:text-4xl", theme.title)}>{blog.blogTitle(site.name)}</h1>
           <p className={cn("max-w-2xl text-sm leading-7 sm:text-base", theme.body)}>
-            This is the same published content, rendered inside the admin app so you can preview without leaving the shell.
+            {t("articles.preview.intro")}
           </p>
         </div>
 
         {articles.length === 0 ? (
           <div className={cn("mt-10 rounded-3xl border border-dashed px-6 py-10 text-center", theme.empty)}>
-            <p className={cn("text-lg font-semibold", theme.title)}>No articles published yet.</p>
-            <p className={cn("mt-2 text-sm", theme.muted)}>Publish an article to preview the public blog here.</p>
+            <p className={cn("text-lg font-semibold", theme.title)}>{blog.emptyTitle}</p>
+            <p className={cn("mt-2 text-sm", theme.muted)}>{t("articles.preview.emptyBody")}</p>
           </div>
         ) : (
           <div className="mt-10 space-y-6">
@@ -246,7 +241,7 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
                       ) : null}
                       {publishedDate ? (
                         <p className={cn("text-[11px] font-semibold uppercase tracking-[0.22em]", theme.muted)}>
-                          Published {publishedDate}
+                          {blog.published(publishedDate)}
                         </p>
                       ) : null}
                     </div>

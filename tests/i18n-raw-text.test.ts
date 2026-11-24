@@ -32,7 +32,16 @@ const MIGRATED_FILES: string[] = [
   // Task 4: Brand DNA
   "app/[siteId]/brand-dna/page.tsx",
   "components/brand-dna-form.tsx",
-  "app/api/internal/sites/[siteId]/brand-dna/generate/route.ts"
+  "app/api/internal/sites/[siteId]/brand-dna/generate/route.ts",
+  // Task 5: articles list, create, generate, preview
+  "app/[siteId]/articles/page.tsx",
+  "app/[siteId]/articles/new/page.tsx",
+  "components/article-create-form.tsx",
+  "components/article-generation-form.tsx",
+  "components/article-keyword-assignment.tsx",
+  "components/article-status-toggle.tsx",
+  "components/article-delete-button.tsx",
+  "app/[siteId]/preview/page.tsx"
 ];
 
 /** Proper names and symbols that may appear untranslated. */

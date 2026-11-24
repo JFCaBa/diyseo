@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ArticleCreateForm } from "@/components/article-create-form";
 import { PageHeader } from "@/components/page-header";
+import { getT } from "@/lib/i18n/server";
 import { requireSitePage } from "@/lib/workspace-context";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,7 @@ function getInitialDate(value?: string) {
 export default async function NewArticlePage({ params, searchParams }: NewArticlePageProps) {
   const { siteId } = await params;
   await requireSitePage(siteId);
+  const t = await getT();
   const query = await searchParams;
   const initialDate = getInitialDate(query.date);
   const returnTo = query.returnTo || `/${siteId}/calendar`;
@@ -29,14 +31,14 @@ export default async function NewArticlePage({ params, searchParams }: NewArticl
   return (
     <section className="space-y-8">
       <PageHeader
-        title="New Article"
-        description="Start a manual draft here, then continue editing from the Articles list or schedule it from the calendar."
+        title={t("articles.newTitle")}
+        description={t("articles.newDescription")}
         action={
           <Link
             href={returnTo}
             className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
           >
-            Back
+            {t("articles.back")}
           </Link>
         }
       />

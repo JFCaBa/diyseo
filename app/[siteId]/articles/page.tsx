@@ -4,6 +4,8 @@ import { ArticleKeywordAssignment } from "@/components/article-keyword-assignmen
 import { ArticleStatusToggle } from "@/components/article-status-toggle";
 import { PageHeader } from "@/components/page-header";
 import { getCoverImageProxyPath } from "@/lib/cover-image-url";
+import { getT, getUiLocale } from "@/lib/i18n/server";
+import { formatDate } from "@/lib/i18n/translate";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { requireSitePage } from "@/lib/workspace-context";
@@ -30,6 +32,8 @@ function parsePage(value?: string) {
 export default async function ArticlesPage({ params, searchParams }: ArticlesPageProps) {
   const { siteId } = await params;
   await requireSitePage(siteId);
+  const t = await getT();
+  const locale = await getUiLocale();
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const requestedPage = parsePage(resolvedSearchParams?.page);
   const totalArticles = await prisma.article.count({
@@ -97,21 +101,21 @@ export default async function ArticlesPage({ params, searchParams }: ArticlesPag
   return (
     <section className="space-y-8">
       <PageHeader
-        title="Articles"
-        description="Create, generate, edit, schedule, and publish articles without leaving the content workspace."
+        title={t("articles.title")}
+        description={t("articles.description")}
         action={
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href={`/${siteId}/calendar`}
               className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
             >
-              Open Calendar
+              {t("articles.openCalendar")}
             </Link>
             <Link
               href={`/${siteId}/articles/new`}
               className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
-              New Article
+              {t("articles.newArticle")}
             </Link>
           </div>
         }
@@ -119,15 +123,15 @@ export default async function ArticlesPage({ params, searchParams }: ArticlesPag
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-3xl border border-line bg-white/90 p-5 shadow-panel">
-          <p className="text-sm text-slate-500">Total Articles</p>
+          <p className="text-sm text-slate-500">{t("articles.totalArticles")}</p>
           <p className="mt-2 text-3xl font-semibold text-ink">{articleCounts.total}</p>
         </div>
         <div className="rounded-3xl border border-line bg-white/90 p-5 shadow-panel">
-          <p className="text-sm text-slate-500">Published</p>
+          <p className="text-sm text-slate-500">{t("articles.published")}</p>
           <p className="mt-2 text-3xl font-semibold text-ink">{articleCounts.published}</p>
         </div>
         <div className="rounded-3xl border border-line bg-white/90 p-5 shadow-panel">
-          <p className="text-sm text-slate-500">Available Keywords</p>
+          <p className="text-sm text-slate-500">{t("articles.availableKeywords")}</p>
           <p className="mt-2 text-3xl font-semibold text-ink">{keywords.length}</p>
         </div>
       </div>
@@ -137,31 +141,30 @@ export default async function ArticlesPage({ params, searchParams }: ArticlesPag
       <div className="rounded-3xl border border-line bg-white/85 p-6 shadow-panel">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-ink">Articles</h2>
+            <h2 className="text-lg font-semibold text-ink">{t("articles.title")}</h2>
             <p className="mt-1 text-sm text-slate-600">
-              Published articles appear on the public blog automatically. Drafts stay private until you publish them.
+              {t("articles.listDescription")}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-4">
             <p className="text-sm text-slate-500">
-              Page {safeCurrentPage} of {totalPages}
+              {t("articles.pageOf", { page: safeCurrentPage, total: totalPages })}
             </p>
             <Link href={`/${siteId}/keywords`} className="text-sm font-semibold text-accent hover:underline">
-              Manage keywords
+              {t("articles.manageKeywords")}
             </Link>
           </div>
         </div>
         {articles.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-line px-4 py-6">
             <p className="text-sm text-slate-600">
-              No articles yet. Generate your first article from Brand DNA to kick off the workflow, then publish it when
-              it is ready.
+              {t("articles.emptyBody")}
             </p>
             <Link
               href={`/${siteId}/articles#generate-article`}
               className="mt-4 inline-flex text-sm font-semibold text-accent hover:underline"
             >
-              Generate your first article
+              {t("articles.generateFirst")}
             </Link>
           </div>
         ) : (
@@ -179,7 +182,7 @@ export default async function ArticlesPage({ params, searchParams }: ArticlesPag
                       />
                     ) : (
                       <div className="flex h-24 items-center justify-center rounded-2xl border border-dashed border-line bg-mist/60 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        No image
+                        {t("articles.noImage")}
                       </div>
                     )}
                   </div>
@@ -195,7 +198,7 @@ export default async function ArticlesPage({ params, searchParams }: ArticlesPag
                               : "border border-dashed border-line bg-white text-slate-600"
                           }`}
                         >
-                          {article.status === "PUBLISHED" ? "Published" : "Draft"}
+                          {article.status === "PUBLISHED" ? t("articles.published") : t("articles.draft")}
                         </span>
                         {article.keyword ? (
                           <span className="inline-flex rounded-full bg-mist px-3 py-1 text-xs font-semibold text-accent">
@@ -205,17 +208,17 @@ export default async function ArticlesPage({ params, searchParams }: ArticlesPag
                       </div>
                       <p className="truncate text-sm text-slate-500">{article.slug}</p>
                       <p className="line-clamp-2 text-sm leading-6 text-slate-600">
-                        {article.excerpt?.trim() ? article.excerpt : "No excerpt yet. Open the article to add summary copy."}
+                        {article.excerpt?.trim() ? article.excerpt : t("articles.noExcerpt")}
                       </p>
                     </div>
 
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                      <p>Created {new Date(article.createdAt).toLocaleDateString()}</p>
-                      {article.publishedAt ? <p>Published {new Date(article.publishedAt).toLocaleDateString()}</p> : null}
+                      <p>{t("articles.created", { date: formatDate(article.createdAt, locale, {}) })}</p>
+                      {article.publishedAt ? <p>{t("articles.publishedOn", { date: formatDate(article.publishedAt, locale, {}) })}</p> : null}
                     </div>
 
                     <div className="rounded-2xl bg-mist/60 px-3 py-3">
-                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Keyword assignment</p>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t("articles.keywordAssignment")}</p>
                       <ArticleKeywordAssignment
                         articleId={article.id}
                         currentKeywordId={article.keywordId}
@@ -231,14 +234,14 @@ export default async function ArticlesPage({ params, searchParams }: ArticlesPag
                         href={`/${siteId}/articles/${article.id}`}
                         className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:bg-mist"
                       >
-                        Edit
+                        {t("articles.edit")}
                       </Link>
                       {article.status === "PUBLISHED" ? (
                         <Link
                           href={`/${siteId}/preview?slug=${encodeURIComponent(article.slug)}`}
                           className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:bg-mist"
                         >
-                          View Public
+                          {t("articles.viewPublic")}
                         </Link>
                       ) : null}
                       <ArticleDeleteButton articleId={article.id} articleTitle={article.title} siteId={siteId} />
@@ -254,7 +257,7 @@ export default async function ArticlesPage({ params, searchParams }: ArticlesPag
         {articles.length > 0 ? (
           <div className="mt-6 flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-slate-600">
-              Page {safeCurrentPage} of {totalPages}
+              {t("articles.pageOf", { page: safeCurrentPage, total: totalPages })}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {previousPageHref ? (
@@ -262,11 +265,11 @@ export default async function ArticlesPage({ params, searchParams }: ArticlesPag
                   href={previousPageHref}
                   className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:bg-mist"
                 >
-                  Previous
+                  {t("articles.previous")}
                 </Link>
               ) : (
                 <span className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-slate-300">
-                  Previous
+                  {t("articles.previous")}
                 </span>
               )}
               {nextPageHref ? (
@@ -274,11 +277,11 @@ export default async function ArticlesPage({ params, searchParams }: ArticlesPag
                   href={nextPageHref}
                   className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:bg-mist"
                 >
-                  Next
+                  {t("articles.next")}
                 </Link>
               ) : (
                 <span className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-slate-300">
-                  Next
+                  {t("articles.next")}
                 </span>
               )}
             </div>

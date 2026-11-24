@@ -359,6 +359,91 @@ export const es: Messages = {
     customImageInstructionsPlaceholder:
       "Usa composiciones limpias, iluminación realista y evita escenas de oficina genéricas de banco de imágenes."
   },
+  articles: {
+    title: "Artículos",
+    description: "Crea, genera, edita, programa y publica artículos sin salir del espacio de contenido.",
+    openCalendar: "Abrir calendario",
+    newArticle: "Nuevo artículo",
+    totalArticles: "Artículos totales",
+    published: "Publicados",
+    draft: "Borrador",
+    availableKeywords: "Palabras clave disponibles",
+    listDescription: "Los artículos publicados aparecen en el blog público automáticamente. Los borradores siguen siendo privados hasta que los publiques.",
+    pageOf: "Página {page} de {total}",
+    manageKeywords: "Gestionar palabras clave",
+    emptyBody:
+      "Aún no hay artículos. Genera tu primer artículo a partir de Brand DNA para empezar el flujo y publícalo cuando esté listo.",
+    generateFirst: "Genera tu primer artículo",
+    noImage: "Sin imagen",
+    noExcerpt: "Aún no hay extracto. Abre el artículo para añadir un resumen.",
+    created: "Creado el {date}",
+    publishedOn: "Publicado el {date}",
+    keywordAssignment: "Asignación de palabra clave",
+    edit: "Editar",
+    viewPublic: "Ver público",
+    previous: "Anterior",
+    next: "Siguiente",
+    newTitle: "Nuevo artículo",
+    newDescription: "Empieza un borrador manual aquí y sigue editándolo desde la lista de artículos o prográmalo desde el calendario.",
+    back: "Volver",
+    create: {
+      creating: "Creando...",
+      submit: "Crear borrador",
+      scheduledDate: "Fecha programada",
+      titleLabel: "Título",
+      excerpt: "Extracto",
+      coverImageUrl: "URL de la imagen de portada",
+      coverImagePlaceholder: "https://example.com/cover.jpg",
+      coverImageHelp: "Opcional. Usa una URL pública o una ruta relativa al sitio como `/uploads/...`.",
+      seoTitle: "Título SEO",
+      seoTitleHelp: "Máximo recomendado: 60 caracteres.",
+      seoDescription: "Metadescripción",
+      seoDescriptionHelp: "Máximo recomendado: 160 caracteres.",
+      contentMarkdown: "Contenido en Markdown",
+      contentMarkdownHelp: "Los artículos nuevos usan Markdown."
+    },
+    generate: {
+      title: "Generar un borrador",
+      description:
+        "Usa el Brand DNA actual y una palabra clave opcional para producir un borrador guardado que puedes editar antes de publicar.",
+      keywordLabel: "Palabra clave opcional",
+      keywordPlaceholder: "p. ej. estrategia SEO autoalojada",
+      generating: "Generando...",
+      submit: "Generar artículo borrador",
+      failed: "Ha fallado la generación del artículo.",
+      unreachable: "No se puede acceder al endpoint de generación de artículos.",
+      slug: "Slug: {slug}",
+      status: "Estado: {status}",
+      openInEditor: "Abrir en el editor"
+    },
+    keyword: {
+      none: "Sin palabra clave",
+      saving: "Guardando...",
+      save: "Guardar palabra clave"
+    },
+    status: {
+      saving: "Guardando...",
+      publish: "Publicar",
+      unpublish: "Despublicar"
+    },
+    delete: {
+      deleting: "Eliminando...",
+      delete: "Eliminar",
+      confirm: "¿Eliminar \"{title}\"? Esta acción no se puede deshacer."
+    },
+    preview: {
+      title: "Vista previa del blog",
+      articleDescription: "Previsualiza el artículo público dentro del panel de administración sin salir del producto.",
+      indexDescription: "Previsualiza el blog público dentro del panel de administración manteniendo visible la navegación del sitio.",
+      backToBlogPreview: "Volver a la vista previa del blog",
+      openPublicArticle: "Abrir artículo público",
+      openPublicBlog: "Abrir blog público",
+      backToIndex: "← Volver al índice de la vista previa",
+      eyebrow: "Vista previa del blog público",
+      intro: "Es el mismo contenido publicado, mostrado dentro de la app de administración para que lo previsualices sin salir del panel.",
+      emptyBody: "Publica un artículo para previsualizar aquí el blog público."
+    }
+  },
   notices: {
     articleDeleted: "Artículo eliminado.",
     articlePublished: "Artículo publicado.",

@@ -359,6 +359,91 @@ export const en = {
     customImageInstructionsPlaceholder:
       "Use clean compositions, realistic lighting, and avoid generic stock-style office scenes."
   },
+  articles: {
+    title: "Articles",
+    description: "Create, generate, edit, schedule, and publish articles without leaving the content workspace.",
+    openCalendar: "Open Calendar",
+    newArticle: "New Article",
+    totalArticles: "Total Articles",
+    published: "Published",
+    draft: "Draft",
+    availableKeywords: "Available Keywords",
+    listDescription: "Published articles appear on the public blog automatically. Drafts stay private until you publish them.",
+    pageOf: "Page {page} of {total}",
+    manageKeywords: "Manage keywords",
+    emptyBody:
+      "No articles yet. Generate your first article from Brand DNA to kick off the workflow, then publish it when it is ready.",
+    generateFirst: "Generate your first article",
+    noImage: "No image",
+    noExcerpt: "No excerpt yet. Open the article to add summary copy.",
+    created: "Created {date}",
+    publishedOn: "Published {date}",
+    keywordAssignment: "Keyword assignment",
+    edit: "Edit",
+    viewPublic: "View Public",
+    previous: "Previous",
+    next: "Next",
+    newTitle: "New Article",
+    newDescription: "Start a manual draft here, then continue editing from the Articles list or schedule it from the calendar.",
+    back: "Back",
+    create: {
+      creating: "Creating...",
+      submit: "Create Draft",
+      scheduledDate: "Scheduled Date",
+      titleLabel: "Title",
+      excerpt: "Excerpt",
+      coverImageUrl: "Cover Image URL",
+      coverImagePlaceholder: "https://example.com/cover.jpg",
+      coverImageHelp: "Optional. Use a public URL or a site-relative path like `/uploads/...`.",
+      seoTitle: "SEO Title",
+      seoTitleHelp: "Recommended max: 60 characters.",
+      seoDescription: "SEO Description",
+      seoDescriptionHelp: "Recommended max: 160 characters.",
+      contentMarkdown: "Content Markdown",
+      contentMarkdownHelp: "New articles use Markdown."
+    },
+    generate: {
+      title: "Generate a Draft",
+      description:
+        "Uses the current Brand DNA plus an optional keyword to produce a saved draft article you can edit before publishing.",
+      keywordLabel: "Optional keyword",
+      keywordPlaceholder: "e.g. self-hosted SEO strategy",
+      generating: "Generating...",
+      submit: "Generate Draft Article",
+      failed: "Article generation failed.",
+      unreachable: "Unable to reach the article generation endpoint.",
+      slug: "Slug: {slug}",
+      status: "Status: {status}",
+      openInEditor: "Open in editor"
+    },
+    keyword: {
+      none: "No keyword",
+      saving: "Saving...",
+      save: "Save Keyword"
+    },
+    status: {
+      saving: "Saving...",
+      publish: "Publish",
+      unpublish: "Unpublish"
+    },
+    delete: {
+      deleting: "Deleting...",
+      delete: "Delete",
+      confirm: "Delete \"{title}\"? This cannot be undone."
+    },
+    preview: {
+      title: "Blog Preview",
+      articleDescription: "Preview the public article inside the admin shell without leaving the product.",
+      indexDescription: "Preview the public blog inside the admin shell while keeping the site navigation visible.",
+      backToBlogPreview: "Back to Blog Preview",
+      openPublicArticle: "Open public article",
+      openPublicBlog: "Open public blog",
+      backToIndex: "← Back to Preview Index",
+      eyebrow: "Public Blog Preview",
+      intro: "This is the same published content, rendered inside the admin app so you can preview without leaving the shell.",
+      emptyBody: "Publish an article to preview the public blog here."
+    }
+  },
   // Static success messages returned by lib/actions.ts, reverse-looked-up like `errors`.
   notices: {
     articleDeleted: "Article deleted.",

@@ -52,7 +52,18 @@ const MIGRATED_FILES: string[] = [
   "components/create-keyword-form.tsx",
   "components/suggested-keywords.tsx",
   "app/[siteId]/calendar/page.tsx",
-  "components/calendar-month-view.tsx"
+  "components/calendar-month-view.tsx",
+  // Task 8: site settings and API page
+  "app/[siteId]/settings/page.tsx",
+  "components/site-search-locale-form.tsx",
+  "components/site-translation-settings-form.tsx",
+  "components/site-auto-publish-form.tsx",
+  "components/site-delete-form.tsx",
+  "components/site-transfer-form.tsx",
+  "components/site-publishing-api-keys-form.tsx",
+  "components/site-social-connection-form.tsx",
+  "components/search-console-property-picker.tsx",
+  "app/[siteId]/api/page.tsx"
 ];
 
 /** Proper names and symbols that may appear untranslated. */

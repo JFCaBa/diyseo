@@ -3,7 +3,9 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
+import { useLocalizeMessage, useT } from "@/components/i18n-provider";
 import { type ActionState, updateSearchConsoleProperty } from "@/lib/actions";
+import type { T } from "@/lib/i18n/translate";
 
 type SearchConsolePropertyPickerProps = {
   properties: Array<{
@@ -19,6 +21,7 @@ const initialState: ActionState = {};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
+  const t = useT();
 
   return (
     <button
@@ -26,13 +29,22 @@ function SubmitButton() {
       disabled={pending}
       className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
     >
-      {pending ? "Saving..." : "Save property"}
+      {pending ? t("settings.saving") : t("settings.searchConsole.save")}
     </button>
   );
 }
 
-function formatPermissionLevel(value: string) {
-  return value.replace(/^site/, "").replace(/([A-Z])/g, " $1").trim();
+const PERMISSION_LEVEL_KEYS = {
+  siteOwner: "settings.searchConsole.permissionOwner",
+  siteFullUser: "settings.searchConsole.permissionFullUser",
+  siteRestrictedUser: "settings.searchConsole.permissionRestrictedUser",
+  siteUnverifiedUser: "settings.searchConsole.permissionUnverifiedUser"
+} as const;
+
+function formatPermissionLevel(value: string, t: T) {
+  const key = PERMISSION_LEVEL_KEYS[value as keyof typeof PERMISSION_LEVEL_KEYS];
+  // Levels Google adds later keep the old derived label.
+  return key ? t(key) : value.replace(/^site/, "").replace(/([A-Z])/g, " $1").trim();
 }
 
 export function SearchConsolePropertyPicker({
@@ -40,6 +52,8 @@ export function SearchConsolePropertyPicker({
   selectedPropertyUrl,
   siteId
 }: SearchConsolePropertyPickerProps) {
+  const t = useT();
+  const localizeMessage = useLocalizeMessage();
   const updateSearchConsolePropertyForSite = updateSearchConsoleProperty.bind(null, siteId);
   const [state, formAction] = useActionState(updateSearchConsolePropertyForSite, initialState);
 
@@ -47,7 +61,7 @@ export function SearchConsolePropertyPicker({
     <form action={formAction} className="space-y-4">
       <div className="grid gap-2">
         <label htmlFor="propertyUrl" className="text-sm font-medium text-ink">
-          Search Console property
+          {t("settings.searchConsole.propertyLabel")}
         </label>
         <select
           id="propertyUrl"
@@ -57,8 +71,8 @@ export function SearchConsolePropertyPicker({
         >
           {properties.map((property) => (
             <option key={property.siteUrl} value={property.siteUrl}>
-              {property.isSuggested ? "Suggested: " : ""}
-              {property.siteUrl} ({formatPermissionLevel(property.permissionLevel)})
+              {property.isSuggested ? t("settings.searchConsole.suggestedPrefix") : ""}
+              {property.siteUrl} ({formatPermissionLevel(property.permissionLevel, t)})
             </option>
           ))}
         </select>
@@ -74,14 +88,14 @@ export function SearchConsolePropertyPicker({
                 : "border border-dashed border-line bg-white text-slate-600"
             }`}
           >
-            {property.isSuggested ? "Suggested match" : formatPermissionLevel(property.permissionLevel)}
+            {property.isSuggested ? t("settings.searchConsole.suggestedMatch") : formatPermissionLevel(property.permissionLevel, t)}
           </span>
         ))}
       </div>
 
       <SubmitButton />
-      {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
-      {state.success ? <p className="text-sm text-accent">{state.success}</p> : null}
+      {state.error ? <p className="text-sm text-red-600">{localizeMessage(state.error)}</p> : null}
+      {state.success ? <p className="text-sm text-accent">{localizeMessage(state.success)}</p> : null}
     </form>
   );
 }

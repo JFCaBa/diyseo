@@ -1,7 +1,10 @@
-import { getT } from "@/lib/i18n/server";
+"use client";
 
-export default async function AnalyticsLoading() {
-  const t = await getT();
+import { useT } from "@/components/i18n-provider";
+
+// A client component so the Suspense fallback renders at once; the [siteId] layout provides the locale.
+export default function AnalyticsLoading() {
+  const t = useT();
 
   return (
     <section className="space-y-8">

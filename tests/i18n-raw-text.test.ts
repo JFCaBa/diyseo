@@ -148,3 +148,17 @@ test("every screen under app/ and components/ is free of raw English UI text, or
   }
   assert.deepEqual(problems, [], `raw text left:\n${problems.join("\n")}`);
 });
+
+// Consenso D3: /billing and /team render client forms through StandalonePage when the workspace has
+// no site, outside the [siteId] layout's provider; without one they fell back to English.
+test("signed-in pages outside the [siteId] layout mount the i18n provider", () => {
+  const root = path.join(__dirname, "..");
+  for (const file of ["components/standalone-page.tsx", "app/new-site/page.tsx"]) {
+    assert.match(readFileSync(path.join(root, file), "utf8"), /<AppI18n>/, file);
+  }
+});
+
+test("the analytics loading fallback is not an async server component", () => {
+  const source = readFileSync(path.join(__dirname, "..", "app/[siteId]/analytics/loading.tsx"), "utf8");
+  assert.doesNotMatch(source, /export default async function/);
+});

@@ -5,10 +5,12 @@ import clsx from "clsx";
 
 import { useLocale, useT } from "@/components/i18n-provider";
 import { startCheckout } from "@/lib/billing-actions";
-import { formatPriceGbp, type MessageKey } from "@/lib/i18n/translate";
+import type { PlanCurrency } from "@/lib/billing-currency";
+import { formatPlanPrice, type MessageKey } from "@/lib/i18n/translate";
 import { PLANS } from "@/lib/plans";
 
-export function BillingPlanPicker() {
+/** `currency`: what Checkout will charge (see `checkoutCurrency`), so the prices shown are the prices paid. */
+export function BillingPlanPicker({ currency }: { currency: PlanCurrency }) {
   const t = useT();
   const locale = useLocale();
   const [interval, setInterval] = useState<"monthly" | "annual">("monthly");
@@ -43,12 +45,12 @@ export function BillingPlanPicker() {
             <h3 className="text-lg font-semibold text-ink">{plan.name}</h3>
             <p className="mt-1 text-sm text-slate-600">{t(`billing.plans.${plan.id}.tagline` as MessageKey)}</p>
             <p className="mt-4 text-3xl font-semibold text-ink">
-              {formatPriceGbp(price, locale)}
+              {formatPlanPrice(price, currency, locale)}
               <span className="text-sm font-normal text-slate-600"> {t(interval === "annual" ? "billing.perMonthYearly" : "billing.perMonth")}</span>
             </p>
             <ul className="mb-5 mt-4 flex-grow list-disc space-y-1 pl-5 text-sm text-slate-700">
               {plan.features.map((feature, index) => (
-                <li key={feature}>{t(`billing.plans.${plan.id}.f${index + 1}` as MessageKey)}</li>
+                <li key={feature}>{t(`billing.plans.${plan.id}.f${index + 1}` as MessageKey, { price: formatPlanPrice(15, currency, locale) })}</li>
               ))}
             </ul>
             <button type="submit" className="min-h-11 rounded-xl bg-ink px-4 text-sm font-semibold text-white hover:bg-slate-800">
@@ -58,7 +60,7 @@ export function BillingPlanPicker() {
           );
         })}
       </div>
-      <p className="mt-3 text-xs text-slate-600">{t("billing.vatNote")}</p>
+      <p className="mt-3 text-xs text-slate-600">{t("billing.vatNote", { currency: currency.toUpperCase() })}</p>
     </div>
   );
 }

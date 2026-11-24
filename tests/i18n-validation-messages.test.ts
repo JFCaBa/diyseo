@@ -101,7 +101,8 @@ test("the billing dictionary repeats the plan taglines and features of lib/plans
   for (const plan of PLANS) {
     const entry = en.billing.plans[plan.id] as Record<string, string>;
     assert.equal(entry.tagline, plan.tagline);
-    plan.features.forEach((feature, index) => assert.equal(entry[`f${index + 1}`], feature));
+    // The extra-site price is a {price} variable so it can follow the billing currency.
+    plan.features.forEach((feature, index) => assert.equal(entry[`f${index + 1}`].replace("{price}", "£15"), feature));
     assert.equal(Object.keys(entry).length, plan.features.length + 1);
   }
 });

@@ -16,9 +16,8 @@ const IGNORED_FILES: string[] = [
   "components/admin-shell.tsx",
   // Out of scope: the public blog and its widget demo follow the site's content language (lib/public-blog-i18n.ts, phase 1).
   "app/blog/",
-  // Out of scope: marketing landing page and its components.
-  "app/page.tsx",
-  "components/landing/",
+  // The waitlist form predates the landing copy (lib/landing/copy.ts) and is not rendered by it.
+  "components/landing/waitlist-form.tsx",
   // Out of scope: legal pages.
   "app/privacy/",
   "app/terms/"
@@ -27,6 +26,7 @@ const IGNORED_FILES: string[] = [
 /** Proper names and symbols that may appear untranslated. */
 const ALLOWED_TEXT = [
   "DIYSEO",
+  "GitHub",
   "Brand DNA",
   "Search Console",
   "RSS",

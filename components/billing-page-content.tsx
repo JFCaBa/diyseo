@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { BillingPlanPicker } from "@/components/billing-plan-picker";
 import { hasDuplicateSubscriptions } from "@/lib/billing";
+import { checkoutCurrency, stripeCustomerCurrency } from "@/lib/billing-currency-server";
 import { openBillingPortal } from "@/lib/billing-actions";
 import { getT, getUiLocale } from "@/lib/i18n/server";
 import { formatDateMedium, type T } from "@/lib/i18n/translate";
@@ -115,6 +116,10 @@ export async function BillingPageContent({ searchParams }: { searchParams?: Bill
   const messageKey = searchParams?.checkout ? `checkout=${searchParams.checkout}` : searchParams?.error ? `error=${searchParams.error}` : null;
   const message = messageKey && messageKey in MESSAGES ? MESSAGES[messageKey as keyof typeof MESSAGES] : undefined;
   const paid = usage.plan === "STARTER" || usage.plan === "PRO" || usage.plan === "AGENCY";
+  const currency =
+    paid || usage.plan === "COMP"
+      ? "gbp"
+      : checkoutCurrency({ customerCurrency: usage.stripeCustomerId ? await stripeCustomerCurrency(usage.stripeCustomerId).catch(() => null) : null, locale });
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -173,7 +178,7 @@ export async function BillingPageContent({ searchParams }: { searchParams?: Bill
         <section className="mt-10">
           <h2 className="text-xl font-semibold text-ink">{t("billing.choosePlan")}</h2>
           <div className="mt-4">
-            <BillingPlanPicker />
+            <BillingPlanPicker currency={currency} />
           </div>
           {usage.stripeCustomerId ? (
             <form action={openBillingPortal} className="mt-4">

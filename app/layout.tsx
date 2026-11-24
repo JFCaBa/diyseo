@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 
 import "@/app/globals.css";
+import { headers } from "next/headers";
+
+import { isUiLocale } from "@/lib/i18n/locale";
 import { getUiLocale } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
@@ -20,8 +23,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // The landings (`/`, `/es`) have a fixed language set by middleware; everything else follows the UI locale.
+  const pageLocale = (await headers()).get("x-diyseo-page-locale");
+
   return (
-    <html lang={await getUiLocale()}>
+    <html lang={isUiLocale(pageLocale) ? pageLocale : await getUiLocale()}>
       <body className="font-sans text-ink antialiased">{children}</body>
     </html>
   );

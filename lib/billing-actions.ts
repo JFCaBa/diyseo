@@ -3,7 +3,10 @@
 import { redirect } from "next/navigation";
 
 import { getAppOrigin } from "@/lib/app-origin";
+import { canReusePending, checkoutCurrency, checkoutIdempotencyKey } from "@/lib/billing-currency";
+import { stripeCustomerCurrency } from "@/lib/billing-currency-server";
 import { automaticTaxEnabled, checkoutTaxParams, checkoutWindow } from "@/lib/billing-rules";
+import { getUiLocale } from "@/lib/i18n/server";
 import { lookupKey, type BillingInterval } from "@/lib/entitlements";
 import { isPlanId } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
@@ -75,6 +78,7 @@ export async function startCheckout(formData: FormData) {
   }
 
   const origin = getAppOrigin();
+  const locale = await getUiLocale();
   const result: { url: string } | { portalFor: string } = await prisma.$transaction(
     async (tx) => {
       await lockWorkspace(tx, workspace.id);
@@ -103,11 +107,17 @@ export async function startCheckout(formData: FormData) {
         return { portalFor: current.stripeCustomerId };
       }
 
+      // The customer's own currency wins (Stripe can't mix them); a new one pays in the UI language's currency.
+      const currency = checkoutCurrency({
+        customerCurrency: current.stripeCustomerId ? await stripeCustomerCurrency(customerId) : null,
+        locale
+      });
+
       if (current.pendingCheckoutSessionId) {
         const pending = await stripe.checkout.sessions.retrieve(current.pendingCheckoutSessionId).catch(() => null);
 
-        if (pending?.status === "open" && pending.metadata?.priceId === price.id && pending.url) {
-          return { url: pending.url };
+        if (pending && canReusePending(pending, price.id, currency)) {
+          return { url: pending.url! };
         }
 
         // An open session for another plan stays payable; close it so only one
@@ -125,6 +135,7 @@ export async function startCheckout(formData: FormData) {
           mode: "subscription",
           customer: customerId,
           line_items: [{ price: price.id, quantity: 1 }],
+          currency,
           client_reference_id: workspace.id,
           metadata: { workspaceId: workspace.id, priceId: price.id },
           subscription_data: { metadata: { workspaceId: workspace.id } },
@@ -133,7 +144,7 @@ export async function startCheckout(formData: FormData) {
           expires_at: expiresAt,
           ...checkoutTaxParams(automaticTaxEnabled(), true)
         },
-        { idempotencyKey: `checkout:${workspace.id}:${price.id}:${bucket}` }
+        { idempotencyKey: checkoutIdempotencyKey(workspace.id, price.id, currency, bucket, current.pendingCheckoutSessionId) }
       );
 
       await tx.workspace.update({ where: { id: workspace.id }, data: { pendingCheckoutSessionId: session.id } });

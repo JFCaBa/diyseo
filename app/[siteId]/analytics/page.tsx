@@ -21,6 +21,7 @@ import {
   SEARCH_LOCALE_OPTIONS
 } from "@/lib/search-locale";
 import { runLiveSerpCheck } from "@/lib/serper";
+import { localizeProviderError } from "@/lib/analytics-errors";
 import { getLocalizeMessage, getT, getUiLocale } from "@/lib/i18n/server";
 import { formatDate, formatNumber, type T } from "@/lib/i18n/translate";
 import type { UiLocale } from "@/lib/i18n/locale";
@@ -186,11 +187,13 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
 
   let searchConsoleProperties: Awaited<ReturnType<typeof listSearchConsolePropertiesForUser>> = null;
   let searchConsolePropertiesError: string | null = null;
+  let searchConsolePropertiesErrorText: string | null = null;
 
   try {
     searchConsoleProperties = await listSearchConsolePropertiesForUser(session.user.id, site.domain);
   } catch (error) {
     searchConsolePropertiesError = error instanceof Error ? error.message : t("analytics.unablePropertyLoad");
+    searchConsolePropertiesErrorText = localizeProviderError(t, localizeMessage, error, t("analytics.unablePropertyLoad"));
   }
 
   const hasSearchConsoleAccess = Boolean(searchConsoleProperties);
@@ -199,10 +202,13 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
 
   let searchConsolePerformance: Awaited<ReturnType<typeof getSearchConsolePerformanceForUser>> = null;
   let searchConsolePerformanceError: string | null = null;
+  let searchConsolePerformanceErrorText: string | null = null;
   let searchConsoleKeywordLookup: Awaited<ReturnType<typeof getSearchConsoleKeywordLookupForUser>> = null;
   let searchConsoleKeywordLookupError: string | null = null;
+  let searchConsoleKeywordLookupErrorText: string | null = null;
   let liveSerpCheck: Awaited<ReturnType<typeof runLiveSerpCheck>> = null;
   let liveSerpCheckError: string | null = null;
+  let liveSerpCheckErrorText: string | null = null;
 
   if (selectedProperty?.siteUrl) {
     try {
@@ -214,9 +220,12 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
       ]);
     } catch (error) {
       const message = error instanceof Error ? error.message : t("analytics.unablePerformanceLoad");
+      const text = localizeProviderError(t, localizeMessage, error, t("analytics.unablePerformanceLoad"));
       searchConsolePerformanceError = message;
+      searchConsolePerformanceErrorText = text;
       if (searchedKeyword) {
         searchConsoleKeywordLookupError = message;
+        searchConsoleKeywordLookupErrorText = text;
       }
     }
   }
@@ -232,6 +241,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
       );
     } catch (error) {
       liveSerpCheckError = error instanceof Error ? error.message : t("analytics.unableSerpCheck");
+      liveSerpCheckErrorText = localizeProviderError(t, localizeMessage, error, t("analytics.unableSerpCheck"));
     }
   }
 
@@ -410,9 +420,9 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-sm">
-            {searchConsolePropertiesError ? <p className="text-red-600">{t("analytics.propertyLoadFailed", { error: localizeMessage(searchConsolePropertiesError) })}</p> : null}
+            {searchConsolePropertiesError ? <p className="text-red-600">{t("analytics.propertyLoadFailed", { error: searchConsolePropertiesErrorText })}</p> : null}
             {searchConsolePerformanceError ? (
-              <p className="text-red-600">{t("analytics.performanceLoadFailed", { error: localizeMessage(searchConsolePerformanceError) })}</p>
+              <p className="text-red-600">{t("analytics.performanceLoadFailed", { error: searchConsolePerformanceErrorText })}</p>
             ) : null}
 
             {!hasSearchConsoleAccess ? (
@@ -480,7 +490,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
         {searchedKeyword ? (
           <div className="mt-5 rounded-[1.5rem] border border-line bg-mist/60 p-5">
             {searchConsoleKeywordLookupError ? (
-              <p className="text-sm text-red-600">{t("analytics.lookupFailed", { error: localizeMessage(searchConsoleKeywordLookupError) })}</p>
+              <p className="text-sm text-red-600">{t("analytics.lookupFailed", { error: searchConsoleKeywordLookupErrorText })}</p>
             ) : searchConsoleKeywordLookup?.found ? (
               <>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{t("analytics.lookupResult")}</p>
@@ -583,7 +593,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
               <p className="text-sm text-red-600">
                 {liveSerpCheckError === "SERPER_API_KEY is not configured."
                   ? t("analytics.serpNotConfigured")
-                  : t("analytics.serpFailed", { error: localizeMessage(liveSerpCheckError) })}
+                  : t("analytics.serpFailed", { error: liveSerpCheckErrorText })}
               </p>
             ) : liveSerpCheck ? (
               <>

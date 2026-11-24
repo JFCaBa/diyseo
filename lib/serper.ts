@@ -1,3 +1,4 @@
+import { ProviderHttpError } from "@/lib/provider-error";
 import {
   getSearchCountryLabel,
   getSearchLanguageLabel,
@@ -106,7 +107,7 @@ export async function runLiveSerpCheck(
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Serper search failed: ${response.status} ${errorText}`);
+      throw new ProviderHttpError("serperSearch", response.status, errorText, `Serper search failed: ${response.status} ${errorText}`);
     }
 
     const payload = (await response.json()) as SerperSearchResponse;

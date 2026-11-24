@@ -119,3 +119,31 @@ test("stored post errors: unknown-result wrapper is translated, Meta text stays 
   assert.equal(localizeStoredPostError(es, lm, "(#200) Permissions error"), "(#200) Permissions error");
   assert.equal(localizeStoredPostError(en, createLocalizeMessage("en"), "Unknown result: x"), "Unknown result: x");
 });
+
+import { localizeProviderError } from "@/lib/analytics-errors";
+import { createLocalizeMessage } from "@/lib/i18n/translate";
+import { ProviderHttpError } from "@/lib/provider-error";
+
+test("provider HTTP errors: English equals the original message, Spanish is translated and keeps status", () => {
+  const cases = [
+    new ProviderHttpError("googleRefresh", 400, "invalid_grant", "Google token refresh failed: 400 invalid_grant"),
+    new ProviderHttpError("sitesList", 403, "denied", "Search Console sites.list failed: 403 denied"),
+    new ProviderHttpError("searchAnalyticsQuery", 500, "boom", "Search Console searchAnalytics.query failed: 500 boom"),
+    new ProviderHttpError("serperSearch", 429, "slow down", "Serper search failed: 429 slow down")
+  ];
+  for (const error of cases) {
+    assert.equal(localizeProviderError(en, createLocalizeMessage("en"), error, "x"), error.message);
+    const spanish = localizeProviderError(es, createLocalizeMessage("es"), error, "x");
+    assert.notEqual(spanish, error.message);
+    assert.ok(spanish.includes(String(error.status)));
+    assert.ok(spanish.includes(error.detail));
+  }
+});
+
+test("provider errors: static lib errors are translated by catalog, unknown errors pass through", () => {
+  const es2 = createLocalizeMessage("es");
+  assert.match(localizeProviderError(es, es2, new Error("Google OAuth credentials are not configured."), "x"), /Google OAuth/);
+  assert.notEqual(localizeProviderError(es, es2, new Error("Google OAuth credentials are not configured."), "x"), "Google OAuth credentials are not configured.");
+  assert.equal(localizeProviderError(es, es2, new Error("weird thing"), "x"), "weird thing");
+  assert.equal(localizeProviderError(es, es2, "not an error", "fallback"), "fallback");
+});

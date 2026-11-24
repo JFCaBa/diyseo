@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
+import { useLocalizeMessage, useT } from "@/components/i18n-provider";
 import { assignKeywordToArticle, type ActionState } from "@/lib/actions";
 
 type SuggestedKeywordsProps = {
@@ -18,6 +19,7 @@ const initialState: ActionState = {};
 
 function AssignButton() {
   const { pending } = useFormStatus();
+  const t = useT();
 
   return (
     <button
@@ -25,12 +27,14 @@ function AssignButton() {
       disabled={pending}
       className="rounded-full border border-line bg-white px-3 py-1 text-xs font-semibold text-ink transition hover:bg-mist disabled:cursor-not-allowed disabled:opacity-70"
     >
-      {pending ? "Assigning..." : "Assign to article"}
+      {pending ? t("keywords.assigning") : t("keywords.assign")}
     </button>
   );
 }
 
 export function SuggestedKeywords({ articleId, siteId, keywords }: SuggestedKeywordsProps) {
+  const t = useT();
+  const localizeMessage = useLocalizeMessage();
   const assignKeywordToArticleForSite = assignKeywordToArticle.bind(null, siteId);
   const [state, formAction] = useActionState(assignKeywordToArticleForSite, initialState);
 
@@ -41,9 +45,9 @@ export function SuggestedKeywords({ articleId, siteId, keywords }: SuggestedKeyw
   return (
     <div className="mt-4 rounded-2xl border border-line bg-white p-4">
       <div>
-        <h3 className="text-sm font-semibold text-ink">Suggested keywords</h3>
+        <h3 className="text-sm font-semibold text-ink">{t("keywords.suggestedTitle")}</h3>
         <p className="mt-1 text-xs text-slate-600">
-          These were saved to this site. Pick one if it should be attached to the draft.
+          {t("keywords.suggestedDescription")}
         </p>
       </div>
 
@@ -58,8 +62,8 @@ export function SuggestedKeywords({ articleId, siteId, keywords }: SuggestedKeyw
         ))}
       </div>
 
-      {state.error ? <p className="mt-3 text-xs text-red-600">{state.error}</p> : null}
-      {state.success ? <p className="mt-3 text-xs text-accent">{state.success}</p> : null}
+      {state.error ? <p className="mt-3 text-xs text-red-600">{localizeMessage(state.error)}</p> : null}
+      {state.success ? <p className="mt-3 text-xs text-accent">{localizeMessage(state.success)}</p> : null}
     </div>
   );
 }

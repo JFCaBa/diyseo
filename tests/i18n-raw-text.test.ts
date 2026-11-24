@@ -46,7 +46,13 @@ const MIGRATED_FILES: string[] = [
   "app/[siteId]/articles/[articleId]/page.tsx",
   "components/article-editor-form.tsx",
   "components/article-translation-form.tsx",
-  "components/social-posts-panel.tsx"
+  "components/social-posts-panel.tsx",
+  // Task 7: keywords and calendar
+  "app/[siteId]/keywords/page.tsx",
+  "components/create-keyword-form.tsx",
+  "components/suggested-keywords.tsx",
+  "app/[siteId]/calendar/page.tsx",
+  "components/calendar-month-view.tsx"
 ];
 
 /** Proper names and symbols that may appear untranslated. */

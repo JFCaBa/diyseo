@@ -546,6 +546,53 @@ export const es: Messages = {
     replacesDrafts: "Reemplaza los borradores sin publicar, incluidas tus ediciones.",
     regenerateAll: "Regenerar todo"
   },
+  keywords: {
+    title: "Palabras clave",
+    description: "Haz seguimiento de los temas que quieres trabajar y vincúlalos a los artículos a medida que avanzan en el flujo.",
+    openArticles: "Abrir artículos",
+    totalKeywords: "Palabras clave totales",
+    statusNew: "Nueva",
+    statusUsed: "Usada",
+    listTitle: "Palabras clave",
+    listDescription: "Añade palabras clave aquí y asígnalas desde la pantalla de artículos al editar o revisar borradores.",
+    pageOf: "Página {page} de {total}",
+    emptyBody: "Aún no hay palabras clave. Puedes añadirlas a mano aquí, o generar primero un artículo y dejar que la IA sugiera palabras clave del sitio para que las revises y asignes una a una.",
+    generateFirst: "Genera tu primer artículo",
+    emptyHint: "Las palabras clave generadas por IA aparecerán tras generar un artículo.",
+    created: "Creada el {date}",
+    linkedOne: "{count} artículo vinculado",
+    linkedOther: "{count} artículos vinculados",
+    notLinked: "Aún sin vincular",
+    latestLinked: "Último artículo vinculado: {title}",
+    assignHint: "Asigna esta palabra clave desde la pantalla de artículos.",
+    previous: "Anterior",
+    next: "Siguiente",
+    addTitle: "Añadir una palabra clave",
+    addDescription: "Mantén aquí un conjunto ligero de frases objetivo y asígnalas desde la pantalla de artículos a medida que los borradores toman forma.",
+    termLabel: "Palabra clave",
+    termPlaceholder: "p. ej. consultor de SEO local",
+    adding: "Añadiendo...",
+    add: "Añadir palabra clave",
+    suggestedTitle: "Palabras clave sugeridas",
+    suggestedDescription: "Se guardaron en este sitio. Elige una si debe vincularse al borrador.",
+    assigning: "Asignando...",
+    assign: "Asignar al artículo"
+  },
+  calendar: {
+    title: "Calendario",
+    description: "Planifica el ritmo de publicación de este sitio, reprograma contenido y crea borradores directamente desde las fechas libres.",
+    openArticles: "Abrir artículos",
+    newDraft: "Nuevo borrador",
+    gridHint: "Los borradores y artículos publicados con fecha programada aparecen en esta cuadrícula.",
+    prev: "Anterior",
+    next: "Siguiente",
+    saveDate: "Guardar fecha",
+    clear: "Quitar",
+    more: "+{count} más",
+    empty: "Sin contenido programado.",
+    statusPublished: "Publicado",
+    statusDraft: "Borrador"
+  },
   notices: {
     articleDeleted: "Artículo eliminado.",
     articlePublished: "Artículo publicado.",
@@ -661,6 +708,12 @@ export const es: Messages = {
     igImageFailed: "Instagram no pudo procesar la imagen",
     igStillProcessing: "Instagram sigue procesando la imagen, inténtalo de nuevo",
     igNoMediaId: "Instagram no devolvió un ID de contenido multimedia",
-    metaTokenCannotPost: "Este token no puede publicar como esta página. Usa un token de usuario del sistema o de usuario con acceso a la página, o el token propio de la página."
+    metaTokenCannotPost: "Este token no puede publicar como esta página. Usa un token de usuario del sistema o de usuario con acceso a la página, o el token propio de la página.",
+    // Acciones de palabras clave y ruta de imagen de portada
+    invalidKeywordTerm: "Palabra clave no válida.",
+    keywordExists: "La palabra clave ya existe en este sitio.",
+    invalidKeywordAssignment: "Asignación de palabra clave no válida.",
+    articleNotFound: "Artículo no encontrado.",
+    unauthorized: "No autorizado."
   }
 };

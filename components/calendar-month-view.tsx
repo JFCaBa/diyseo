@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { updateArticleDate } from "@/lib/actions";
+import { monthHeading, weekdayLabels } from "@/lib/i18n/calendar-labels";
+import { getT, getUiLocale } from "@/lib/i18n/server";
 
 type CalendarArticle = {
   id: string;
@@ -15,8 +17,6 @@ type CalendarMonthViewProps = {
   returnToBase: string;
   siteId: string;
 };
-
-const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function formatMonthParam(date: Date) {
   const year = date.getUTCFullYear();
@@ -48,13 +48,11 @@ function buildGridDays(month: Date) {
   });
 }
 
-export function CalendarMonthView({ articles, month, returnToBase, siteId }: CalendarMonthViewProps) {
+export async function CalendarMonthView({ articles, month, returnToBase, siteId }: CalendarMonthViewProps) {
+  const t = await getT();
+  const locale = await getUiLocale();
   const updateDateForSite = updateArticleDate.bind(null, siteId);
-  const monthLabel = new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    timeZone: "UTC",
-    year: "numeric"
-  }).format(month);
+  const monthLabel = monthHeading(month, locale);
   const previousMonth = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() - 1, 1));
   const nextMonth = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 1));
   const returnTo = `${returnToBase}?month=${formatMonthParam(month)}`;
@@ -72,32 +70,32 @@ export function CalendarMonthView({ articles, month, returnToBase, siteId }: Cal
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-ink">{monthLabel}</h2>
-          <p className="text-sm text-slate-600">Drafts and published articles with a scheduled date appear on this grid.</p>
+          <p className="text-sm text-slate-600">{t("calendar.gridHint")}</p>
         </div>
         <div className="flex items-center gap-3">
           <Link
             href={`/${siteId}/articles/new?returnTo=${encodeURIComponent(returnTo)}`}
             className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:bg-mist"
           >
-            New Draft
+            {t("calendar.newDraft")}
           </Link>
           <Link
             href={`${returnToBase}?month=${formatMonthParam(previousMonth)}`}
             className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:bg-mist"
           >
-            Prev
+            {t("calendar.prev")}
           </Link>
           <Link
             href={`${returnToBase}?month=${formatMonthParam(nextMonth)}`}
             className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:bg-mist"
           >
-            Next
+            {t("calendar.next")}
           </Link>
         </div>
       </div>
 
       <div className="grid grid-cols-7 gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-        {weekdayLabels.map((label) => (
+        {weekdayLabels(locale).map((label) => (
           <div key={label} className="rounded-2xl bg-mist px-3 py-2 text-center">
             {label}
           </div>
@@ -124,7 +122,7 @@ export function CalendarMonthView({ articles, month, returnToBase, siteId }: Cal
                     href={`/${siteId}/articles/new?date=${day.dayKey}&returnTo=${encodeURIComponent(returnTo)}`}
                     className="inline-flex items-center justify-center rounded-full border border-line px-2 py-1 text-[11px] font-semibold text-accent transition hover:bg-mist"
                   >
-                    New Draft
+                    {t("calendar.newDraft")}
                   </Link>
                 ) : null}
               </div>
@@ -142,7 +140,7 @@ export function CalendarMonthView({ articles, month, returnToBase, siteId }: Cal
                     <Link href={`/${siteId}/articles/${visibleArticle.id}`} className="font-semibold text-ink hover:text-accent">
                       {visibleArticle.title}
                     </Link>
-                    <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{visibleArticle.status}</p>
+                    <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{visibleArticle.status === "PUBLISHED" ? t("calendar.statusPublished") : t("calendar.statusDraft")}</p>
                     <form action={updateDateForSite} className="mt-3 grid gap-2">
                       <input type="hidden" name="articleId" value={visibleArticle.id} />
                       <input type="hidden" name="returnTo" value={returnTo} />
@@ -156,7 +154,7 @@ export function CalendarMonthView({ articles, month, returnToBase, siteId }: Cal
                         type="submit"
                         className="inline-flex items-center justify-center rounded-xl bg-ink px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
                       >
-                        Save Date
+                        {t("calendar.saveDate")}
                       </button>
                     </form>
                     <form action={updateDateForSite} className="mt-2">
@@ -168,7 +166,7 @@ export function CalendarMonthView({ articles, month, returnToBase, siteId }: Cal
                           type="submit"
                           className="inline-flex items-center justify-center rounded-xl border border-line px-3 py-2 text-xs font-semibold text-ink transition hover:bg-mist"
                         >
-                          Clear
+                          {t("calendar.clear")}
                         </button>
                       </div>
                     </form>
@@ -177,13 +175,13 @@ export function CalendarMonthView({ articles, month, returnToBase, siteId }: Cal
 
                 {remainingArticleCount > 0 ? (
                   <p className="rounded-2xl border border-dashed border-line px-3 py-3 text-xs font-semibold text-slate-500">
-                    +{remainingArticleCount} more
+                    {t("calendar.more", { count: remainingArticleCount })}
                   </p>
                 ) : null}
 
                 {day.inMonth && dayArticles.length === 0 ? (
                   <p className="rounded-2xl border border-dashed border-line px-3 py-4 text-xs text-slate-500">
-                    No scheduled content.
+                    {t("calendar.empty")}
                   </p>
                 ) : null}
               </div>

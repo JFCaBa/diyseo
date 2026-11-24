@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { CalendarMonthView } from "@/components/calendar-month-view";
 import { PageHeader } from "@/components/page-header";
+import { getT } from "@/lib/i18n/server";
 import { prisma } from "@/lib/prisma";
 import { requireSitePage } from "@/lib/workspace-context";
 
@@ -25,6 +26,7 @@ function getMonthStart(value?: string) {
 export default async function CalendarPage({ params, searchParams }: CalendarPageProps) {
   const { siteId } = await params;
   await requireSitePage(siteId);
+  const t = await getT();
   const query = await searchParams;
   const monthStart = getMonthStart(query.month);
   const nextMonthStart = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1));
@@ -48,21 +50,21 @@ export default async function CalendarPage({ params, searchParams }: CalendarPag
   return (
     <section className="space-y-8">
       <PageHeader
-        title="Calendar"
-        description="Plan the publishing cadence for this site, reschedule content, and create drafts directly from open dates."
+        title={t("calendar.title")}
+        description={t("calendar.description")}
         action={
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href={`/${siteId}/articles`}
               className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
             >
-              Open Articles
+              {t("calendar.openArticles")}
             </Link>
             <Link
               href={`/${siteId}/articles/new?returnTo=${encodeURIComponent(`/${siteId}/calendar`)}`}
               className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
-              New Draft
+              {t("calendar.newDraft")}
             </Link>
           </div>
         }

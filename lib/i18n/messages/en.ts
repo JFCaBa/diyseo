@@ -546,6 +546,53 @@ export const en = {
     replacesDrafts: "Replaces the unpublished drafts, including your edits.",
     regenerateAll: "Regenerate all"
   },
+  keywords: {
+    title: "Keywords",
+    description: "Track the topics you want to target and attach them to articles as they move through the workflow.",
+    openArticles: "Open Articles",
+    totalKeywords: "Total Keywords",
+    statusNew: "New",
+    statusUsed: "Used",
+    listTitle: "Keywords",
+    listDescription: "Add keywords here, then assign them from the Articles screen while editing or reviewing drafts.",
+    pageOf: "Page {page} of {total}",
+    emptyBody: "No keywords yet. You can add them manually here, or generate an article first and let AI suggest site keywords for you to review and assign one by one.",
+    generateFirst: "Generate your first article",
+    emptyHint: "AI-generated keywords will appear after article generation.",
+    created: "Created {date}",
+    linkedOne: "{count} linked article",
+    linkedOther: "{count} linked articles",
+    notLinked: "Not linked yet",
+    latestLinked: "Latest linked article: {title}",
+    assignHint: "Assign this keyword from the Articles screen.",
+    previous: "Previous",
+    next: "Next",
+    addTitle: "Add a Keyword",
+    addDescription: "Keep a lightweight pool of target phrases here, then assign them from the Articles screen as drafts take shape.",
+    termLabel: "Keyword term",
+    termPlaceholder: "e.g. local SEO consultant",
+    adding: "Adding...",
+    add: "Add Keyword",
+    suggestedTitle: "Suggested keywords",
+    suggestedDescription: "These were saved to this site. Pick one if it should be attached to the draft.",
+    assigning: "Assigning...",
+    assign: "Assign to article"
+  },
+  calendar: {
+    title: "Calendar",
+    description: "Plan the publishing cadence for this site, reschedule content, and create drafts directly from open dates.",
+    openArticles: "Open Articles",
+    newDraft: "New Draft",
+    gridHint: "Drafts and published articles with a scheduled date appear on this grid.",
+    prev: "Prev",
+    next: "Next",
+    saveDate: "Save Date",
+    clear: "Clear",
+    more: "+{count} more",
+    empty: "No scheduled content.",
+    statusPublished: "Published",
+    statusDraft: "Draft"
+  },
   // Static success messages returned by lib/actions.ts, reverse-looked-up like `errors`.
   notices: {
     articleDeleted: "Article deleted.",
@@ -664,7 +711,13 @@ export const en = {
     igImageFailed: "Instagram could not process the image",
     igStillProcessing: "Instagram is still processing the image, try again",
     igNoMediaId: "Instagram did not return a media id",
-    metaTokenCannotPost: "This token cannot post as this Page. Use a system-user or user token with access to the Page, or the Page's own token."
+    metaTokenCannotPost: "This token cannot post as this Page. Use a system-user or user token with access to the Page, or the Page's own token.",
+    // Keyword actions and the cover-image route
+    invalidKeywordTerm: "Invalid keyword term.",
+    keywordExists: "Keyword already exists for this site.",
+    invalidKeywordAssignment: "Invalid keyword assignment.",
+    articleNotFound: "Article not found.",
+    unauthorized: "Unauthorized."
   }
 } as const;
 

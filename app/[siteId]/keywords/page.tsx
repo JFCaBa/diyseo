@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { CreateKeywordForm } from "@/components/create-keyword-form";
 import { PageHeader } from "@/components/page-header";
+import { getT, getUiLocale } from "@/lib/i18n/server";
+import { formatDate } from "@/lib/i18n/translate";
 import { prisma } from "@/lib/prisma";
 import { requireSitePage } from "@/lib/workspace-context";
 
@@ -27,6 +29,8 @@ function parsePage(value?: string) {
 export default async function KeywordsPage({ params, searchParams }: KeywordsPageProps) {
   const { siteId } = await params;
   await requireSitePage(siteId);
+  const t = await getT();
+  const locale = await getUiLocale();
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const requestedPage = parsePage(resolvedSearchParams?.page);
   const totalKeywords = await prisma.keyword.count({
@@ -80,29 +84,29 @@ export default async function KeywordsPage({ params, searchParams }: KeywordsPag
   return (
     <section className="space-y-8">
       <PageHeader
-        title="Keywords"
-        description="Track the topics you want to target and attach them to articles as they move through the workflow."
+        title={t("keywords.title")}
+        description={t("keywords.description")}
         action={
           <Link
             href={`/${siteId}/articles`}
             className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:bg-mist"
           >
-            Open Articles
+            {t("keywords.openArticles")}
           </Link>
         }
       />
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-3xl border border-line bg-white/90 p-5 shadow-panel">
-          <p className="text-sm text-slate-500">Total Keywords</p>
+          <p className="text-sm text-slate-500">{t("keywords.totalKeywords")}</p>
           <p className="mt-2 text-3xl font-semibold text-ink">{totalKeywords}</p>
         </div>
         <div className="rounded-3xl border border-line bg-white/90 p-5 shadow-panel">
-          <p className="text-sm text-slate-500">New</p>
+          <p className="text-sm text-slate-500">{t("keywords.statusNew")}</p>
           <p className="mt-2 text-3xl font-semibold text-ink">{keywordCounts.new}</p>
         </div>
         <div className="rounded-3xl border border-line bg-white/90 p-5 shadow-panel">
-          <p className="text-sm text-slate-500">Used</p>
+          <p className="text-sm text-slate-500">{t("keywords.statusUsed")}</p>
           <p className="mt-2 text-3xl font-semibold text-ink">{keywordCounts.used}</p>
         </div>
       </div>
@@ -112,26 +116,25 @@ export default async function KeywordsPage({ params, searchParams }: KeywordsPag
       <div className="rounded-3xl border border-line bg-white/85 p-6 shadow-panel">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-ink">Keywords</h2>
+            <h2 className="text-lg font-semibold text-ink">{t("keywords.listTitle")}</h2>
             <p className="mt-1 text-sm text-slate-600">
-              Add keywords here, then assign them from the Articles screen while editing or reviewing drafts.
+              {t("keywords.listDescription")}
             </p>
           </div>
           <p className="text-sm text-slate-500">
-            Page {safeCurrentPage} of {totalPages}
+            {t("keywords.pageOf", { page: safeCurrentPage, total: totalPages })}
           </p>
         </div>
         {keywords.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-line px-4 py-6">
             <p className="text-sm text-slate-600">
-              No keywords yet. You can add them manually here, or generate an article first and let AI suggest site
-              keywords for you to review and assign one by one.
+              {t("keywords.emptyBody")}
             </p>
             <div className="mt-4 flex flex-wrap gap-4">
               <Link href={`/${siteId}/articles`} className="text-sm font-semibold text-accent hover:underline">
-                Generate your first article
+                {t("keywords.generateFirst")}
               </Link>
-              <span className="text-sm text-slate-500">AI-generated keywords will appear after article generation.</span>
+              <span className="text-sm text-slate-500">{t("keywords.emptyHint")}</span>
             </div>
           </div>
         ) : (
@@ -149,19 +152,19 @@ export default async function KeywordsPage({ params, searchParams }: KeywordsPag
                             : "border border-dashed border-line bg-white text-slate-600"
                         }`}
                       >
-                        {keyword.status}
+                        {keyword.status === "USED" ? t("keywords.statusUsed") : t("keywords.statusNew")}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
-                      <p>Created {new Date(keyword.createdAt).toLocaleDateString()}</p>
+                      <p>{t("keywords.created", { date: formatDate(keyword.createdAt, locale, {}) })}</p>
                       <p>
                         {keyword._count.articles > 0
-                          ? `${keyword._count.articles} linked ${keyword._count.articles === 1 ? "article" : "articles"}`
-                          : "Not linked yet"}
+                          ? t(keyword._count.articles === 1 ? "keywords.linkedOne" : "keywords.linkedOther", { count: keyword._count.articles })
+                          : t("keywords.notLinked")}
                       </p>
                     </div>
                     <p className="text-sm text-slate-500">
-                      {keyword.articles[0]?.title ? `Latest linked article: ${keyword.articles[0].title}` : "Assign this keyword from the Articles screen."}
+                      {keyword.articles[0]?.title ? t("keywords.latestLinked", { title: keyword.articles[0].title }) : t("keywords.assignHint")}
                     </p>
                   </div>
                   <div className="flex items-center justify-start md:justify-end">
@@ -169,7 +172,7 @@ export default async function KeywordsPage({ params, searchParams }: KeywordsPag
                       href={`/${siteId}/articles`}
                       className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:bg-mist"
                     >
-                      Open Articles
+                      {t("keywords.openArticles")}
                     </Link>
                   </div>
                 </div>
@@ -181,7 +184,7 @@ export default async function KeywordsPage({ params, searchParams }: KeywordsPag
         {keywords.length > 0 ? (
           <div className="mt-6 flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-slate-600">
-              Page {safeCurrentPage} of {totalPages}
+              {t("keywords.pageOf", { page: safeCurrentPage, total: totalPages })}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {previousPageHref ? (
@@ -189,11 +192,11 @@ export default async function KeywordsPage({ params, searchParams }: KeywordsPag
                   href={previousPageHref}
                   className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:bg-mist"
                 >
-                  Previous
+                  {t("keywords.previous")}
                 </Link>
               ) : (
                 <span className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-slate-300">
-                  Previous
+                  {t("keywords.previous")}
                 </span>
               )}
               {nextPageHref ? (
@@ -201,11 +204,11 @@ export default async function KeywordsPage({ params, searchParams }: KeywordsPag
                   href={nextPageHref}
                   className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-ink transition hover:bg-mist"
                 >
-                  Next
+                  {t("keywords.next")}
                 </Link>
               ) : (
                 <span className="inline-flex items-center justify-center rounded-2xl border border-line px-4 py-2 text-sm font-semibold text-slate-300">
-                  Next
+                  {t("keywords.next")}
                 </span>
               )}
             </div>

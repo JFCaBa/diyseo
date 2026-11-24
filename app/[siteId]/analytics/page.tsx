@@ -21,6 +21,9 @@ import {
   SEARCH_LOCALE_OPTIONS
 } from "@/lib/search-locale";
 import { runLiveSerpCheck } from "@/lib/serper";
+import { getLocalizeMessage, getT, getUiLocale } from "@/lib/i18n/server";
+import { formatDate, formatNumber, type T } from "@/lib/i18n/translate";
+import type { UiLocale } from "@/lib/i18n/locale";
 import { AnalyticsRouteParamsSchema } from "@/lib/validations";
 import { requireSitePage } from "@/lib/workspace-context";
 
@@ -40,9 +43,9 @@ type AnalyticsPageProps = {
   }>;
 };
 
-function formatPropertyDomain(propertyUrl: string | null | undefined) {
+function formatPropertyDomain(propertyUrl: string | null | undefined, t: T) {
   if (!propertyUrl) {
-    return "No property selected";
+    return t("analytics.noPropertySelected");
   }
 
   if (propertyUrl.startsWith("sc-domain:")) {
@@ -56,33 +59,70 @@ function formatPropertyDomain(propertyUrl: string | null | undefined) {
   }
 }
 
-function formatPercent(value: number) {
-  return `${(value * 100).toFixed(1)}%`;
+const ONE_DECIMAL = { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false } as const;
+
+function formatPercent(value: number, locale: UiLocale) {
+  return `${formatNumber(value * 100, locale, ONE_DECIMAL)}%`;
 }
 
-function formatPosition(value: number) {
+function formatPosition(value: number, locale: UiLocale) {
   if (!Number.isFinite(value) || value <= 0) {
     return "—";
   }
 
-  return value.toFixed(1);
+  return formatNumber(value, locale, ONE_DECIMAL);
 }
 
-function formatCompactNumber(value: number) {
-  return new Intl.NumberFormat("en-US", {
+function formatCompactNumber(value: number, locale: UiLocale) {
+  return formatNumber(value, locale, {
     notation: "compact",
     maximumFractionDigits: 1
-  }).format(value);
+  });
 }
 
-function formatCheckedAt(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
+function formatCount(value: number, locale: UiLocale) {
+  return formatNumber(value, locale, { useGrouping: false });
+}
+
+function formatCheckedAt(value: string, locale: UiLocale) {
+  return formatDate(value, locale, {
     dateStyle: "medium",
     timeStyle: "short"
-  }).format(new Date(value));
+  });
+}
+
+const LOCALE_LABEL_KEYS = {
+  "es-es": "settings.searchLocale.esEs",
+  "us-en": "settings.searchLocale.usEn",
+  "uk-en": "settings.searchLocale.ukEn",
+  "fr-fr": "settings.searchLocale.frFr",
+  "de-de": "settings.searchLocale.deDe",
+  "it-it": "settings.searchLocale.itIt",
+  "pt-pt": "settings.searchLocale.ptPt"
+} as const;
+
+/** "Country / Language" label of a search locale option in the active UI language. */
+function searchLocaleLabel(t: T, value: keyof typeof LOCALE_LABEL_KEYS) {
+  return t(LOCALE_LABEL_KEYS[value]);
+}
+
+/** Country and language names in the UI language for the codes of a live SERP result; falls back to the lib labels. */
+function serpPlaceLabels(
+  t: T,
+  check: { countryCode: string; languageCode: string; countryLabel: string; languageLabel: string }
+) {
+  const country = SEARCH_LOCALE_OPTIONS.find((option) => option.country === check.countryCode);
+  const language = SEARCH_LOCALE_OPTIONS.find((option) => option.language === check.languageCode);
+  return {
+    country: country ? searchLocaleLabel(t, country.value).split(" / ")[0] : check.countryLabel,
+    language: language ? searchLocaleLabel(t, language.value).split(" / ")[1] : check.languageLabel
+  };
 }
 
 export default async function AnalyticsPage({ params, searchParams }: AnalyticsPageProps) {
+  const t = await getT();
+  const locale = await getUiLocale();
+  const localizeMessage = await getLocalizeMessage();
   const parsedParams = AnalyticsRouteParamsSchema.safeParse(await params);
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
 
@@ -150,7 +190,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
   try {
     searchConsoleProperties = await listSearchConsolePropertiesForUser(session.user.id, site.domain);
   } catch (error) {
-    searchConsolePropertiesError = error instanceof Error ? error.message : "Unable to load Search Console properties.";
+    searchConsolePropertiesError = error instanceof Error ? error.message : t("analytics.unablePropertyLoad");
   }
 
   const hasSearchConsoleAccess = Boolean(searchConsoleProperties);
@@ -173,7 +213,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
           : Promise.resolve(null)
       ]);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to load Search Console performance data.";
+      const message = error instanceof Error ? error.message : t("analytics.unablePerformanceLoad");
       searchConsolePerformanceError = message;
       if (searchedKeyword) {
         searchConsoleKeywordLookupError = message;
@@ -191,7 +231,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
         serpDeepCheckEnabled
       );
     } catch (error) {
-      liveSerpCheckError = error instanceof Error ? error.message : "Unable to run live SERP check.";
+      liveSerpCheckError = error instanceof Error ? error.message : t("analytics.unableSerpCheck");
     }
   }
 
@@ -222,6 +262,8 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
     );
   }
 
+  const serpPlaces = liveSerpCheck ? serpPlaceLabels(t, liveSerpCheck) : null;
+
   const articleCounts = articleMetrics.reduce(
     (acc, metric) => {
       acc.total += metric._count.id;
@@ -248,11 +290,11 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
   );
 
   const internalMetrics = [
-    { label: "Total Articles", value: articleCounts.total.toString(), detail: "All drafts and published articles" },
-    { label: "Published Articles", value: articleCounts.published.toString(), detail: "Live on the public blog" },
-    { label: "Draft Articles", value: articleCounts.draft.toString(), detail: "Still being edited or reviewed" },
-    { label: "Total Keywords", value: keywordCounts.total.toString(), detail: "Tracked keyword records for this site" },
-    { label: "Used Keywords", value: keywordCounts.used.toString(), detail: "Keywords currently attached to articles" }
+    { label: t("analytics.totalArticles"), value: formatCount(articleCounts.total, locale), detail: t("analytics.totalArticlesDetail") },
+    { label: t("analytics.publishedArticles"), value: formatCount(articleCounts.published, locale), detail: t("analytics.publishedArticlesDetail") },
+    { label: t("analytics.draftArticles"), value: formatCount(articleCounts.draft, locale), detail: t("analytics.draftArticlesDetail") },
+    { label: t("analytics.totalKeywords"), value: formatCount(keywordCounts.total, locale), detail: t("analytics.totalKeywordsDetail") },
+    { label: t("analytics.usedKeywords"), value: formatCount(keywordCounts.used, locale), detail: t("analytics.usedKeywordsDetail") }
   ];
 
   const hasSearchConsoleData = Boolean(
@@ -276,29 +318,29 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
       : "not-connected";
   const compactSearchConsoleStatus =
     searchConsoleState === "reconnect-required"
-      ? "Reconnect required"
+      ? t("analytics.statusReconnect")
       : searchConsoleState === "connected-with-data" || searchConsoleState === "connected-no-data"
-        ? "Connected"
-        : "Not connected";
+        ? t("analytics.statusConnected")
+        : t("analytics.statusNotConnected");
   const shouldShowPropertySelection =
     hasSearchConsoleAccess && (!selectedProperty || searchConsoleState === "reconnect-required" || changePropertyRequested);
-  const propertyDisplayDomain = formatPropertyDomain(selectedProperty?.siteUrl ?? storedPropertyUrl);
+  const propertyDisplayDomain = formatPropertyDomain(selectedProperty?.siteUrl ?? storedPropertyUrl, t);
   const searchConsoleDateRange = searchConsolePerformance
-    ? `${searchConsolePerformance.startDate} to ${searchConsolePerformance.endDate}`
-    : "Last 28 days";
+    ? t("analytics.dateRange", { start: searchConsolePerformance.startDate, end: searchConsolePerformance.endDate })
+    : t("analytics.last28Days");
 
   return (
     <section className="space-y-8">
       <PageHeader
-        title="Analytics"
-        description={`Track verified SEO performance for ${site.name} using live Google Search Console data.`}
+        title={t("analytics.title")}
+        description={t("analytics.description", { site: site.name })}
         action={
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href={`/${siteId}/keywords`}
               className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
-              Open Keywords
+              {t("analytics.openKeywords")}
             </Link>
           </div>
         }
@@ -320,26 +362,26 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
           />
         ) : (
           <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">SEO Performance</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">{t("analytics.seoEyebrow")}</p>
             <div className="mt-4">
               <EmptyState
                 title={
                   searchConsoleState === "reconnect-required"
-                    ? "Reconnect Search Console to restore rankings."
+                    ? t("analytics.emptyReconnectTitle")
                     : searchConsoleState === "error"
-                      ? "Live Search Console ranking data could not be loaded."
+                      ? t("analytics.emptyErrorTitle")
                       : searchConsoleState === "connected-no-data"
-                        ? "No keyword ranking data yet."
-                        : "Connect Search Console to unlock keyword tracking."
+                        ? t("analytics.emptyNoDataTitle")
+                        : t("analytics.emptyConnectTitle")
                 }
                 description={
                   searchConsoleState === "reconnect-required"
-                    ? "The previously selected property is no longer available for the current Google account."
+                    ? t("analytics.emptyReconnectDescription")
                     : searchConsoleState === "error"
-                      ? "The connected property could not return live ranking data for this request."
+                      ? t("analytics.emptyErrorDescription")
                       : searchConsoleState === "connected-no-data"
-                        ? "Google Search Console returned no query rows for the current 28-day range."
-                        : "This section renders only real Google Search Console query data."
+                        ? t("analytics.emptyNoDataDescription")
+                        : t("analytics.emptyConnectDescription")
                 }
               />
             </div>
@@ -361,16 +403,16 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
             >
               {compactSearchConsoleStatus}
             </span>
-            <span className="text-slate-500">Property</span>
+            <span className="text-slate-500">{t("analytics.property")}</span>
             <span className="font-semibold text-ink">{propertyDisplayDomain}</span>
-            <span className="text-slate-500">Range</span>
+            <span className="text-slate-500">{t("analytics.range")}</span>
             <span className="font-semibold text-ink">{searchConsoleDateRange}</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-sm">
-            {searchConsolePropertiesError ? <p className="text-red-600">Property load failed. {searchConsolePropertiesError}</p> : null}
+            {searchConsolePropertiesError ? <p className="text-red-600">{t("analytics.propertyLoadFailed", { error: localizeMessage(searchConsolePropertiesError) })}</p> : null}
             {searchConsolePerformanceError ? (
-              <p className="text-red-600">Performance load failed. {searchConsolePerformanceError}</p>
+              <p className="text-red-600">{t("analytics.performanceLoadFailed", { error: localizeMessage(searchConsolePerformanceError) })}</p>
             ) : null}
 
             {!hasSearchConsoleAccess ? (
@@ -393,7 +435,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
                   type="submit"
                   className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
-                  Connect Google Search Console
+                  {t("analytics.connectGoogle")}
                 </button>
               </form>
             ) : selectedProperty ? (
@@ -401,7 +443,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
                 href={`/${siteId}/analytics?changeProperty=1`}
                 className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-2.5 font-semibold text-ink transition hover:bg-mist"
               >
-                Change property
+                {t("analytics.changeProperty")}
               </Link>
             ) : null}
           </div>
@@ -411,8 +453,8 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
       <section className="rounded-3xl border border-line bg-white/90 p-5 shadow-panel">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Keyword Lookup</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Search a keyword position in Search Console</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">{t("analytics.lookupEyebrow")}</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{t("analytics.lookupTitle")}</h2>
           </div>
 
           <form method="GET" className="w-full max-w-2xl">
@@ -422,14 +464,14 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
                 type="search"
                 name="keyword"
                 defaultValue={searchedKeyword}
-                placeholder="Search keyword position..."
+                placeholder={t("analytics.searchPlaceholder")}
                 className="min-w-0 flex-1 rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-accent"
               />
               <button
                 type="submit"
                 className="inline-flex items-center justify-center rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
-                Search
+                {t("analytics.search")}
               </button>
             </div>
           </form>
@@ -438,41 +480,41 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
         {searchedKeyword ? (
           <div className="mt-5 rounded-[1.5rem] border border-line bg-mist/60 p-5">
             {searchConsoleKeywordLookupError ? (
-              <p className="text-sm text-red-600">Keyword lookup failed. {searchConsoleKeywordLookupError}</p>
+              <p className="text-sm text-red-600">{t("analytics.lookupFailed", { error: localizeMessage(searchConsoleKeywordLookupError) })}</p>
             ) : searchConsoleKeywordLookup?.found ? (
               <>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Lookup Result</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{t("analytics.lookupResult")}</p>
                 <div className="mt-4 grid gap-3 md:grid-cols-5">
                   <div className="rounded-2xl border border-line bg-white px-4 py-4 md:col-span-2">
-                    <p className="text-sm text-slate-500">Keyword</p>
+                    <p className="text-sm text-slate-500">{t("analytics.keyword")}</p>
                     <p className="mt-2 break-words text-xl font-semibold text-ink">{searchConsoleKeywordLookup.query}</p>
                   </div>
                   <div className="rounded-2xl border border-line bg-white px-4 py-4">
-                    <p className="text-sm text-slate-500">Average position</p>
-                    <p className="mt-2 text-2xl font-semibold text-ink">{formatPosition(searchConsoleKeywordLookup.position)}</p>
+                    <p className="text-sm text-slate-500">{t("analytics.averagePosition")}</p>
+                    <p className="mt-2 text-2xl font-semibold text-ink">{formatPosition(searchConsoleKeywordLookup.position, locale)}</p>
                   </div>
                   <div className="rounded-2xl border border-line bg-white px-4 py-4">
-                    <p className="text-sm text-slate-500">Clicks</p>
-                    <p className="mt-2 text-2xl font-semibold text-ink">{formatCompactNumber(searchConsoleKeywordLookup.clicks)}</p>
+                    <p className="text-sm text-slate-500">{t("analytics.clicks")}</p>
+                    <p className="mt-2 text-2xl font-semibold text-ink">{formatCompactNumber(searchConsoleKeywordLookup.clicks, locale)}</p>
                   </div>
                   <div className="rounded-2xl border border-line bg-white px-4 py-4">
-                    <p className="text-sm text-slate-500">Impressions</p>
-                    <p className="mt-2 text-2xl font-semibold text-ink">{formatCompactNumber(searchConsoleKeywordLookup.impressions)}</p>
+                    <p className="text-sm text-slate-500">{t("analytics.impressions")}</p>
+                    <p className="mt-2 text-2xl font-semibold text-ink">{formatCompactNumber(searchConsoleKeywordLookup.impressions, locale)}</p>
                   </div>
                 </div>
                 <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
                   <div className="rounded-2xl border border-line bg-white px-4 py-4">
-                    <p className="text-sm text-slate-500">CTR</p>
-                    <p className="mt-2 text-2xl font-semibold text-ink">{formatPercent(searchConsoleKeywordLookup.ctr)}</p>
+                    <p className="text-sm text-slate-500">{t("analytics.ctr")}</p>
+                    <p className="mt-2 text-2xl font-semibold text-ink">{formatPercent(searchConsoleKeywordLookup.ctr, locale)}</p>
                   </div>
                   <div className="flex items-center rounded-2xl border border-line bg-white px-4 py-4 text-sm text-slate-600">
-                    {searchConsoleKeywordLookup.startDate} to {searchConsoleKeywordLookup.endDate}
+                    {t("analytics.dateRange", { start: searchConsoleKeywordLookup.startDate, end: searchConsoleKeywordLookup.endDate })}
                   </div>
                 </div>
               </>
             ) : (
               <p className="text-sm text-slate-700">
-                No Search Console data found for this keyword in the last 28 days.
+                {t("analytics.lookupNone")}
               </p>
             )}
           </div>
@@ -482,9 +524,9 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
       <section className="rounded-3xl border border-line bg-white/90 p-5 shadow-panel">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Live SERP Check</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Check current Google organic position</h2>
-            <p className="mt-2 text-sm text-slate-600">Manual Google check via Serper for the site domain.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">{t("analytics.serpEyebrow")}</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{t("analytics.serpTitle")}</h2>
+            <p className="mt-2 text-sm text-slate-600">{t("analytics.serpDescription")}</p>
           </div>
 
           <form method="GET" className="w-full max-w-2xl">
@@ -495,7 +537,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
                 type="search"
                 name="serpKeyword"
                 defaultValue={serpKeyword}
-                placeholder="Search keyword position..."
+                placeholder={t("analytics.searchPlaceholder")}
                 className="min-w-0 rounded-2xl border border-line bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-accent md:min-w-[300px] md:flex-1"
               />
               <button
@@ -513,7 +555,11 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
               >
                 {SEARCH_LOCALE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
-                    {option.label} - gl={option.country}, hl={option.language}
+                    {t("analytics.serpLocaleOption", {
+                    label: searchLocaleLabel(t, option.value),
+                    country: option.country,
+                    language: option.language
+                  })}
                   </option>
                 ))}
               </select>
@@ -525,7 +571,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
                   defaultChecked={serpDeepCheckEnabled}
                   className="h-4 w-4 rounded border-line text-accent focus:ring-accent"
                 />
-                Deep check (up to top 50)
+                {t("analytics.deepCheck")}
               </label>
             </div>
           </form>
@@ -536,65 +582,65 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
             {liveSerpCheckError ? (
               <p className="text-sm text-red-600">
                 {liveSerpCheckError === "SERPER_API_KEY is not configured."
-                  ? "Live SERP check is not configured. Add SERPER_API_KEY to enable this feature."
-                  : `Live SERP check failed. ${liveSerpCheckError}`}
+                  ? t("analytics.serpNotConfigured")
+                  : t("analytics.serpFailed", { error: localizeMessage(liveSerpCheckError) })}
               </p>
             ) : liveSerpCheck ? (
               <>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Live SERP Result</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{t("analytics.serpResult")}</p>
                 <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   <div className="rounded-2xl border border-line bg-white px-4 py-4">
-                    <p className="text-sm text-slate-500">Keyword</p>
+                    <p className="text-sm text-slate-500">{t("analytics.keyword")}</p>
                     <p className="mt-2 break-words text-lg font-semibold text-ink">{liveSerpCheck.keyword}</p>
                   </div>
                   <div className="rounded-2xl border border-line bg-white px-4 py-4">
-                    <p className="text-sm text-slate-500">Checked domain</p>
+                    <p className="text-sm text-slate-500">{t("analytics.checkedDomain")}</p>
                     <p className="mt-2 break-words text-lg font-semibold text-ink">{liveSerpCheck.checkedDomain}</p>
                   </div>
                   <div className="rounded-2xl border border-line bg-white px-4 py-4">
-                    <p className="text-sm text-slate-500">Checked in</p>
+                    <p className="text-sm text-slate-500">{t("analytics.checkedIn")}</p>
                     <p className="mt-2 text-lg font-semibold text-ink">
-                      {liveSerpCheck.countryLabel} ({liveSerpCheck.countryCode})
+                      {serpPlaces?.country} ({liveSerpCheck.countryCode})
                     </p>
                     <p className="mt-1 text-sm text-slate-600">
-                      {liveSerpCheck.languageLabel} ({liveSerpCheck.languageCode})
+                      {serpPlaces?.language} ({liveSerpCheck.languageCode})
                     </p>
                   </div>
                   <div className="rounded-2xl border border-line bg-white px-4 py-4">
-                    <p className="text-sm text-slate-500">Position</p>
+                    <p className="text-sm text-slate-500">{t("analytics.position")}</p>
                     <p className="mt-2 text-lg font-semibold text-ink">
                       {liveSerpCheck.position
                         ? liveSerpCheck.pageNumber
-                          ? `Found on page ${liveSerpCheck.pageNumber} (#${liveSerpCheck.position})`
+                          ? t("analytics.foundOnPage", { page: liveSerpCheck.pageNumber, position: liveSerpCheck.position })
                           : `#${liveSerpCheck.position}`
                         : liveSerpCheck.deepCheckEnabled
-                          ? "Not found in top 50 results"
-                          : "Not found in first 10 results"}
+                          ? t("analytics.notFoundTop50")
+                          : t("analytics.notFoundTop10")}
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-3 grid gap-3 xl:grid-cols-[1.3fr_0.7fr]">
                   <div className="rounded-2xl border border-line bg-white px-4 py-4">
-                    <p className="text-sm text-slate-500">Ranking URL</p>
+                    <p className="text-sm text-slate-500">{t("analytics.rankingUrl")}</p>
                     <p className="mt-2 break-all text-sm font-semibold text-ink">
-                      {liveSerpCheck.rankingUrl ?? "Not found in first 10 results"}
+                      {liveSerpCheck.rankingUrl ?? t("analytics.notFoundTop10")}
                     </p>
                   </div>
                   <div className="rounded-2xl border border-line bg-white px-4 py-4">
-                    <p className="text-sm text-slate-500">Checked timestamp</p>
-                    <p className="mt-2 text-sm font-semibold text-ink">{formatCheckedAt(liveSerpCheck.checkedAt)}</p>
+                    <p className="text-sm text-slate-500">{t("analytics.checkedTimestamp")}</p>
+                    <p className="mt-2 text-sm font-semibold text-ink">{formatCheckedAt(liveSerpCheck.checkedAt, locale)}</p>
                     <p className="mt-1 text-sm text-slate-600">
-                      Checked in: {liveSerpCheck.countryLabel} ({liveSerpCheck.countryCode})
+                      {t("analytics.checkedInLine", { country: serpPlaces?.country ?? "", code: liveSerpCheck.countryCode })}
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-3 rounded-2xl border border-line bg-white px-4 py-4">
-                  <p className="text-sm text-slate-500">Top 10 result domains</p>
+                  <p className="text-sm text-slate-500">{t("analytics.topDomains")}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {liveSerpCheck.topDomains.length === 0 ? (
-                      <p className="text-sm text-slate-600">No organic result domains were returned.</p>
+                      <p className="text-sm text-slate-600">{t("analytics.noDomains")}</p>
                     ) : (
                       liveSerpCheck.topDomains.map((domain, index) => (
                         <span
@@ -617,9 +663,9 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
         <section className="rounded-[2rem] border border-line bg-white/90 p-6 shadow-panel">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Property Selection</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Choose the Search Console property for this site.</h2>
-              <p className="mt-2 text-sm text-slate-600">Choose the property for this site.</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">{t("analytics.propertySelectionEyebrow")}</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{t("analytics.propertySelectionTitle")}</h2>
+              <p className="mt-2 text-sm text-slate-600">{t("analytics.propertySelectionDescription")}</p>
             </div>
           </div>
 
@@ -633,7 +679,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
             </div>
           ) : (
             <p className="mt-6 rounded-2xl border border-dashed border-line px-4 py-6 text-sm text-slate-600">
-              No Search Console properties were returned for this Google account.
+              {t("analytics.noProperties")}
             </p>
           )}
         </section>
@@ -642,16 +688,16 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
       <section className="rounded-3xl border border-line bg-white/80 p-5 shadow-panel">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Internal Product Data</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{t("analytics.internalEyebrow")}</p>
             <p className="mt-2 text-sm text-slate-600">
-              Supporting site inventory from DIYSEO records. This is secondary to SEO data and does not use Google Search Console.
+              {t("analytics.internalDescription")}
             </p>
           </div>
           <Link
             href={`/${siteId}/articles`}
             className="inline-flex items-center justify-center rounded-2xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-mist"
           >
-            Open Articles
+            {t("analytics.openArticles")}
           </Link>
         </div>
 
@@ -668,46 +714,50 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
 
       {gscDebugEnabled ? (
         <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-panel">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">GSC Debug</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">Live query diagnostics</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">{t("analytics.debugEyebrow")}</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{t("analytics.debugTitle")}</h2>
           <p className="mt-2 text-sm text-slate-700">
-            This block is temporary debug output for Search Console troubleshooting. It reflects the exact property and
-            request bodies currently being used.
+            {t("analytics.debugDescription")}
           </p>
 
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-amber-200 bg-white px-4 py-4 text-sm">
-              <p className="font-semibold text-ink">Stored property</p>
-              <p className="mt-1 break-all text-slate-700">{storedPropertyUrl ?? "None"}</p>
+              <p className="font-semibold text-ink">{t("analytics.storedProperty")}</p>
+              <p className="mt-1 break-all text-slate-700">{storedPropertyUrl ?? t("analytics.none")}</p>
             </div>
             <div className="rounded-2xl border border-amber-200 bg-white px-4 py-4 text-sm">
-              <p className="font-semibold text-ink">Selected property used for query</p>
-              <p className="mt-1 break-all text-slate-700">{selectedProperty?.siteUrl ?? "None"}</p>
+              <p className="font-semibold text-ink">{t("analytics.selectedProperty")}</p>
+              <p className="mt-1 break-all text-slate-700">{selectedProperty?.siteUrl ?? t("analytics.none")}</p>
             </div>
             <div className="rounded-2xl border border-amber-200 bg-white px-4 py-4 text-sm">
-              <p className="font-semibold text-ink">Date range</p>
+              <p className="font-semibold text-ink">{t("analytics.dateRangeLabel")}</p>
               <p className="mt-1 text-slate-700">
-                {searchConsolePerformance?.startDate ?? "n/a"} to {searchConsolePerformance?.endDate ?? "n/a"}
+                {t("analytics.dateRange", {
+                  start: searchConsolePerformance?.startDate ?? t("analytics.notAvailable"),
+                  end: searchConsolePerformance?.endDate ?? t("analytics.notAvailable")
+                })}
               </p>
             </div>
             <div className="rounded-2xl border border-amber-200 bg-white px-4 py-4 text-sm">
-              <p className="font-semibold text-ink">Raw response rows</p>
+              <p className="font-semibold text-ink">{t("analytics.rawRows")}</p>
               <p className="mt-1 text-slate-700">
-                Summary: {searchConsolePerformance?.debug?.rawSummaryRowCount ?? 0}, Top queries:{" "}
-                {searchConsolePerformance?.debug?.rawTopQueriesRowCount ?? 0}
+                {t("analytics.rawRowsSummary", {
+                  summary: searchConsolePerformance?.debug?.rawSummaryRowCount ?? 0,
+                  top: searchConsolePerformance?.debug?.rawTopQueriesRowCount ?? 0
+                })}
               </p>
             </div>
           </div>
 
           <div className="mt-5 grid gap-4 xl:grid-cols-2">
             <div className="rounded-2xl border border-amber-200 bg-white p-4">
-              <p className="text-sm font-semibold text-ink">Exact summary query body</p>
+              <p className="text-sm font-semibold text-ink">{t("analytics.summaryQueryBody")}</p>
               <pre className="mt-3 overflow-x-auto rounded-xl bg-sand/70 p-3 text-xs text-slate-800">
                 <code>{JSON.stringify(searchConsolePerformance?.debug?.queryBodySummary ?? null, null, 2)}</code>
               </pre>
             </div>
             <div className="rounded-2xl border border-amber-200 bg-white p-4">
-              <p className="text-sm font-semibold text-ink">Exact top queries query body</p>
+              <p className="text-sm font-semibold text-ink">{t("analytics.topQueriesQueryBody")}</p>
               <pre className="mt-3 overflow-x-auto rounded-xl bg-sand/70 p-3 text-xs text-slate-800">
                 <code>{JSON.stringify(searchConsolePerformance?.debug?.queryBodyTopQueries ?? null, null, 2)}</code>
               </pre>
@@ -715,7 +765,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
           </div>
 
           <div className="mt-5 rounded-2xl border border-amber-200 bg-white p-4">
-            <p className="text-sm font-semibold text-ink">Raw response summary</p>
+            <p className="text-sm font-semibold text-ink">{t("analytics.rawResponseSummary")}</p>
             <pre className="mt-3 overflow-x-auto rounded-xl bg-sand/70 p-3 text-xs text-slate-800">
               <code>
                 {JSON.stringify(

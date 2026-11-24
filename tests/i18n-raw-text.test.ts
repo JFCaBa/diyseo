@@ -63,7 +63,12 @@ const MIGRATED_FILES: string[] = [
   "components/site-publishing-api-keys-form.tsx",
   "components/site-social-connection-form.tsx",
   "components/search-console-property-picker.tsx",
-  "app/[siteId]/api/page.tsx"
+  "app/[siteId]/api/page.tsx",
+  // Task 9: analytics, SEO data, ads
+  "app/[siteId]/analytics/page.tsx",
+  "app/[siteId]/analytics/loading.tsx",
+  "app/[siteId]/seo-data/[[...slug]]/page.tsx",
+  "app/[siteId]/ads/[[...slug]]/page.tsx"
 ];
 
 /** Proper names and symbols that may appear untranslated. */

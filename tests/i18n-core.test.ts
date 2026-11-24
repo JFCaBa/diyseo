@@ -5,6 +5,11 @@ import { test } from "node:test";
 import React, { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
+// Static imports on purpose: under tsx they all go through require, so the switcher and the test
+// share one i18n-provider instance (one context). Mixing in `await import()` gave two instances on
+// Node 20 (CI), and the switcher read the default English context.
+import { I18nProvider, useLocale, useLocalizeMessage, useT } from "@/components/i18n-provider";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { intlLocale, isUiLocale, resolveUiLocale, UI_LOCALE_COOKIE, uiLocaleCookie } from "@/lib/i18n/locale";
 import { en } from "@/lib/i18n/messages/en";
 import { es } from "@/lib/i18n/messages/es";
@@ -124,8 +129,6 @@ test("formatDate and formatNumber follow the locale", () => {
 });
 
 test("without a provider, the switcher and useT render English", async () => {
-  const { LocaleSwitcher } = await import("@/components/locale-switcher");
-  const { useT, useLocale } = await import("@/components/i18n-provider");
 
   const switcherHtml = renderToStaticMarkup(createElement(LocaleSwitcher));
   assert.match(switcherHtml, /English/);
@@ -142,8 +145,6 @@ test("without a provider, the switcher and useT render English", async () => {
 });
 
 test("with a Spanish provider, the switcher and useT render Spanish", async () => {
-  const { LocaleSwitcher } = await import("@/components/locale-switcher");
-  const { I18nProvider, useLocalizeMessage, useT } = await import("@/components/i18n-provider");
 
   function Probe() {
     const t = useT();

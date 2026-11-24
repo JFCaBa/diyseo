@@ -76,6 +76,13 @@ export function formatDate(date: Date | string, locale: UiLocale, options: Intl.
   return new Intl.DateTimeFormat(intlLocale(locale), options).format(typeof date === "string" ? new Date(date) : date);
 }
 
+/** Medium date as the billing and team pages always showed it: en-GB in English ("24 Nov 2026"), es-ES in Spanish. */
+export function formatDateMedium(date: Date | string, locale: UiLocale): string {
+  return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-GB", { dateStyle: "medium" }).format(
+    typeof date === "string" ? new Date(date) : date
+  );
+}
+
 export function formatNumber(value: number, locale: UiLocale, options?: Intl.NumberFormatOptions): string {
   return new Intl.NumberFormat(intlLocale(locale), options).format(value);
 }

@@ -6,7 +6,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { generateNextAutoArticleForSite as runAutoPublishGenerationForSite } from "@/lib/auto-publish";
-import { getT } from "@/lib/i18n/server";
+import { getLocalizeMessage, getT } from "@/lib/i18n/server";
+import { localizeQuotaError } from "@/lib/quota-errors";
 import { prisma } from "@/lib/prisma";
 import { createFixedWindowLimiter } from "@/lib/rate-limit";
 import { commitArticleCredit, isQuotaError, releaseArticleCredit, reserveArticleCredit } from "@/lib/quota";
@@ -75,6 +76,11 @@ export type ActionState = {
     status: "DRAFT" | "PUBLISHED";
   };
 };
+
+/** A QuotaError's text in the request's UI language (selected by its code, with the plan and limit as values). */
+async function quotaMessage(error: unknown) {
+  return localizeQuotaError(await getT(), await getLocalizeMessage(), error);
+}
 
 function normalizeActionErrorMessage(error: unknown, fallback: string) {
   const message = error instanceof Error ? error.message : fallback;
@@ -199,7 +205,7 @@ export async function createSite(
     site = await createSiteInWorkspace(workspaceId, parsed.data);
   } catch (error) {
     if (isQuotaError(error)) {
-      return { error: error.message };
+      return { error: await quotaMessage(error) };
     }
 
     throw error;
@@ -681,6 +687,10 @@ export async function generateNextAutoArticle(
       generatedArticle: result.article
     };
   } catch (error) {
+    if (isQuotaError(error)) {
+      return { error: await quotaMessage(error) };
+    }
+
     return {
       error: normalizeActionErrorMessage(error, "Auto article generation failed.")
     };
@@ -849,7 +859,7 @@ export async function generateArticleTranslation(
     usageId = await reserveArticleCredit({ workspaceId: article.siteProject.workspaceId, siteProjectId: siteId, kind: "TRANSLATION" });
   } catch (error) {
     if (isQuotaError(error)) {
-      return { error: error.message };
+      return { error: await quotaMessage(error) };
     }
 
     throw error;

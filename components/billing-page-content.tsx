@@ -3,35 +3,39 @@ import { redirect } from "next/navigation";
 import { BillingPlanPicker } from "@/components/billing-plan-picker";
 import { hasDuplicateSubscriptions } from "@/lib/billing";
 import { openBillingPortal } from "@/lib/billing-actions";
+import { getT, getUiLocale } from "@/lib/i18n/server";
+import { formatDateMedium, type T } from "@/lib/i18n/translate";
 import { prisma } from "@/lib/prisma";
 import { getUsageSummary } from "@/lib/quota";
 import type { SatelliteService } from "@/lib/satellite-entitlements";
 import { requireWorkspace } from "@/lib/workspace-context";
 
-const PLAN_LABELS: Record<string, string> = {
-  TRIAL: "Free trial",
-  STARTER: "Starter",
-  PRO: "Pro",
-  AGENCY: "Agency",
-  COMP: "Complimentary",
-  NONE: "No active plan"
-};
+const PLAN_LABEL_KEYS = {
+  TRIAL: "billing.planTrial",
+  COMP: "billing.planComp",
+  NONE: "billing.planNone"
+} as const;
 
-const MESSAGES: Record<string, { tone: "ok" | "error"; text: string }> = {
-  "checkout=success": { tone: "ok", text: "Thanks! Your plan is active." },
-  "error=invalid_plan": { tone: "error", text: "That plan is not available." },
-  "error=price_missing": { tone: "error", text: "That price is not set up yet. Please contact support." },
-  "error=checkout_missing": { tone: "error", text: "We could not find that checkout." },
-  "error=checkout_mismatch": { tone: "error", text: "That checkout belongs to a different account." },
-  "error=checkout_incomplete": { tone: "error", text: "That checkout was not completed, so nothing was charged." },
-  "error=owner_only": { tone: "error", text: "Only the workspace owner can manage billing." }
-};
+const MESSAGES = {
+  "checkout=success": { tone: "ok", key: "billing.checkoutSuccess" },
+  "error=invalid_plan": { tone: "error", key: "billing.errInvalidPlan" },
+  "error=price_missing": { tone: "error", key: "billing.errPriceMissing" },
+  "error=checkout_missing": { tone: "error", key: "billing.errCheckoutMissing" },
+  "error=checkout_mismatch": { tone: "error", key: "billing.errCheckoutMismatch" },
+  "error=checkout_incomplete": { tone: "error", key: "billing.errCheckoutIncomplete" },
+  "error=owner_only": { tone: "error", key: "billing.ownerOnly" }
+} as const;
 
 // Shown when a service sends someone here because their plan does not include it.
-const UPGRADE_NOTICES: Record<SatelliteService, string> = {
-  ads: "Ads campaigns are included in Pro and Agency.",
-  mcp: "Your plan doesn't include SEO data in Claude."
-};
+const UPGRADE_NOTICE_KEYS = {
+  ads: "billing.upgradeAds",
+  mcp: "billing.upgradeMcp"
+} as const satisfies Record<SatelliteService, string>;
+
+function planLabel(plan: string, t: T) {
+  // Starter, Pro and Agency are product names and stay as they are.
+  return plan in PLAN_LABEL_KEYS ? t(PLAN_LABEL_KEYS[plan as keyof typeof PLAN_LABEL_KEYS]) : plan.charAt(0) + plan.slice(1).toLowerCase();
+}
 
 export type BillingSearchParams = { checkout?: string; error?: string; upgrade?: string };
 
@@ -43,13 +47,13 @@ function UpgradeNotice({ text }: { text: string }) {
   );
 }
 
-function Meter({ label, used, limit }: { label: string; used: number; limit: number | null }) {
+function Meter({ label, used, limit, noLimit }: { label: string; used: number; limit: number | null; noLimit: string }) {
   return (
     <div className="rounded-2xl border border-line bg-white px-4 py-3">
       <p className="text-sm text-slate-600">{label}</p>
       <p className="mt-1 text-xl font-semibold text-ink">
         {used}
-        <span className="text-sm font-normal text-slate-600"> / {limit === null ? "no limit" : limit}</span>
+        <span className="text-sm font-normal text-slate-600"> / {limit === null ? noLimit : limit}</span>
       </p>
     </div>
   );
@@ -57,6 +61,8 @@ function Meter({ label, used, limit }: { label: string; used: number; limit: num
 
 /** The billing page body, rendered inside the site layout (or standalone when the workspace has no site). */
 export async function BillingPageContent({ searchParams }: { searchParams?: BillingSearchParams }) {
+  const t = await getT();
+  const locale = await getUiLocale();
   const member = await requireWorkspace().catch(() => null);
 
   if (!member) {
@@ -73,10 +79,10 @@ export async function BillingPageContent({ searchParams }: { searchParams?: Bill
   }
 
   const upgrade = searchParams?.upgrade;
-  const upgradeNotice = upgrade === "ads" || upgrade === "mcp" ? UPGRADE_NOTICES[upgrade] : undefined;
+  const upgradeNotice = upgrade === "ads" || upgrade === "mcp" ? t(UPGRADE_NOTICE_KEYS[upgrade]) : undefined;
   const header = (
     <div>
-      <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Billing</p>
+      <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">{t("nav.billing")}</p>
       <h1 className="mt-2 text-3xl font-semibold text-ink">{workspace.name}</h1>
     </div>
   );
@@ -95,10 +101,10 @@ export async function BillingPageContent({ searchParams }: { searchParams?: Bill
         {header}
         {upgradeNotice ? (
           <UpgradeNotice
-            text={`${upgradeNotice} ${ownerEmail ? `Ask your workspace owner (${ownerEmail}) to upgrade.` : "Ask your workspace owner to upgrade."}`}
+            text={`${upgradeNotice} ${ownerEmail ? t("billing.askOwnerWithEmail", { email: ownerEmail }) : t("billing.askOwner")}`}
           />
         ) : (
-          <p className="mt-8 text-sm text-slate-600">Only the workspace owner can manage billing.</p>
+          <p className="mt-8 text-sm text-slate-600">{t("billing.ownerOnly")}</p>
         )}
       </div>
     );
@@ -107,7 +113,7 @@ export async function BillingPageContent({ searchParams }: { searchParams?: Bill
   const usage = await getUsageSummary(workspace.id);
   const duplicate = usage.stripeCustomerId ? await hasDuplicateSubscriptions(usage.stripeCustomerId).catch(() => false) : false;
   const messageKey = searchParams?.checkout ? `checkout=${searchParams.checkout}` : searchParams?.error ? `error=${searchParams.error}` : null;
-  const message = messageKey ? MESSAGES[messageKey] : undefined;
+  const message = messageKey && messageKey in MESSAGES ? MESSAGES[messageKey as keyof typeof MESSAGES] : undefined;
   const paid = usage.plan === "STARTER" || usage.plan === "PRO" || usage.plan === "AGENCY";
 
   return (
@@ -119,7 +125,7 @@ export async function BillingPageContent({ searchParams }: { searchParams?: Bill
           role="status"
           className={`mt-6 rounded-xl border px-4 py-3 text-sm ${message.tone === "ok" ? "border-teal-200 bg-teal-50 text-teal-900" : "border-red-200 bg-red-50 text-red-900"}`}
         >
-          {message.text}
+          {t(message.key)}
         </p>
       ) : null}
 
@@ -127,47 +133,52 @@ export async function BillingPageContent({ searchParams }: { searchParams?: Bill
 
       {usage.subscriptionStatus === "past_due" ? (
         <p role="alert" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Your last payment failed. Update your card in Manage billing to keep your plan.
+          {t("billing.pastDue")}
         </p>
       ) : null}
 
       {duplicate ? (
         <p role="alert" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          You have more than one active subscription. Contact info@diyseo.online and we will refund the extra one.
+          {t("billing.duplicate")}
         </p>
       ) : null}
 
       <section className="mt-8 grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-line bg-white px-4 py-3">
-          <p className="text-sm text-slate-600">Plan</p>
-          <p className="mt-1 text-xl font-semibold text-ink">{PLAN_LABELS[usage.plan]}</p>
+          <p className="text-sm text-slate-600">{t("billing.plan")}</p>
+          <p className="mt-1 text-xl font-semibold text-ink">{planLabel(usage.plan, t)}</p>
           {usage.plan === "TRIAL" && usage.trialEndsAt ? (
-            <p className="mt-1 text-xs text-slate-600">Ends {usage.trialEndsAt.toLocaleDateString("en-GB", { dateStyle: "medium" })}</p>
+            <p className="mt-1 text-xs text-slate-600">{t("billing.ends", { date: formatDateMedium(usage.trialEndsAt, locale) })}</p>
           ) : null}
         </div>
-        <Meter label="Sites" used={usage.sites} limit={usage.limits ? usage.limits.sites : null} />
-        <Meter label="AI articles this month" used={usage.articles} limit={usage.limits ? usage.limits.articlesPerMonth : null} />
+        <Meter label={t("billing.sites")} used={usage.sites} limit={usage.limits ? usage.limits.sites : null} noLimit={t("billing.noLimit")} />
+        <Meter
+          label={t("billing.aiArticlesMonth")}
+          used={usage.articles}
+          limit={usage.limits ? usage.limits.articlesPerMonth : null}
+          noLimit={t("billing.noLimit")}
+        />
       </section>
 
       {usage.plan === "COMP" ? (
-        <p className="mt-8 text-sm text-slate-600">This workspace is on a complimentary plan with no limits.</p>
+        <p className="mt-8 text-sm text-slate-600">{t("billing.complimentary")}</p>
       ) : paid ? (
         <form action={openBillingPortal} className="mt-8">
-          <p className="text-sm text-slate-600">Change plan, update your card, download invoices or cancel in the Stripe portal.</p>
+          <p className="text-sm text-slate-600">{t("billing.portalHelp")}</p>
           <button type="submit" className="mt-3 min-h-11 rounded-xl bg-ink px-5 text-sm font-semibold text-white hover:bg-slate-800">
-            Manage billing
+            {t("billing.manage")}
           </button>
         </form>
       ) : (
         <section className="mt-10">
-          <h2 className="text-xl font-semibold text-ink">Choose a plan</h2>
+          <h2 className="text-xl font-semibold text-ink">{t("billing.choosePlan")}</h2>
           <div className="mt-4">
             <BillingPlanPicker />
           </div>
           {usage.stripeCustomerId ? (
             <form action={openBillingPortal} className="mt-4">
               <button type="submit" className="text-sm font-semibold text-accent hover:underline">
-                View past invoices
+                {t("billing.pastInvoices")}
               </button>
             </form>
           ) : null}

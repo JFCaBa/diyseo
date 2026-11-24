@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { generateArticleForSite } from "@/lib/generate-article";
+import { getLocalizeMessage, getT } from "@/lib/i18n/server";
 import { isQuotaError } from "@/lib/quota";
+import { localizeQuotaError } from "@/lib/quota-errors";
 import { denyUnlessSiteOwner } from "@/lib/site-access";
 
 type RouteContext = {
@@ -33,7 +35,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     if (isQuotaError(error)) {
-      return NextResponse.json({ error: error.message }, { status: 402 });
+      return NextResponse.json({ error: localizeQuotaError(await getT(), await getLocalizeMessage(), error) }, { status: 402 });
     }
 
     const message = error instanceof Error ? error.message : "Article generation failed.";

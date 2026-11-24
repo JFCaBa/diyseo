@@ -147,3 +147,43 @@ test("provider errors: static lib errors are translated by catalog, unknown erro
   assert.equal(localizeProviderError(es, es2, new Error("weird thing"), "x"), "weird thing");
   assert.equal(localizeProviderError(es, es2, "not an error", "fallback"), "fallback");
 });
+
+import { localizeQuotaError } from "@/lib/quota-errors";
+import { QuotaError } from "@/lib/quota-error";
+
+test("quota errors: English output equals the original message, Spanish differs and keeps plan and limit", () => {
+  const lm = createLocalizeMessage("es");
+  const cases = [
+    new QuotaError("Your trial has ended. Choose a plan at /billing to keep generating articles.", "trialEndedArticles"),
+    new QuotaError(
+      "You have used all 12 AI articles included in your starter plan this month. Upgrade at /billing or wait until next month.",
+      "articlesExhausted",
+      { limit: 12, plan: "starter" }
+    ),
+    new QuotaError("AI translations are included in the Pro and Agency plans. Upgrade at /billing.", "translationsNotIncluded"),
+    new QuotaError("Your trial has ended. Choose a plan at /billing to add sites.", "trialEndedSites"),
+    new QuotaError("Your starter plan includes 1 site. Upgrade at /billing to add more.", "sitesLimit", { limit: 1, plan: "starter" }),
+    new QuotaError("Your pro plan includes 3 sites. Upgrade at /billing to add more.", "sitesLimit", { limit: 3, plan: "pro" })
+  ];
+  for (const error of cases) {
+    assert.equal(localizeQuotaError(en, createLocalizeMessage("en"), error), error.message);
+    assert.notEqual(localizeQuotaError(es, lm, error), error.message);
+  }
+  assert.match(localizeQuotaError(es, lm, cases[1]), /12/);
+  assert.match(localizeQuotaError(es, lm, cases[1]), /starter/);
+  assert.match(localizeQuotaError(es, lm, cases[5]), /3 sitios/);
+  assert.match(localizeQuotaError(es, lm, cases[4]), /1 sitio\b/);
+});
+
+test("quota errors: other errors go through the static catalog, non-errors give an empty string", () => {
+  const lm = createLocalizeMessage("es");
+  assert.equal(localizeQuotaError(es, lm, new Error("odd")), "odd");
+  assert.equal(localizeQuotaError(es, lm, "nope"), "");
+});
+
+test("team: the member-limit and already-member texts keep their runtime values", () => {
+  assert.equal(en("team.alreadyMember", { email: "a@b.co" }), "a@b.co is already on this team.");
+  assert.match(es("team.alreadyMember", { email: "a@b.co" }), /a@b\.co/);
+  assert.match(es("team.limitOther", { limit: 3, billing: "x" }), /3/);
+  assert.match(es("team.limitOne", { limit: 1, billing: "x" }), /1 miembro\b/);
+});

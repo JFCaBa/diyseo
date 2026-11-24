@@ -4,6 +4,9 @@ import { readFileSync } from "node:fs";
 import { z } from "zod";
 
 import { en } from "@/lib/i18n/messages/en";
+import { INVITE_RATE_LIMITED } from "@/lib/invite-limits";
+import { PLANS } from "@/lib/plans";
+import { ROLE_ERRORS } from "@/lib/team-roles";
 import * as validations from "@/lib/validations";
 
 /** Peels refine/transform wrappers (ZodEffects) down to the object schema, if there is one. */
@@ -66,8 +69,11 @@ test("no two errors or notices share the same English text", () => {
   assert.deepEqual(duplicates, []);
 });
 
-test("every static success message in lib/actions.ts and lib/social-actions.ts is in the notices catalog", () => {
-  const source = ["lib/actions.ts", "lib/social-actions.ts"].map((file) => readFileSync(file, "utf8")).join("\n");
+/** Every action file that returns user-visible results; a new static success literal in any of them must be in en.notices. */
+const ACTION_FILES = ["lib/actions.ts", "lib/social-actions.ts", "lib/billing-actions.ts", "lib/team-actions.ts", "lib/signup-actions.ts"];
+
+test("every static success message in the action files is in the notices catalog", () => {
+  const source = ACTION_FILES.map((file) => readFileSync(file, "utf8")).join("\n");
   const literals = source
     .split("\n")
     .filter((line) => /\bsuccess:\s*[^`]*"/.test(line) && !line.includes("`"))
@@ -77,4 +83,25 @@ test("every static success message in lib/actions.ts and lib/social-actions.ts i
   const catalog = new Set<string>(Object.values(en.notices));
   const missing = literals.filter((message) => !catalog.has(message));
   assert.deepEqual(missing, [], `missing from en.notices:\n${missing.join("\n")}`);
+});
+
+test("the static team messages returned by lib/team-actions.ts are in the errors catalog", () => {
+  const catalog = new Set<string>(Object.values(en.errors));
+  const source = readFileSync("lib/team-actions.ts", "utf8");
+  const constants = [...source.matchAll(/^const (?:RETRY_MESSAGE|OWNER_ONLY) = "([^"]+)";/gm)].map((match) => match[1]);
+  assert.equal(constants.length, 2);
+  const inline = [...source.matchAll(/error: "([^"]+)"/g)].map((match) => match[1]);
+  const messages = [...constants, ...inline, ...Object.values(ROLE_ERRORS), INVITE_RATE_LIMITED];
+  assert.ok(messages.length >= 8);
+  const missing = messages.filter((message) => !catalog.has(message));
+  assert.deepEqual(missing, [], `missing from en.errors:\n${missing.join("\n")}`);
+});
+
+test("the billing dictionary repeats the plan taglines and features of lib/plans.ts", () => {
+  for (const plan of PLANS) {
+    const entry = en.billing.plans[plan.id] as Record<string, string>;
+    assert.equal(entry.tagline, plan.tagline);
+    plan.features.forEach((feature, index) => assert.equal(entry[`f${index + 1}`], feature));
+    assert.equal(Object.keys(entry).length, plan.features.length + 1);
+  }
 });

@@ -68,7 +68,14 @@ const MIGRATED_FILES: string[] = [
   "app/[siteId]/analytics/page.tsx",
   "app/[siteId]/analytics/loading.tsx",
   "app/[siteId]/seo-data/[[...slug]]/page.tsx",
-  "app/[siteId]/ads/[[...slug]]/page.tsx"
+  "app/[siteId]/ads/[[...slug]]/page.tsx",
+  // Task 10: billing and team
+  "app/[siteId]/billing/page.tsx",
+  "components/billing-page-content.tsx",
+  "components/billing-plan-picker.tsx",
+  "app/[siteId]/team/page.tsx",
+  "components/team-page-content.tsx",
+  "components/team-forms.tsx"
 ];
 
 /** Proper names and symbols that may appear untranslated. */

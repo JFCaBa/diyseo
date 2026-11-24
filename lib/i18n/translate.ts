@@ -83,9 +83,14 @@ export function formatDateMedium(date: Date | string, locale: UiLocale): string 
   );
 }
 
-/** Whole-pound price: "£29" in English, "29 £" in Spanish. */
-export function formatPriceGbp(value: number, locale: UiLocale): string {
-  return formatNumber(value, locale, { style: "currency", currency: "GBP", currencyDisplay: "narrowSymbol", maximumFractionDigits: 0 });
+/** Whole-unit plan price in the billing currency: "£29" / "29 £", "€29" / "29 €". The currency never comes from the language. */
+export function formatPlanPrice(value: number, currency: "gbp" | "eur", locale: UiLocale): string {
+  return formatNumber(value, locale, {
+    style: "currency",
+    currency: currency.toUpperCase(),
+    currencyDisplay: "narrowSymbol",
+    maximumFractionDigits: 0
+  });
 }
 
 export function formatNumber(value: number, locale: UiLocale, options?: Intl.NumberFormatOptions): string {

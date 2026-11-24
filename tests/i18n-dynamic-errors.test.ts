@@ -188,11 +188,11 @@ test("team: the member-limit and already-member texts keep their runtime values"
   assert.match(es("team.limitOne", { limit: 1, billing: "x" }), /1 miembro\b/);
 });
 
-import { formatPriceGbp } from "@/lib/i18n/translate";
+import { formatPlanPrice } from "@/lib/i18n/translate";
 import { es as esMessages } from "@/lib/i18n/messages/es";
 
-test("prices: English keeps £29, Spanish uses the narrow symbol, and the Spanish plan text matches the formatter", () => {
-  assert.equal(formatPriceGbp(29, "en"), "£29");
-  assert.equal(formatPriceGbp(29, "es").replace(/\s/g, " "), "29 £");
-  assert.ok(esMessages.billing.plans.agency.f1.includes(formatPriceGbp(15, "es").replace(/\s/g, " ")));
+test("the agency extra-site price follows the billing currency", () => {
+  assert.equal(createT("en")("billing.plans.agency.f1", { price: formatPlanPrice(15, "gbp", "en") }), "10 sites, then £15 per extra site");
+  assert.match(createT("es")("billing.plans.agency.f1", { price: formatPlanPrice(15, "eur", "es") }).replace(/\s/g, " "), /15 € por sitio extra/);
+  assert.ok(esMessages.billing.plans.agency.f1.includes("{price}"));
 });

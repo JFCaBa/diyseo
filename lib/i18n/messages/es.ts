@@ -919,7 +919,7 @@ export const es: Messages = {
     perMonth: "/mes",
     perMonthYearly: "/mes, facturado anualmente",
     choose: "Elegir {plan}",
-    vatNote: "Precios en GBP, con el IVA que corresponda incluido. El pago lo gestiona Stripe.",
+    vatNote: "Precios en {currency}, con el IVA que corresponda incluido. El pago lo gestiona Stripe.",
     plans: {
       starter: {
         tagline: "Un sitio web listo para crecer.",
@@ -944,7 +944,7 @@ export const es: Messages = {
       },
       agency: {
         tagline: "Sitios web de clientes en un solo panel.",
-        f1: "10 sitios, después 15 £ por sitio extra",
+        f1: "10 sitios, después {price} por sitio extra",
         f2: "Miembros del equipo ilimitados",
         f3: "150 artículos al mes",
         f4: "200 preguntas de IA, comprobadas cada semana",

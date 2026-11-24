@@ -919,7 +919,7 @@ export const en = {
     perMonth: "/month",
     perMonthYearly: "/month, billed yearly",
     choose: "Choose {plan}",
-    vatNote: "Prices in GBP, including any VAT due. Payment is handled by Stripe.",
+    vatNote: "Prices in {currency}, including any VAT due. Payment is handled by Stripe.",
     plans: {
       starter: {
         tagline: "One website that's ready to grow.",
@@ -944,7 +944,7 @@ export const en = {
       },
       agency: {
         tagline: "Client websites in one dashboard.",
-        f1: "10 sites, then £15 per extra site",
+        f1: "10 sites, then {price} per extra site",
         f2: "Unlimited team members",
         f3: "150 articles a month",
         f4: "200 AI questions, checked weekly",

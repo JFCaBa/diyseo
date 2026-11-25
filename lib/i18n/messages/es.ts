@@ -23,7 +23,8 @@ export const es: Messages = {
   localeSwitcher: {
     label: "Idioma",
     en: "English",
-    es: "Español"
+    es: "Español",
+    pt: "Português"
   },
   shell: {
     tagline: "Espacio de trabajo SEO autoalojado",

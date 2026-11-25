@@ -1,15 +1,17 @@
 /** UI language of the signed-in app. Pure: no Next imports, safe for client, server and tests. */
-export type UiLocale = "en" | "es";
+export type UiLocale = "en" | "es" | "pt";
+
+export const UI_LOCALES: readonly UiLocale[] = ["en", "es", "pt"];
 
 export const UI_LOCALE_COOKIE = "diyseo-locale";
 
 const ONE_YEAR_SECONDS = 31_536_000;
 
 export function isUiLocale(value: unknown): value is UiLocale {
-  return value === "en" || value === "es";
+  return value === "en" || value === "es" || value === "pt";
 }
 
-/** Accept-Language entries whose primary tag is en/es, best first (q=0 and malformed entries dropped). */
+/** Accept-Language entries whose primary tag is en/es/pt (pt-BR included), best first (q=0 and malformed entries dropped). */
 function acceptedUiLocales(header: string): UiLocale[] {
   const entries: Array<{ locale: UiLocale; q: number; index: number }> = [];
 
@@ -32,14 +34,16 @@ function acceptedUiLocales(header: string): UiLocale[] {
   return entries.sort((a, b) => b.q - a.q || a.index - b.index).map((entry) => entry.locale);
 }
 
-/** Valid cookie → best en/es entry of Accept-Language (ties keep header order) → "en". */
+/** Valid cookie → best en/es/pt entry of Accept-Language (ties keep header order) → "en". */
 export function resolveUiLocale(input: { cookie?: string | null; acceptLanguage?: string | null }): UiLocale {
   if (isUiLocale(input.cookie)) return input.cookie;
   return (input.acceptLanguage && acceptedUiLocales(input.acceptLanguage)[0]) || "en";
 }
 
-export function intlLocale(locale: UiLocale): "en-US" | "es-ES" {
-  return locale === "es" ? "es-ES" : "en-US";
+const INTL_LOCALE = { en: "en-US", es: "es-ES", pt: "pt-PT" } as const satisfies Record<UiLocale, string>;
+
+export function intlLocale(locale: UiLocale): (typeof INTL_LOCALE)[UiLocale] {
+  return INTL_LOCALE[locale];
 }
 
 /** The cookie the switcher sets, or null for anything that isn't a UiLocale. */

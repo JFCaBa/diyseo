@@ -26,7 +26,8 @@ export const en = {
   localeSwitcher: {
     label: "Language",
     en: "English",
-    es: "Español"
+    es: "Español",
+    pt: "Português"
   },
   shell: {
     tagline: "Self-hosted SEO workspace",

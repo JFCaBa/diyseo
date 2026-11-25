@@ -9,11 +9,11 @@ function isPlanCurrency(value: unknown): value is PlanCurrency {
 
 /**
  * The currency a workspace is shown and charged in. A Stripe customer that already has a currency keeps it
- * (Stripe can't mix currencies on one customer); otherwise Spanish UI pays in euros and English in pounds.
+ * (Stripe can't mix currencies on one customer); otherwise the Spanish and Portuguese UI pay in euros and English in pounds.
  */
 export function checkoutCurrency(input: { customerCurrency: string | null | undefined; locale: UiLocale }): PlanCurrency {
   if (isPlanCurrency(input.customerCurrency)) return input.customerCurrency;
-  return input.locale === "es" ? "eur" : "gbp";
+  return input.locale === "en" ? "gbp" : "eur";
 }
 
 type PendingSession = { status: string | null; url: string | null; currency: string | null; metadata: Record<string, string> | null };

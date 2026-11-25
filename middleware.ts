@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_EXACT = new Set(["/", "/es", "/privacy", "/terms"]);
+const PUBLIC_EXACT = new Set(["/", "/es", "/pt", "/privacy", "/terms"]);
 
 /** Request header the root layout reads for `<html lang>`. Set only for the landings; dropped everywhere else so it can't be forged. */
 export const PAGE_LOCALE_HEADER = "x-diyseo-page-locale";
-const LANDING_LOCALES: Record<string, string> = { "/": "en", "/es": "es" };
+const LANDING_LOCALES: Record<string, string> = { "/": "en", "/es": "es", "/pt": "pt" };
 const PUBLIC_PREFIXES = ["/blog", "/invite/", "/sso/", "/api/sso/", "/api/auth", "/api/public", "/api/internal/cron", "/api/v1", "/api/stripe/webhook"];
 // Only the API-key publishing route under /api/internal/sites runs without a session.
 // Every other route there is an admin endpoint and needs one, so a new route is

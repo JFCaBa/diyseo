@@ -28,6 +28,7 @@ export function LocaleSwitcher({ className }: { className?: string }) {
         >
           <option value="en">{t("localeSwitcher.en")}</option>
           <option value="es">{t("localeSwitcher.es")}</option>
+          <option value="pt">{t("localeSwitcher.pt")}</option>
         </select>
       </label>
     </form>

@@ -4,11 +4,11 @@ import { redirect } from "next/navigation";
 
 import { Pricing, type PricingPlan } from "@/components/landing/pricing";
 import { auth } from "@/lib/auth";
-import type { UiLocale } from "@/lib/i18n/locale";
+import { UI_LOCALES, type UiLocale } from "@/lib/i18n/locale";
 import { createT, formatPlanPrice, type MessageKey } from "@/lib/i18n/translate";
-import { LANDING_COPY, LANDING_CURRENCY, LANDING_PATH } from "@/lib/landing/copy";
+import { LANDING_COPY, LANDING_CURRENCY, LANDING_PATH, LANGUAGE_NAME } from "@/lib/landing/copy";
 import { PLANS } from "@/lib/plans";
-import { startFreeTrial, startFreeTrialEs } from "@/lib/signup-actions";
+import { startFreeTrial, startFreeTrialEs, startFreeTrialPt } from "@/lib/signup-actions";
 import { firstSiteIdInWorkspace } from "@/lib/workspace-guards";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-landing-body" });
@@ -39,7 +39,9 @@ type LandingPageProps = {
   searchParams?: Promise<{ error?: string }>;
 };
 
-/** The marketing landing: `/` (English, pounds) and `/es` (Spanish, euros). */
+const SIGN_UP = { en: startFreeTrial, es: startFreeTrialEs, pt: startFreeTrialPt } satisfies Record<UiLocale, () => Promise<void>>;
+
+/** The marketing landing: `/` (English, pounds), `/es` (Spanish) and `/pt` (Portuguese, both in euros). */
 export async function LandingPage({ locale, searchParams }: LandingPageProps) {
   const session = await auth();
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
@@ -50,8 +52,8 @@ export async function LandingPage({ locale, searchParams }: LandingPageProps) {
   }
 
   const copy = LANDING_COPY[locale];
-  const other: UiLocale = locale === "es" ? "en" : "es";
-  const signUp = locale === "es" ? startFreeTrialEs : startFreeTrial;
+  const others = UI_LOCALES.filter((other) => other !== locale);
+  const signUp = SIGN_UP[locale];
   const plans = landingPlans(locale);
 
   return (
@@ -70,9 +72,11 @@ export async function LandingPage({ locale, searchParams }: LandingPageProps) {
           <a href="#pricing" className="hidden hover:text-ink md:inline">
             {copy.nav.pricing}
           </a>
-          <Link href={LANDING_PATH[other]} hrefLang={other} lang={other} className="hover:text-ink">
-            {copy.nav.otherLanguage}
-          </Link>
+          {others.map((other) => (
+            <Link key={other} href={LANDING_PATH[other]} hrefLang={other} lang={other} className="hover:text-ink">
+              {LANGUAGE_NAME[other]}
+            </Link>
+          ))}
           {session?.user ? (
             <Link href="/settings" className="hover:text-ink">
               {copy.nav.openWorkspace}

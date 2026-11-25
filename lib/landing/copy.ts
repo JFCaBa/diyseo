@@ -3,7 +3,7 @@ import type { UiLocale } from "@/lib/i18n/locale";
 /** Landing page text. English is the original page verbatim; `/` must keep rendering it unchanged. */
 export type LandingCopy = {
   meta: { title: string; description: string };
-  nav: { main: string; loop: string; product: string; pricing: string; openWorkspace: string; signIn: string; startTrial: string; otherLanguage: string };
+  nav: { main: string; loop: string; product: string; pricing: string; openWorkspace: string; signIn: string; startTrial: string };
   accessLimited: string;
   hero: { eyebrow: string; title: string; body: string; cta: string; seePricing: string };
   week: { title: string; example: string; items: { source: string; text: string }[] };
@@ -36,8 +36,7 @@ const en: LandingCopy = {
     pricing: "Pricing",
     openWorkspace: "Open workspace",
     signIn: "Sign in",
-    startTrial: "Start free trial",
-    otherLanguage: "Español"
+    startTrial: "Start free trial"
   },
   accessLimited: "This account can't sign in. Contact info@diyseo.online if you think it should.",
   hero: {
@@ -116,8 +115,7 @@ const es: LandingCopy = {
     pricing: "Precios",
     openWorkspace: "Abrir espacio de trabajo",
     signIn: "Iniciar sesión",
-    startTrial: "Prueba gratis",
-    otherLanguage: "English"
+    startTrial: "Prueba gratis"
   },
   accessLimited: "Esta cuenta no puede iniciar sesión. Escribe a info@diyseo.online si crees que debería poder.",
   hero: {
@@ -183,10 +181,92 @@ const es: LandingCopy = {
   footer: { label: "Pie de página", blog: "Blog", privacy: "Privacidad", terms: "Términos" }
 };
 
-export const LANDING_COPY: Record<UiLocale, LandingCopy> = { en, es };
+const pt: LandingCopy = {
+  meta: {
+    title: "DIYSEO: faz com que te encontrem no Google e nas respostas da IA",
+    description:
+      "O DIYSEO encontra as pesquisas que te estão a escapar e publica o conteúdo que falta no teu site, com a voz da tua marca e no teu próprio domínio."
+  },
+  nav: {
+    main: "Principal",
+    loop: "O ciclo",
+    product: "Produto",
+    pricing: "Preços",
+    openWorkspace: "Abrir espaço de trabalho",
+    signIn: "Iniciar sessão",
+    startTrial: "Experimenta grátis"
+  },
+  accessLimited: "Esta conta não pode iniciar sessão. Escreve para info@diyseo.online se achas que devia poder.",
+  hero: {
+    eyebrow: "Para pequenas empresas e agências",
+    title: "Faz com que te encontrem no Google e nas respostas da IA.",
+    body: "O DIYSEO encontra as pesquisas que te estão a escapar e publica o conteúdo que falta no teu site, com a voz da tua marca e no teu próprio domínio. Depois transforma o que funciona em campanhas de Meta e Google Ads, em pausa até as aprovares.",
+    cta: "Começa a tua experiência grátis",
+    seePricing: "Ver preços"
+  },
+  week: {
+    title: "Esta semana no teu site",
+    example: "Exemplo",
+    items: [
+      { source: "Google", text: "Apareces na segunda página para «preço remodelação cozinha»" },
+      { source: "Respostas da IA", text: "O ChatGPT cita a tua concorrência em vez de ti em 3 perguntas" },
+      { source: "Conteúdo", text: "Artigo redigido no teu tom, pronto para rever" },
+      { source: "Anúncios", text: "Campanha preparada e em pausa até a aprovares" }
+    ]
+  },
+  loop: {
+    title: "Cada passo alimenta o seguinte.",
+    body: "Contratar estas ferramentas em separado passa facilmente dos 300 € por mês, e ainda terias de as ligar à mão.",
+    steps: [
+      { title: "1. Medir", body: "Search Console, Bing, velocidade e rastreio do site, e o que os assistentes de IA dizem da tua marca." },
+      { title: "2. Decidir", body: "Oportunidades, páginas a perder tráfego e concorrentes que aparecem onde tu não apareces." },
+      { title: "3. Publicar", body: "Artigos no teu tom no teu próprio domínio, com WordPress ou com um widget." },
+      { title: "4. Acelerar", body: "O que funciona passa para Meta e Google Ads, com landing incluída e sem gastar nada até aprovares." }
+    ]
+  },
+  modules: {
+    title: "O que inclui",
+    items: [
+      {
+        status: "Disponível",
+        title: "Blog com IA",
+        body: "Artigos com a voz da tua marca, publicação automática, traduções, WordPress e publicação no teu domínio."
+      },
+      { status: "Disponível", title: "Dados de SEO", body: "Search Console, Bing, PageSpeed e rastreios do site, com oportunidades e conteúdo em declínio." },
+      { status: "Disponível", title: "Visibilidade na IA", body: "O que o ChatGPT e o Gemini dizem aos teus clientes, e quem citam." },
+      {
+        status: "Disponível",
+        title: "Anúncios",
+        body: "Campanhas de Meta e Google com textos, imagens e landing. Sempre em pausa até as aprovares."
+      }
+    ],
+    footnote: "Liga os teus dados ao Claude, ao ChatGPT ou ao Codex e pergunta pelo teu site com números reais."
+  },
+  pricing: {
+    title: "Preços simples",
+    intro: "7 dias de experiência grátis, sem cartão. Depois escolhes um plano. Preços em euros, com o IVA aplicável incluído.",
+    periodLabel: "Período de faturação",
+    monthly: "Mensal",
+    annual: "Anual, poupa 20 %",
+    featured: "O melhor para pequenas empresas",
+    perMonth: " /mês",
+    cta: "Experimenta grátis"
+  },
+  start: {
+    title: "Experimenta grátis durante 7 dias",
+    body: "Entra com o Google e começa com os limites do plano Pro. Sem cartão. Escolhe um plano quando quiseres.",
+    cta: "Começa a tua experiência grátis"
+  },
+  footer: { label: "Rodapé", blog: "Blog", privacy: "Privacidade", terms: "Termos" }
+};
+
+export const LANDING_COPY: Record<UiLocale, LandingCopy> = { en, es, pt };
+
+/** Each language named in itself, for the landing header links to the other landings. */
+export const LANGUAGE_NAME: Record<UiLocale, string> = { en: "English", es: "Español", pt: "Português" };
 
 /** Landing path of each language; `/` is the English original and the x-default. */
-export const LANDING_PATH: Record<UiLocale, string> = { en: "/", es: "/es" };
+export const LANDING_PATH: Record<UiLocale, string> = { en: "/", es: "/es", pt: "/pt" };
 
-/** Each landing sells in one currency: pounds on `/`, euros on `/es`. */
-export const LANDING_CURRENCY = { en: "gbp", es: "eur" } as const satisfies Record<UiLocale, "gbp" | "eur">;
+/** Each landing sells in one currency: pounds on `/`, euros on `/es` and `/pt`. */
+export const LANDING_CURRENCY = { en: "gbp", es: "eur", pt: "eur" } as const satisfies Record<UiLocale, "gbp" | "eur">;

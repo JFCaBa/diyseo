@@ -38,15 +38,20 @@
   // resolveLocale:start
   function resolveLocale(value) {
     var normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
-    var names = ["spanish", "español", "espanol", "castellano"];
+    var languages = [
+      { code: "es", names: ["spanish", "español", "espanol", "castellano"] },
+      { code: "pt", names: ["portuguese", "português", "portugues"] }
+    ];
 
-    if (normalized === "es" || normalized.indexOf("es-") === 0 || normalized.indexOf("es_") === 0) {
-      return "es";
-    }
-
-    for (var i = 0; i < names.length; i++) {
-      if (normalized.indexOf(names[i]) === 0) {
-        return "es";
+    for (var l = 0; l < languages.length; l++) {
+      var code = languages[l].code;
+      if (normalized === code || normalized.indexOf(code + "-") === 0 || normalized.indexOf(code + "_") === 0) {
+        return code;
+      }
+      for (var i = 0; i < languages[l].names.length; i++) {
+        if (normalized.indexOf(languages[l].names[i]) === 0) {
+          return code;
+        }
       }
     }
 
@@ -72,8 +77,19 @@
       loadingArticle: "Cargando artículo...",
       articleNotFound: "Artículo no encontrado.",
       articleError: "No se ha podido cargar este artículo."
+    },
+    pt: {
+      articles: "Artigos",
+      loadingArticles: "A carregar artigos...",
+      noArticles: "Ainda não há artigos publicados de {name}.",
+      articlesError: "Não foi possível carregar os artigos.",
+      loadingArticle: "A carregar o artigo...",
+      articleNotFound: "Artigo não encontrado.",
+      articleError: "Não foi possível carregar este artigo."
     }
   };
+
+  var DATE_LOCALES = { en: "en-US", es: "es-ES", pt: "pt-PT" };
 
   function text(key) {
     return STRINGS[resolveLocale(widgetConfig.contentLanguage)][key];
@@ -294,7 +310,7 @@
     }
 
     try {
-      return new Intl.DateTimeFormat(resolveLocale(widgetConfig.contentLanguage) === "es" ? "es-ES" : "en-US", {
+      return new Intl.DateTimeFormat(DATE_LOCALES[resolveLocale(widgetConfig.contentLanguage)], {
         year: "numeric",
         month: "long",
         day: "numeric"

@@ -23,7 +23,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // The landings (`/`, `/es`) have a fixed language set by middleware; everything else follows the UI locale.
+  // The landings (`/`, `/es`, `/pt`) have a fixed language set by middleware; everything else follows the UI locale.
   const pageLocale = (await headers()).get("x-diyseo-page-locale");
 
   return (

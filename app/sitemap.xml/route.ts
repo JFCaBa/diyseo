@@ -1,3 +1,4 @@
+import { sitemapIndexXml } from "@/lib/sitemap";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -18,19 +19,7 @@ export async function GET() {
     select: { id: true, updatedAt: true }
   });
 
-  const entries = sites
-    .map(
-      (site) =>
-        `<sitemap><loc>${appUrl}/blog/${site.id}/sitemap.xml</loc><lastmod>${site.updatedAt.toISOString()}</lastmod></sitemap>`
-    )
-    .join("");
-
-  const xml = [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-    entries,
-    "</sitemapindex>"
-  ].join("");
+  const xml = sitemapIndexXml(appUrl, sites);
 
   return new Response(xml, {
     headers: { "Content-Type": "application/xml; charset=utf-8" }

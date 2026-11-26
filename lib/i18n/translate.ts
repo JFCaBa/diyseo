@@ -1,6 +1,7 @@
 import { intlLocale, type UiLocale } from "@/lib/i18n/locale";
 import { en, type Messages } from "@/lib/i18n/messages/en";
 import { es } from "@/lib/i18n/messages/es";
+import { pt } from "@/lib/i18n/messages/pt";
 
 type Leaves<T, Prefix extends string = ""> = {
   [K in keyof T & string]: T[K] extends string ? `${Prefix}${K}` : Leaves<T[K], `${Prefix}${K}.`>;
@@ -13,7 +14,7 @@ export type T = (key: MessageKey, vars?: Record<string, string | number>) => str
 
 export type LocalizeMessage = (message: string | null | undefined) => string;
 
-const DICTIONARIES: Record<UiLocale, Messages> = { en, es };
+const DICTIONARIES: Record<UiLocale, Messages> = { en, es, pt };
 
 function flatten(tree: object, prefix = "", out = new Map<string, string>()) {
   for (const [key, value] of Object.entries(tree)) {
@@ -76,9 +77,11 @@ export function formatDate(date: Date | string, locale: UiLocale, options: Intl.
   return new Intl.DateTimeFormat(intlLocale(locale), options).format(typeof date === "string" ? new Date(date) : date);
 }
 
-/** Medium date as the billing and team pages always showed it: en-GB in English ("24 Nov 2026"), es-ES in Spanish. */
+const MEDIUM_DATE_LOCALE = { en: "en-GB", es: "es-ES", pt: "pt-PT" } as const satisfies Record<UiLocale, string>;
+
+/** Medium date as the billing and team pages always showed it: en-GB in English ("24 Nov 2026"), es-ES / pt-PT otherwise. */
 export function formatDateMedium(date: Date | string, locale: UiLocale): string {
-  return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-GB", { dateStyle: "medium" }).format(
+  return new Intl.DateTimeFormat(MEDIUM_DATE_LOCALE[locale], { dateStyle: "medium" }).format(
     typeof date === "string" ? new Date(date) : date
   );
 }

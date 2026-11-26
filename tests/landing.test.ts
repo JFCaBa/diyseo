@@ -28,15 +28,16 @@ test("the Spanish copy has exactly the same shape as the English one", () => {
   assert.deepEqual(shape(LANDING_COPY.es), shape(LANDING_COPY.en));
 });
 
-test("both landings declare each other as hreflang alternates, with / as x-default", () => {
+test("every landing declares all three as hreflang alternates, with / as x-default", () => {
   const previous = process.env.NEXT_PUBLIC_APP_URL;
   process.env.NEXT_PUBLIC_APP_URL = "https://diyseo.online/";
   try {
-    const languages = { en: "https://diyseo.online/", es: "https://diyseo.online/es", "x-default": "https://diyseo.online/" };
+    const languages = { en: "https://diyseo.online/", es: "https://diyseo.online/es", pt: "https://diyseo.online/pt", "x-default": "https://diyseo.online/" };
     const en = landingMetadata("en");
     const es = landingMetadata("es");
     assert.deepEqual(en.alternates, { canonical: "https://diyseo.online/", languages });
     assert.deepEqual(es.alternates, { canonical: "https://diyseo.online/es", languages });
+    assert.deepEqual(landingMetadata("pt").alternates, { canonical: "https://diyseo.online/pt", languages });
     assert.equal(en.title, LANDING_COPY.en.meta.title);
     assert.equal(es.title, LANDING_COPY.es.meta.title);
   } finally {
